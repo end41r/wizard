@@ -1,0 +1,105 @@
+name: Quality Check
+
+on:
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  rust-quality:
+    name: Rust Quality Checks
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for Rust files
+        id: check-rust
+        run: |
+          if [ -f "Cargo.toml" ] || find . -name "*.rs" -not -path "./target/*" | grep -q .; then
+            echo "has_rust=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_rust=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Setup Rust
+        if: steps.check-rust.outputs.has_rust == 'true'
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy, rustfmt
+      
+      - name: Check Rust formatting
+        if: steps.check-rust.outputs.has_rust == 'true'
+        run: |
+          if [ -f "Cargo.toml" ]; then
+            cargo fmt --all -- --check
+          else
+            echo "✅ No Cargo.toml found, skipping format check"
+          fi
+      
+      - name: Run Clippy (includes naming convention lints)
+        if: steps.check-rust.outputs.has_rust == 'true'
+        run: |
+          if [ -f "Cargo.toml" ]; then
+            cargo clippy --all-targets --all-features -- \
+              -D warnings \
+              -D clippy::all \
+              -W clippy::pedantic
+          else
+            echo "✅ No Cargo.toml found, skipping clippy"
+          fi
+      
+      - name: Summary
+        if: steps.check-rust.outputs.has_rust == 'false'
+        run: echo "ℹ️ No Rust files found, skipping Rust checks"
+
+  flutter-quality:
+    name: Flutter Quality Checks
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check for Flutter/Dart files
+        id: check-flutter
+        run: |
+          if [ -f "pubspec.yaml" ] || find . -name "*.dart" -not -path "./build/*" -not -path "./.dart_tool/*" | grep -q .; then
+            echo "has_flutter=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_flutter=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Setup Flutter
+        if: steps.check-flutter.outputs.has_flutter == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          channel: 'stable'
+      
+      - name: Get Flutter dependencies
+        if: steps.check-flutter.outputs.has_flutter == 'true'
+        run: |
+          if [ -f "pubspec.yaml" ]; then
+            flutter pub get
+          fi
+      
+      - name: Run Flutter analyze (includes naming convention lints)
+        if: steps.check-flutter.outputs.has_flutter == 'true'
+        run: |
+          if [ -f "pubspec.yaml" ]; then
+            flutter analyze --fatal-infos
+          else
+            echo "✅ No pubspec.yaml found, skipping analyze"
+          fi
+      
+      - name: Check Dart formatting
+        if: steps.check-flutter.outputs.has_flutter == 'true'
+        run: |
+          if [ -f "pubspec.yaml" ]; then
+            dart format --set-exit-if-changed .
+          fi
+      
+      - name: Summary
+        if: steps.check-flutter.outputs.has_flutter == 'false'
+        run: echo "ℹ️ No Flutter/Dart files found, skipping Flutter checks"

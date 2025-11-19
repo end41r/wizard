@@ -1,0 +1,6 @@
+# Clippy configuration for Rust linting
+# This file ensures naming convention checks are enforced
+
+# Naming convention lints (these are warn by default, we make them deny in the workflow)
+# - non_snake_case: variables and functions must use snake_case
+# - non_camel_case_types: structs and enums must use CamelCase

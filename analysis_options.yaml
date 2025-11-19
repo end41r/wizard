@@ -1,0 +1,44 @@
+# Flutter/Dart analysis options
+# This enforces naming conventions and code quality standards
+
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Naming conventions
+    - camel_case_types  # Classes, enums, typedefs must be CamelCase
+    - camel_case_extensions  # Extension names must be CamelCase
+    - library_names  # Library names must be lowercase_with_underscores
+    - file_names  # File names must be lowercase_with_underscores
+    - non_constant_identifier_names  # Variables and functions must be lowerCamelCase
+    - constant_identifier_names  # Constants must be lowerCamelCase or SCREAMING_CAPS
+    
+    # Additional quality checks
+    - always_declare_return_types
+    - annotate_overrides
+    - avoid_empty_else
+    - avoid_print
+    - avoid_returning_null_for_future
+    - avoid_types_as_parameter_names
+    - await_only_futures
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_fields
+    - prefer_single_quotes
+    - unnecessary_brace_in_string_interps
+    - unnecessary_null_aware_assignments
+    - use_key_in_widget_constructors
+
+analyzer:
+  errors:
+    # Make naming convention violations errors instead of warnings
+    camel_case_types: error
+    camel_case_extensions: error
+    library_names: error
+    file_names: error
+    non_constant_identifier_names: error
+    constant_identifier_names: error
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/generated/**"
