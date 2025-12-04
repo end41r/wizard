@@ -1,0 +1,13 @@
+/target/
+Cargo.lock
+
+# backup files
+**/*.rs.bk
+
+.vscode/
+
+# macos typicals for directories
+.DS_Store
+
+.env
+
