@@ -4,6 +4,13 @@ use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ServerMessage {
+    Server(S),
+    Broadcast(B),
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum C { // Sent by Client
     JoinLobby { name: String },
@@ -56,14 +63,12 @@ pub enum B { // Broadcast by Server
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type")]
 pub struct Card {
-   value: Value,
-    suit: Suit,
+    pub value: Value,
+    pub suit: Suit,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type")]
 pub enum Suit {
     Red,
     Yellow,
@@ -72,10 +77,10 @@ pub enum Suit {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type")]
 pub enum Value {
-    N = 0, 
-    W = 14,
+    Narre,
+    Number(u8),
+    Wizard,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

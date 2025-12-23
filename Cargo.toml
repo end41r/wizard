@@ -1,10 +1,10 @@
 [package]
 name = "wizard"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
-iced = "0.13"
+iced = { version = "0.13", features = ["tokio"] }
 axum = { version = "0.7", features = ["ws"] }
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = "0.21"
