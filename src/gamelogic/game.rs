@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use rand::seq::SliceRandom;
 use crate::gamelogic::game_state::GameState;
 
+use rand::seq::SliceRandom;
+
 type Err = &'static str;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -13,7 +15,7 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Self {
-        Game { 
+        Game {
             players: vec![],
             started: false,
         }
@@ -32,7 +34,7 @@ impl Game {
         if self.started {
             return Err("Cannot add a player after the game started")
         }
-       
+
         let index_result = self.players.iter().position(|x| *x == id);
         match index_result {
             Some(index) => {
@@ -134,5 +136,5 @@ fn remove_player_after_game_start() {
     let i_wont_play = game.add_player();
     let _ = game.start();
     assert!(game.remove_player(i_wont_play.unwrap()).is_err());
-}    
+}
 
