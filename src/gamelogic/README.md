@@ -6,4 +6,7 @@ let game = Game::new()
 
 // Add a new player. Names need to be stored somewhere else. Returns player id.
 let player_id = game.add_player()
+
+// Start the game.
+game.start()
 ```
