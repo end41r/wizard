@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use rand::seq::SliceRandom;
+use crate::gamelogic::game_state::GameState;
 
 type Err = &'static str;
 
@@ -40,7 +43,7 @@ impl Game {
         }
     }
 
-    pub fn start(&mut self) -> Result<(), Err> {
+    pub fn start(&mut self) -> Result<GameState, Err> {
         if self.players.len() < 3 {
             return Err("Need more than two players to start a game.")
         }
@@ -49,7 +52,26 @@ impl Game {
         }
         self.players.shuffle(&mut rand::rng());
         self.started = true;
-        Ok(())
+        Ok(self.current_game_state())
+    }
+
+    fn current_game_state(&self) -> GameState {
+        let players = self
+            .players
+            .iter()
+            .cloned()
+            .map(|player| (player, 0))
+            .collect::<HashMap<_, _>>();
+
+        GameState {
+            current_round: 1,
+            total_rounds: self.total_rounds(),
+            players,
+        }
+    }
+
+    fn total_rounds(&self) -> usize {
+        60 / self.players.len()
     }
 }
 
