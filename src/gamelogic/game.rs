@@ -10,9 +10,16 @@ impl Game {
             players: vec![],
         }
     }
+
+    pub fn add_player(&mut self) -> usize {
+        let id = self.players.len();
+        self.players.push(id);
+        id
+    }
 }
 
 #[test]
-fn create_a_new_game() {
-    let _ = Game::new();
+fn create_a_new_game_with_one_player() {
+    let mut game = Game::new();
+    game.add_player();
 }

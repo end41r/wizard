@@ -1,0 +1,9 @@
+# Gamelogic API
+
+```rs
+// Create a new Game. No parameters required
+let game = Game::new()
+
+// Add a new player. Names need to be stored somewhere else. Returns player id.
+let player_id = game.add_player()
+```
