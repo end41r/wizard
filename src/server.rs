@@ -14,6 +14,14 @@ use crate::api::{C, S, B, ServerMessage};
 
 type Clients = Arc<RwLock<HashMap<u64, mpsc::UnboundedSender<ServerMessage>>>>;
 
+pub fn local_ip() -> String {
+    use std::net::UdpSocket;
+    UdpSocket::bind("0.0.0.0:0").ok()
+        .and_then(|s| { s.connect("8.8.8.8:80").ok()?; s.local_addr().ok() })
+        .map(|a| a.ip().to_string())
+        .unwrap_or("?".into())
+}
+
 pub fn start_server() -> Result<(), String> {
     std::thread::spawn(|| {
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -32,7 +40,7 @@ async fn run_server(clients: Clients) {
             move |ws| ws_handler(ws, clients.clone())
         }));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     println!("server on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();

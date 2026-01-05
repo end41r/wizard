@@ -1,10 +1,9 @@
-#![allow(unused_variables)]
-#![allow(dead_code)]
+//#![allow(unused_variables)]
+//#![allow(dead_code)]
 
 use iced::{
-    widget::{button, column, text},
-    time,
-    Element, Subscription, Task,
+    widget::{button, column, text, text_input, row},
+    time, Element, Subscription, Task,
 };
 use futures::{StreamExt, SinkExt};
 use std::sync::{Arc, Mutex};
@@ -15,216 +14,91 @@ use tokio_tungstenite::{
     tungstenite::Message as WsMessage,
 };
 
-use crate::api::{C, S, B, ServerMessage};
+use crate::api::{C, ServerMessage};
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
 type ServerMsgReceiver = Arc<Mutex<Option<std::sync::mpsc::Receiver<ServerMessage>>>>;
 
 #[derive(Debug)]
 struct App {
-    started: bool,
     connected: bool,
     ws_tx: WsConnection,
     server_rx: ServerMsgReceiver,
-    last_msg: String,
+    msg: String,
+    ip: String,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            started: false,
             connected: false,
             ws_tx: Arc::new(Mutex::new(None)),
             server_rx: Arc::new(Mutex::new(None)),
-            last_msg: "Not connected".to_string(),
+            msg: String::new(),
+            ip: String::new(),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 enum AppMessage {
-    Start,
-    Connect,
-    JoinLobby,
-    LeaveLobby,
-    ToggleReady,
-    TestBid,
-    TestPlayCard,
+    Host,
+    Join,
+    Ip(String),
     Tick,
 }
 
 fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
     match msg {
-        AppMessage::Start => {
-            // Start server first
-            if !state.started {
+        AppMessage::Host => {
+            if !state.connected {
                 let _ = crate::server::start_server();
-                state.started = true;
-                std::thread::sleep(std::time::Duration::from_millis(500));
-            }
-            
-            // Then connect to it
-            if !state.connected {
+                std::thread::sleep(std::time::Duration::from_millis(300));
                 let ws_tx = Arc::clone(&state.ws_tx);
                 let server_rx = Arc::clone(&state.server_rx);
                 std::thread::spawn(move || {
                     let rt = tokio::runtime::Runtime::new().unwrap();
-                    rt.block_on(async {
-                        connect_ws(ws_tx, server_rx).await;
-                    });
+                    rt.block_on(connect_ws(ws_tx, server_rx, "127.0.0.1".into()));
                 });
                 state.connected = true;
-                state.last_msg = "Connecting...".to_string();
+                state.msg = format!("Hosting on {}", crate::server::local_ip());
             }
             Task::none()
         }
-        AppMessage::Connect => {
-            // connect to localhost:3000 without starting a server
-            if !state.connected {
+        AppMessage::Join => {
+            if !state.connected && !state.ip.is_empty() {
                 let ws_tx = Arc::clone(&state.ws_tx);
                 let server_rx = Arc::clone(&state.server_rx);
+                let ip = state.ip.clone();
                 std::thread::spawn(move || {
                     let rt = tokio::runtime::Runtime::new().unwrap();
-                    rt.block_on(async {
-                        connect_ws(ws_tx, server_rx).await;
-                    });
+                    rt.block_on(connect_ws(ws_tx, server_rx, ip));
                 });
                 state.connected = true;
-                state.last_msg = "Connecting...".to_string();
+                state.msg = "Connecting...".into();
             }
             Task::none()
         }
-        AppMessage::JoinLobby => {
-            if let Ok(guard) = state.ws_tx.lock() {
-                if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::JoinLobby { name: "Player".to_string() });
-                    state.last_msg = "Joining lobby...".to_string();
-                }
-            }
-            Task::none()
-        }
-        AppMessage::LeaveLobby => {
-            if let Ok(guard) = state.ws_tx.lock() {
-                if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::LeaveLobby);
-                    state.last_msg = "Leaving lobby...".to_string();
-                }
-            }
-            Task::none()
-        }
-        AppMessage::ToggleReady => {
-            if let Ok(guard) = state.ws_tx.lock() {
-                if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::SetReady { ready: true });
-                    state.last_msg = "Set ready".to_string();
-                }
-            }
-            Task::none()
-        }
-        AppMessage::TestBid => {
-            if let Ok(guard) = state.ws_tx.lock() {
-                if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::Bid { amount: 3 });
-                    state.last_msg = "Bid 3".to_string();
-                }
-            }
-            Task::none()
-        }
-        AppMessage::TestPlayCard => {
-            if let Ok(guard) = state.ws_tx.lock() {
-                if let Some(ref tx) = *guard {
-                    use crate::api::{Card, Suit, Value};
-                    let _ = tx.send(C::PlayCard { 
-                        card: Card { value: Value::Number(5), suit: Suit::Red } 
-                    });
-                    state.last_msg = "Played card".to_string();
-                }
-            }
-            Task::none()
-        }
+        AppMessage::Ip(v) => { state.ip = v; Task::none() }
         AppMessage::Tick => {
-            // Check for messages from server
-            if let Ok(guard) = state.server_rx.lock() {
-                if let Some(ref rx) = *guard {
-                    while let Ok(msg) = rx.try_recv() {
-                        println!("Received: {:?}", msg);
-                        match msg {
-                            ServerMessage::Server(s) => match s {
-                                S::JoinConfirmation { ok } => {
-                                    state.last_msg = format!("Join: {}", ok);
-                                }
-                                S::Error { reason } => {
-                                    state.last_msg = format!("Error: {}", reason);
-                                }
-                                S::HandDealt { cards } => {
-                                    state.last_msg = format!("Hand dealt: {} cards", cards.len());
-                                }
-                                S::BidRequest { min, max } => {
-                                    state.last_msg = format!("Bid request: {}-{}", min, max);
-                                }
-                                S::InvalidBid { reason } => {
-                                    state.last_msg = format!("Invalid bid: {}", reason);
-                                }
-                                S::YourTurn { valid_cards } => {
-                                    state.last_msg = format!("Your turn: {} cards", valid_cards.len());
-                                }
-                                S::InvalidMove { reason } => {
-                                    state.last_msg = format!("Invalid move: {}", reason);
-                                }
-                            }
-                            ServerMessage::Broadcast(b) => match b {
-                                B::LobbyState { players } => {
-                                    state.last_msg = format!("Lobby: {} players", players.len());
-                                }
-                                B::GameStarted { players } => {
-                                    state.last_msg = format!("Game started: {} players", players.len());
-                                }
-                                B::RoundStarted { round, cards_per_player, trump } => {
-                                    state.last_msg = format!("Round {} started: {} cards", round, cards_per_player);
-                                }
-                                B::BiddingStarted { starting_player, cards_per_player } => {
-                                    state.last_msg = format!("Bidding started: {} cards", cards_per_player);
-                                }
-                                B::BidTurn { player } => {
-                                    state.last_msg = format!("Player {} bidding", player);
-                                }
-                                B::BidMade { player, amount } => {
-                                    state.last_msg = format!("Player {} bid {}", player, amount);
-                                }
-                                B::BiddingFinished { bids } => {
-                                    state.last_msg = format!("Bidding done: {} bids", bids.len());
-                                }
-                                B::PoolStarted { leader } => {
-                                    state.last_msg = format!("Pool started, leader: {}", leader);
-                                }
-                                B::TurnChanged { player } => {
-                                    state.last_msg = format!("Turn: player {}", player);
-                                }
-                                B::CardPlayed { player, card } => {
-                                    state.last_msg = format!("Player {} played card", player);
-                                }
-                                B::PoolFinished { winner, cards } => {
-                                    state.last_msg = format!("Pool won by {}", winner);
-                                }
-                                B::RoundFinished { scores, won_amounts } => {
-                                    state.last_msg = format!("Round finished");
-                                }
-                                B::GameFinished { final_scores, winner } => {
-                                    state.last_msg = format!("Game won by {}", winner);
-                                }
-                            }
-                        }
+            if let Ok(g) = state.server_rx.lock() {
+                if let Some(ref rx) = *g {
+                    while let Ok(m) = rx.try_recv() {
+                        // handle S, B messages
+                        state.msg = format!("{:?}", m);
                     }
                 }
             }
             Task::none()
         }
+        // send C messages if needed
     }
 }
 
-async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver) {
-    println!("Attempting to connect...");
-    match connect_async("ws://127.0.0.1:3000/ws").await {
+async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: String) {
+    let url = format!("ws://{}:3000/ws", ip);
+    println!("Attempting to connect to {}...", url);
+    match connect_async(&url).await {
         Ok((ws_stream, _)) => {
             println!("WebSocket connected!");
             let (mut write, mut read) = ws_stream.split();
@@ -273,17 +147,10 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver) {
 
 fn view(state: &'_ App) -> Element<'_, AppMessage> {
     column![
-        button("Start").on_press(AppMessage::Start),
-        button("Connect").on_press(AppMessage::Connect),
-        button("Join Lobby").on_press(AppMessage::JoinLobby),
-        button("Leave Lobby").on_press(AppMessage::LeaveLobby),
-        button("Toggle Ready").on_press(AppMessage::ToggleReady),
-        button("Test Bid (3)").on_press(AppMessage::TestBid),
-        button("Test Play Card").on_press(AppMessage::TestPlayCard),
-        text(format!("Status: {}", state.last_msg)),
-    ]
-    .padding(20)
-    .into()
+        button("Host").on_press(AppMessage::Host),
+        row![text_input("IP", &state.ip).on_input(AppMessage::Ip), button("Join").on_press(AppMessage::Join)].spacing(5),
+        text(&state.msg),
+    ].spacing(10).padding(20).into()
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
