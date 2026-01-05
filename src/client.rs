@@ -1,19 +1,17 @@
 //#![allow(unused_variables)]
 //#![allow(dead_code)]
 
+use futures::{SinkExt, StreamExt};
 use iced::{
-    widget::{button, column, text, text_input, row},
-    time, Element, Subscription, Task,
+    time,
+    widget::{button, column, row, text, text_input},
+    Element, Subscription, Task,
 };
-use futures::{StreamExt, SinkExt};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio_tungstenite::{
-    connect_async,
-    tungstenite::Message as WsMessage,
-};
+use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 
-use crate::api::{C, ServerMessage};
+use crate::api::{ServerMessage, C};
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
 type ServerMsgReceiver = Arc<Mutex<Option<std::sync::mpsc::Receiver<ServerMessage>>>>;
@@ -78,7 +76,10 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             }
             Task::none()
         }
-        AppMessage::Ip(v) => { state.ip = v; Task::none() }
+        AppMessage::Ip(v) => {
+            state.ip = v;
+            Task::none()
+        }
         AppMessage::Tick => {
             if let Ok(g) = state.server_rx.lock() {
                 if let Some(ref rx) = *g {
@@ -89,8 +90,7 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 }
             }
             Task::none()
-        }
-        // send C messages if needed
+        } // send C messages if needed
     }
 }
 
@@ -100,12 +100,9 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
     match connect_async(&url).await {
         Ok((ws_stream, _)) => {
             println!("WebSocket connected!");
-            let (mut write, mut read)
-                = ws_stream.split();
-            let (tx, mut rx)
-                = tokio::sync::mpsc::unbounded_channel();
-            let (srv_tx, srv_rx)
-                = std::sync::mpsc::channel();
+            let (mut write, mut read) = ws_stream.split();
+            let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+            let (srv_tx, srv_rx) = std::sync::mpsc::channel();
 
             *ws_tx.lock().unwrap() = Some(tx);
             *server_rx.lock().unwrap() = Some(srv_rx);
@@ -125,8 +122,7 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
             let recv_task = tokio::spawn(async move {
                 while let Some(Ok(WsMessage::Text(txt))) = read.next().await {
                     println!("Raw message received: {}", txt);
-                    if let Ok(server_msg)
-                            = serde_json::from_str::<ServerMessage>(&txt) {
+                    if let Ok(server_msg) = serde_json::from_str::<ServerMessage>(&txt) {
                         println!("Parsed successfully: {:?}", server_msg);
                         let _ = srv_tx.send(server_msg);
                     } else {
@@ -151,9 +147,16 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
 fn view(state: &'_ App) -> Element<'_, AppMessage> {
     column![
         button("Host").on_press(AppMessage::Host),
-        row![text_input("IP", &state.ip).on_input(AppMessage::Ip), button("Join").on_press(AppMessage::Join)].spacing(5),
+        row![
+            text_input("IP", &state.ip).on_input(AppMessage::Ip),
+            button("Join").on_press(AppMessage::Join)
+        ]
+        .spacing(5),
         text(&state.msg),
-    ].spacing(10).padding(20).into()
+    ]
+    .spacing(10)
+    .padding(20)
+    .into()
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
