@@ -3,16 +3,18 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
+pub type PlayerId = u64;
+pub type SessionId = u64;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ServerMessage {
     Server(S),
     Broadcast(B),
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum C { // Sent by Client
+pub enum C { // Sent by client
     JoinLobby { name: String },
     LeaveLobby,
 
@@ -25,7 +27,7 @@ pub enum C { // Sent by Client
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum S { // Sent by Server
+pub enum S { // Sent by server
     JoinConfirmation { ok: bool },
     Error { reason: String },
 
@@ -40,7 +42,7 @@ pub enum S { // Sent by Server
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum B { // Broadcast by Server
+pub enum B { // Broadcasted by server
     LobbyState { players: Vec<Player> },
 
     GameStarted { players: Vec<PlayerId> },
@@ -90,6 +92,3 @@ pub struct Player {
     name: String,
     ready: bool,
 }
-
-pub type PlayerId = u64;
-pub type SessionId = u64;

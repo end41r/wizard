@@ -8,7 +8,6 @@ use iced::{
 use futures::{StreamExt, SinkExt};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-
 use tokio_tungstenite::{
     connect_async,
     tungstenite::Message as WsMessage,
@@ -101,15 +100,18 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
     match connect_async(&url).await {
         Ok((ws_stream, _)) => {
             println!("WebSocket connected!");
-            let (mut write, mut read) = ws_stream.split();
-            let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-            let (srv_tx, srv_rx) = std::sync::mpsc::channel();
+            let (mut write, mut read)
+                = ws_stream.split();
+            let (tx, mut rx)
+                = tokio::sync::mpsc::unbounded_channel();
+            let (srv_tx, srv_rx)
+                = std::sync::mpsc::channel();
 
             *ws_tx.lock().unwrap() = Some(tx);
             *server_rx.lock().unwrap() = Some(srv_rx);
             println!("Receiver set successfully!");
 
-            // Send task
+            // Send a task.
             let send_task = tokio::spawn(async move {
                 while let Some(msg) = rx.recv().await {
                     let text = serde_json::to_string(&msg).unwrap();
@@ -119,11 +121,12 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
                 }
             });
 
-            // Receive task - parse as ServerMessage directly
+            // Recieve a task and directly parse it as a ServerMessage.
             let recv_task = tokio::spawn(async move {
                 while let Some(Ok(WsMessage::Text(txt))) = read.next().await {
                     println!("Raw message received: {}", txt);
-                    if let Ok(server_msg) = serde_json::from_str::<ServerMessage>(&txt) {
+                    if let Ok(server_msg)
+                            = serde_json::from_str::<ServerMessage>(&txt) {
                         println!("Parsed successfully: {:?}", server_msg);
                         let _ = srv_tx.send(server_msg);
                     } else {
@@ -133,7 +136,7 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
                 println!("Receive loop ended");
             });
 
-            // Wait for either task to complete
+            // Wait for either task to complete.
             tokio::select! {
                 _ = send_task => println!("Send task ended"),
                 _ = recv_task => println!("Receive task ended"),
@@ -154,7 +157,6 @@ fn view(state: &'_ App) -> Element<'_, AppMessage> {
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
-    // Use iced's time::every for polling - this is the correct way
     if state.connected {
         time::every(Duration::from_millis(100)).map(|_| AppMessage::Tick)
     } else {

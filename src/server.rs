@@ -51,7 +51,7 @@ async fn ws_handler(ws: WebSocketUpgrade, clients: Clients) -> impl IntoResponse
     ws.on_upgrade(move |socket| handle_socket(socket, clients))
 }
 
-// Broadcast to all connected clients
+// Broadcast to all connected clients.
 async fn broadcast_to_all(clients: &Clients, broadcast: B) {
     let wrapped = ServerMessage::Broadcast(broadcast);
     let message_text = serde_json::to_string(&wrapped).unwrap();
@@ -69,12 +69,13 @@ async fn handle_socket(socket: WebSocket, clients: Clients) {
     println!("New connection: player {}", id);
     
     let (mut sender, mut receiver) = socket.split();
-    let (tx, mut rx) = mpsc::unbounded_channel::<ServerMessage>();
+    let (tx, mut rx)
+        = mpsc::unbounded_channel::<ServerMessage>();
     
-    // Register client
+    // Register the client.
     clients.write().await.insert(id, tx.clone());
     
-    // Spawn task to forward messages from channel to websocket
+    // Spawn task to forward messages from channel to websocket.
     let mut send_task = tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
             match serde_json::to_string(&msg) {
@@ -92,7 +93,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients) {
         }
     });
     
-    // Main receive loop
+    // Run the main receive loop.
     let clients_clone = clients.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
@@ -100,51 +101,52 @@ async fn handle_socket(socket: WebSocket, clients: Clients) {
                 match serde_json::from_str::<C>(&text) {
                     Ok(C::JoinLobby { name }) => {
                         println!("Player {} joining lobby as {}", id, name);
-                        let response = ServerMessage::Server(S::JoinConfirmation { ok: true });
+                        let response
+                            = ServerMessage::Server(S::JoinConfirmation { ok: true });
                         if let Err(e) = tx.send(response) {
                             println!("Failed to send join confirmation: {:?}", e);
                         }
                         
-                        // Broadcast updated lobby state
+                        // Broadcast the updated lobby state.
                         broadcast_to_all(&clients_clone, B::LobbyState { 
-                            players: vec![] // TODO: actual player list
+                            players: vec![] // TODO: Add a actual player list.
                         }).await;
                     }
                     Ok(C::LeaveLobby) => {
                         println!("Player {} leaving lobby", id);
                         
-                        // Broadcast updated lobby state
+                        // Broadcast the updated lobby state.
                         broadcast_to_all(&clients_clone, B::LobbyState { 
-                            players: vec![] // TODO: actual player list
+                            players: vec![] // TODO: Add a actual player list.
                         }).await;
                     }
                     Ok(C::SetReady { ready }) => {
                         println!("Player {} set ready: {}", id, ready);
                         
-                        // Broadcast updated lobby state
+                        // Broadcast the updated lobby state.
                         broadcast_to_all(&clients_clone, B::LobbyState { 
-                            players: vec![] // TODO: actual player list
+                            players: vec![] // TODO: Add a actual player list.
                         }).await;
                     }
                     Ok(C::Bid { amount }) => {
                         println!("Player {} bid: {}", id, amount);
                         
-                        // Broadcast the bid
+                        // Broadcast the bid.
                         broadcast_to_all(&clients_clone, B::BidMade { 
                             player: id, 
                             amount 
                         }).await;
-                        // TODO: Validate bid, check if bidding is complete
+                        // TODO: Validate the bid and check if the bidding is complete.
                     }
                     Ok(C::PlayCard { card }) => {
                         println!("Player {} played card: {:?}", id, card);
                         
-                        // Broadcast the card played
+                        // Broadcast the played card.
                         broadcast_to_all(&clients_clone, B::CardPlayed { 
                             player: id, 
                             card: card.clone() 
                         }).await;
-                        // TODO: Validate play, check if pool is complete
+                        // TODO: Validate the play and check if the pool is complete.
                     }
                     Err(err) => {
                         println!("Parse error from player {}: {}", id, err);
@@ -158,13 +160,13 @@ async fn handle_socket(socket: WebSocket, clients: Clients) {
         }
     });
     
-    // Wait for either task to finish
+    // Wait for either task to finish.
     tokio::select! {
         _ = &mut send_task => recv_task.abort(),
         _ = &mut recv_task => send_task.abort(),
     }
     
-    // Cleanup: remove client
+    // Cleanup: Remove the client.
     clients.write().await.remove(&id);
     println!("Player {} disconnected", id);
 }
