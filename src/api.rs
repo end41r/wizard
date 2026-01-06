@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub type PlayerId = u64;
@@ -14,7 +14,8 @@ pub enum ServerMessage {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum C { // Sent by client
+pub enum C {
+    // Sent by client
     JoinLobby { name: String },
     LeaveLobby,
 
@@ -27,7 +28,8 @@ pub enum C { // Sent by client
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum S { // Sent by server
+pub enum S {
+    // Sent by server
     JoinConfirmation { ok: bool },
     Error { reason: String },
 
@@ -42,26 +44,61 @@ pub enum S { // Sent by server
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum B { // Broadcasted by server
-    LobbyState { players: Vec<Player> },
+pub enum B {
+    // Broadcasted by server
+    LobbyState {
+        players: Vec<Player>,
+    },
 
-    GameStarted { players: Vec<PlayerId> },
-    RoundStarted { round: usize, cards_per_player: usize, trump: Option<Suit> },
+    GameStarted {
+        players: Vec<PlayerId>,
+    },
+    RoundStarted {
+        round: usize,
+        cards_per_player: usize,
+        trump: Option<Suit>,
+    },
 
-    BiddingStarted { starting_player: PlayerId, cards_per_player: usize },
-    BidTurn { player: PlayerId },
-    BidMade { player: PlayerId, amount: usize }, 
-    BiddingFinished { bids: HashMap<PlayerId, usize> },
+    BiddingStarted {
+        starting_player: PlayerId,
+        cards_per_player: usize,
+    },
+    BidTurn {
+        player: PlayerId,
+    },
+    BidMade {
+        player: PlayerId,
+        amount: usize,
+    },
+    BiddingFinished {
+        bids: HashMap<PlayerId, usize>,
+    },
 
-    PoolStarted { leader: PlayerId },
-    TurnChanged { player: PlayerId },
-    CardPlayed { player: PlayerId, card: Card },
+    PoolStarted {
+        leader: PlayerId,
+    },
+    TurnChanged {
+        player: PlayerId,
+    },
+    CardPlayed {
+        player: PlayerId,
+        card: Card,
+    },
 
-    PoolFinished { winner: PlayerId, cards: Vec<(PlayerId, Card)> },
+    PoolFinished {
+        winner: PlayerId,
+        cards: Vec<(PlayerId, Card)>,
+    },
 
-    RoundFinished { scores: HashMap<PlayerId, usize>, won_amounts: HashMap<PlayerId, usize> },
+    RoundFinished {
+        scores: HashMap<PlayerId, usize>,
+        won_amounts: HashMap<PlayerId, usize>,
+    },
 
-    GameFinished { final_scores: HashMap<PlayerId, usize>, winner: PlayerId }
+    GameFinished {
+        final_scores: HashMap<PlayerId, usize>,
+        winner: PlayerId,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -75,7 +112,7 @@ pub enum Suit {
     Red,
     Yellow,
     Green,
-    Blue
+    Blue,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
