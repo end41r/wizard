@@ -1,3 +1,7 @@
+mod api;
+mod client;
+mod server;
+
 fn main() {
-    println!("Hello, world!");
+    client::main().unwrap();
 }
