@@ -3,7 +3,10 @@
 
 use futures::{SinkExt, StreamExt};
 use iced::{
-    Element, Length, Point, Size, Subscription, Task, time, widget::{MouseArea, Pin, Stack, button, column, container, image, pin, row, stack, text, text_input}, window
+    Element, mouse::Interaction, Point, Size, Subscription, Task, time,
+    widget::{MouseArea, Pin, Stack, button, column,
+             container, image, pin, row, stack, text, text_input},
+    window
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -30,6 +33,10 @@ struct App {
 
     window_size: Size,
     cards: IndexMap<usize, Card>,
+    focus_card_row_low: bool,
+    top_card_id_upper: usize,
+    top_card_id_lower: usize
+
 }
 
 impl Default for App {
@@ -62,6 +69,9 @@ impl Default for App {
                 (16, Card::new(CARD3_PATH, Size::new(154.0, 225.0))),
                 (17, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
             ]),
+            focus_card_row_low: true,
+            top_card_id_upper: 100, // Impossible to reach
+            top_card_id_lower: 100  // Impossible to reach
         }
     }
 }
@@ -74,6 +84,8 @@ enum AppMessage {
     Tick,
 
     WindowResized(Size),
+    CardPlayed(usize),
+    CardHovered(usize),
 }
 
 #[derive(Debug)]
@@ -124,7 +136,6 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
         AppMessage::Tick => {
-
             if let Ok(g) = state.server_rx.lock() {
                 if let Some(ref rx) = *g {
                     while let Ok(m) = rx.try_recv() {
@@ -135,10 +146,26 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             }
             Task::none()
         }
+        AppMessage::CardHovered(card_id) => {
+            if state.cards.len() > 10 && state.cards.iter()
+                                                    .take(state.cards.len() - 10)
+                                                    .any(|(key, _)| *key == card_id) {
+                    state.focus_card_row_low = false;
+                    state.top_card_id_upper = card_id;
+                } else {
+                    state.focus_card_row_low = true;
+                    state.top_card_id_lower = card_id;
+                }
+            Task::none()
+        }
+        AppMessage::CardPlayed(card_id) => {
+            println!("Card with id {} played!", card_id);
+            Task::none()
+        }
         AppMessage::WindowResized(size) => {
             state.window_size = size;
             Task::none()
-        } // send C messages if needed
+        } // Send C messages if needed
     }
 }
 
@@ -192,51 +219,80 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
     }
 }
 
-fn view_card<'a>(card: &Card, x_pos: f32) -> Pin<'a, AppMessage> {
+fn view_card<'a>(card_id: &usize, card: &Card, x_pos: f32) -> Pin<'a, AppMessage> {
         pin(
             (MouseArea::new(image(card.img_path)
                      .width(card.size.width).height(card.size.height)))
-                     .interaction(iced::mouse::Interaction::Pointer)
+                     .on_double_click(AppMessage::CardPlayed(*card_id))
+                     .on_enter(AppMessage::CardHovered(*card_id))
+                     .interaction(Interaction::Pointer)
         )
         .position(Point{x: x_pos, y: 0.0})
     }
 
 fn view_hand<'a>(state: &App) -> Pin<'a, AppMessage> {
 
-    // Create a stack for the whole hand and one for the upper/lower row.
-    let mut card_stack: Stack<'_, AppMessage> = stack!().width(Length::Fill).height(Length::Fill).clip(false);
-    let mut card_stack_upper: Stack<'_, AppMessage> = stack!().width(Length::Fill).height(Length::Fill).clip(false);
-    let mut card_stack_lower: Stack<'_, AppMessage> = stack!().width(Length::Fill).height(Length::Fill).clip(false);
+    // Create a stack for the whole hand and another two for the upper/lower row.
+    let mut card_stack: Stack<'_, AppMessage> = stack!();
+    let mut card_stack_upper: Stack<'_, AppMessage> = stack!();
+    let mut card_stack_lower: Stack<'_, AppMessage> = stack!();
 
-    // Decide if a upper row is needed.
+    // Push all cards in state.cards to their row with a x-offset.
+    let mut x_pos = 0.0;
     let mut move_card_stack_lower = true;
     if state.cards.len() > 10 {
         move_card_stack_lower = false;
     }
+    let mut push_lower = false;
 
-    // Push all cards in state.cards to their row with a x-offset.
-    let mut x_pos = 0.0;
-    for (i, (_, card)) in state.cards.iter().enumerate() {
+    for (i, (card_id, card)) in state.cards.iter().enumerate() {
 
-        let viewable_card: Pin<'_, AppMessage> = view_card(card, x_pos);
+        let viewable_card: Pin<'_, AppMessage> = view_card(card_id, card, x_pos);
 
         if move_card_stack_lower {
-            card_stack_lower = card_stack_lower.push(viewable_card)
+            if push_lower {
+                card_stack_lower = card_stack_lower.push_under(viewable_card)
+            } else {
+                card_stack_lower = card_stack_lower.push(viewable_card)
+            }
         } else {
-            card_stack_upper = card_stack_upper.push(viewable_card)
+            if push_lower {
+                card_stack_upper = card_stack_upper.push_under(viewable_card)
+            } else {
+                card_stack_upper = card_stack_upper.push(viewable_card)
+            }
         }
+
+        if (!move_card_stack_lower && *card_id == state.top_card_id_upper) ||  // Top card reached
+           (move_card_stack_lower && *card_id == state.top_card_id_lower) {
+                push_lower = true;
+            }
 
         x_pos = x_pos + card.size.width / 3.0;
 
         if state.cards.len() > 10 && i + 1 == state.cards.len() - 10 {  // Row switch
             x_pos = 0.0;
+            push_lower = false;
             move_card_stack_lower = true;
         }
     }
 
+    // Calculate the y-offset of the upper/lower card row
+    let card_stack_upper_offset = Point::new(0.0, 0.0);
+    let card_stack_lower_offset = Point::new(0.0, 100.0);
+
     // Add the upper/lower row to the whole hand.
-    card_stack = card_stack.push(card_stack_upper);
-    card_stack = card_stack.push(pin(card_stack_lower).position(Point::new(0.0, 150.0)));
+    if state.focus_card_row_low {
+            card_stack = card_stack.push(pin(card_stack_upper)
+                                                    .position(card_stack_upper_offset));
+            card_stack = card_stack.push(pin(card_stack_lower)
+                                                    .position(card_stack_lower_offset));
+        } else {
+            card_stack = card_stack.push(pin(card_stack_lower)
+                                                    .position(card_stack_lower_offset));
+            card_stack = card_stack.push(pin(card_stack_upper)
+                                                    .position(card_stack_upper_offset));
+        }
 
     pin(card_stack)
 }
