@@ -182,12 +182,9 @@ fn subscription(state: &App) -> Subscription<AppMessage> {
 }
 
 pub fn main() -> iced::Result {
-    iced::application("Wizard", update, view)
-        .subscription(subscription)
-        .window(iced::window::Settings {
-            resizable: true,
-            ..Default::default()
-        })
-        .window_size(Size::new(300.0, 300.0))
-        .run()
+    iced::application(App::default, update, view)
+    .title("Wizard")
+    .subscription(subscription)
+    .window_size(Size::new(300.0, 300.0))
+    .run()
 }
