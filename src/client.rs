@@ -203,17 +203,40 @@ fn view_card<'a>(card: &Card, x_pos: f32) -> Pin<'a, AppMessage> {
 
 fn view_hand<'a>(state: &App) -> Pin<'a, AppMessage> {
 
-    // Create a stack for the hand.
-    let mut card_stack: Stack<'_, AppMessage> = stack!()
-        .width(Length::Fill).height(Length::Fill).clip(false);
+    // Create a stack for the whole hand and one for the upper/lower row.
+    let mut card_stack: Stack<'_, AppMessage> = stack!().width(Length::Fill).height(Length::Fill).clip(false);
+    let mut card_stack_upper: Stack<'_, AppMessage> = stack!().width(Length::Fill).height(Length::Fill).clip(false);
+    let mut card_stack_lower: Stack<'_, AppMessage> = stack!().width(Length::Fill).height(Length::Fill).clip(false);
 
-    // Push all cards in state.cards to the hand with a x-offset.
-    let mut x_pos = 0.0;
-    for (_, card) in state.cards.iter() {
-        let viewable_card: Pin<'_, AppMessage> = view_card(card, x_pos);
-        card_stack = card_stack.push(viewable_card);
-        x_pos = x_pos + card.size.width / 3.0;
+    // Decide if a upper row is needed.
+    let mut move_card_stack_lower = true;
+    if state.cards.len() > 10 {
+        move_card_stack_lower = false;
     }
+
+    // Push all cards in state.cards to their row with a x-offset.
+    let mut x_pos = 0.0;
+    for (i, (_, card)) in state.cards.iter().enumerate() {
+
+        let viewable_card: Pin<'_, AppMessage> = view_card(card, x_pos);
+
+        if move_card_stack_lower {
+            card_stack_lower = card_stack_lower.push(viewable_card)
+        } else {
+            card_stack_upper = card_stack_upper.push(viewable_card)
+        }
+
+        x_pos = x_pos + card.size.width / 3.0;
+
+        if state.cards.len() > 10 && i + 1 == state.cards.len() - 10 {  // Row switch
+            x_pos = 0.0;
+            move_card_stack_lower = true;
+        }
+    }
+
+    // Add the upper/lower row to the whole hand.
+    card_stack = card_stack.push(card_stack_upper);
+    card_stack = card_stack.push(pin(card_stack_lower).position(Point::new(0.0, 150.0)));
 
     pin(card_stack)
 }
