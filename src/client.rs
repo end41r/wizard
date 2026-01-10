@@ -3,19 +3,22 @@
 
 use futures::{SinkExt, StreamExt};
 use iced::{
-    time,
-    widget::{button, column, row, text, text_input},
-    window,
-    Element, Size, Subscription, Task,
+    Element, Length, Point, Size, Subscription, Task, time, widget::{MouseArea, Pin, Stack, button, column, container, image, pin, row, stack, text, text_input}, window
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
+use indexmap::IndexMap;
 
 use crate::api::{ServerMessage, C};
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
 type ServerMsgReceiver = Arc<Mutex<Option<std::sync::mpsc::Receiver<ServerMessage>>>>;
+
+static CARD1_PATH:&'static str = "assets/cards/1.png";
+static CARD2_PATH:&'static str = "assets/cards/2.png";
+static CARD3_PATH:&'static str = "assets/cards/3.png";
+static CARD4_PATH:&'static str = "assets/cards/4.png";
 
 #[derive(Debug)]
 struct App {
@@ -26,6 +29,7 @@ struct App {
     ip: String,
 
     window_size: Size,
+    cards: IndexMap<usize, Card>,
 }
 
 impl Default for App {
@@ -37,7 +41,27 @@ impl Default for App {
             msg: String::new(),
             ip: String::new(),
 
-            window_size: Size::new(300.0, 300.0)
+            window_size: Size::new(300.0, 300.0),
+            cards: IndexMap::from([
+                (0, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
+                (1, Card::new(CARD3_PATH, Size::new(154.0, 225.0))),
+                (2, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
+                (3, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
+                (4, Card::new(CARD4_PATH, Size::new(154.0, 225.0))),
+                (5, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
+                (6, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
+                (7, Card::new(CARD3_PATH, Size::new(154.0, 225.0))),
+                (8, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
+                (9, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
+                (10, Card::new(CARD4_PATH, Size::new(154.0, 225.0))),
+                (11, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
+                (12, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
+                (13, Card::new(CARD4_PATH, Size::new(154.0, 225.0))),
+                (14, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
+                (15, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
+                (16, Card::new(CARD3_PATH, Size::new(154.0, 225.0))),
+                (17, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
+            ]),
         }
     }
 }
@@ -50,6 +74,18 @@ enum AppMessage {
     Tick,
 
     WindowResized(Size),
+}
+
+#[derive(Debug)]
+struct Card {
+    img_path: &'static str,
+    size: Size,
+}
+
+impl Card {
+    fn new(img_path: &'static str, size: Size) -> Self{
+        Card {img_path: img_path, size: size}
+    }
 }
 
 fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
@@ -156,19 +192,51 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
     }
 }
 
+fn view_card<'a>(card: &Card, x_pos: f32) -> Pin<'a, AppMessage> {
+        pin(
+            (MouseArea::new(image(card.img_path)
+                     .width(card.size.width).height(card.size.height)))
+                     .interaction(iced::mouse::Interaction::Pointer)
+        )
+        .position(Point{x: x_pos, y: 0.0})
+    }
+
+fn view_hand<'a>(state: &App) -> Pin<'a, AppMessage> {
+
+    // Create a stack for the hand.
+    let mut card_stack: Stack<'_, AppMessage> = stack!()
+        .width(Length::Fill).height(Length::Fill).clip(false);
+
+    // Push all cards in state.cards to the hand with a x-offset.
+    let mut x_pos = 0.0;
+    for (_, card) in state.cards.iter() {
+        let viewable_card: Pin<'_, AppMessage> = view_card(card, x_pos);
+        card_stack = card_stack.push(viewable_card);
+        x_pos = x_pos + card.size.width / 3.0;
+    }
+
+    pin(card_stack)
+}
+
+
 fn view(state: &'_ App) -> Element<'_, AppMessage> {
-    column![
-        button("Host").on_press(AppMessage::Host),
-        row![
-            text_input("IP", &state.ip).on_input(AppMessage::Ip),
-            button("Join").on_press(AppMessage::Join)
+    let gui_switch: usize = 0;
+    if gui_switch == 1 {
+        column![
+            button("Host").on_press(AppMessage::Host),
+            row![
+                text_input("IP", &state.ip).on_input(AppMessage::Ip),
+                button("Join").on_press(AppMessage::Join)
+            ]
+            .spacing(5),
+            text(&state.msg),
         ]
-        .spacing(5),
-        text(&state.msg),
-    ]
-    .spacing(10)
-    .padding(20)
-    .into()
+        .spacing(10)
+        .padding(20)
+        .into()
+    } else {
+        container(view_hand(state)).into()
+    }
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
