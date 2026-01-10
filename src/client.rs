@@ -5,7 +5,8 @@ use futures::{SinkExt, StreamExt};
 use iced::{
     time,
     widget::{button, column, row, text, text_input},
-    Element, Subscription, Task,
+    window,
+    Element, Size, Subscription, Task,
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -23,6 +24,8 @@ struct App {
     server_rx: ServerMsgReceiver,
     msg: String,
     ip: String,
+
+    window_size: Size,
 }
 
 impl Default for App {
@@ -33,6 +36,8 @@ impl Default for App {
             server_rx: Arc::new(Mutex::new(None)),
             msg: String::new(),
             ip: String::new(),
+
+            window_size: Size::new(300.0, 300.0)
         }
     }
 }
@@ -43,6 +48,8 @@ enum AppMessage {
     Join,
     Ip(String),
     Tick,
+
+    WindowResized(Size),
 }
 
 fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
@@ -81,6 +88,7 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
         AppMessage::Tick => {
+
             if let Ok(g) = state.server_rx.lock() {
                 if let Some(ref rx) = *g {
                     while let Ok(m) = rx.try_recv() {
@@ -89,6 +97,10 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     }
                 }
             }
+            Task::none()
+        }
+        AppMessage::WindowResized(size) => {
+            state.window_size = size;
             Task::none()
         } // send C messages if needed
     }
@@ -160,20 +172,22 @@ fn view(state: &'_ App) -> Element<'_, AppMessage> {
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
+    let mut subscriptions: Vec<Subscription<AppMessage>> = vec!();
+    subscriptions.push(window::resize_events()
+                       .map(|(_, size)| AppMessage::WindowResized(size)));
     if state.connected {
-        time::every(Duration::from_millis(100)).map(|_| AppMessage::Tick)
-    } else {
-        Subscription::none()
-    }
+        subscriptions.push(time::every(Duration::from_millis(100)).map(|_| AppMessage::Tick));
+    };
+    Subscription::batch(subscriptions)
 }
 
 pub fn main() -> iced::Result {
     iced::application("Wizard", update, view)
         .subscription(subscription)
         .window(iced::window::Settings {
-            size: iced::Size::new(300.0, 300.0),
             resizable: true,
             ..Default::default()
         })
+        .window_size(Size::new(300.0, 300.0))
         .run()
 }
