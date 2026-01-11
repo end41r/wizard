@@ -10,3 +10,7 @@ let player_id = game.add_player()
 // Start the game. Returns infos about the current state of the game.
 let game_state = game.start()
 ```
+
+
+
+https://excalidraw.com/#json=uZRTd7sxo4Y3O2uDC0EI-,31coxGJRnZZA_sLDBKBbXg

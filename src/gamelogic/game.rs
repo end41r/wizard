@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
 use rand::seq::SliceRandom;
-use crate::gamelogic::game_state::GameState;
+use crate::gamelogic::{game_state::GameState, round::Round};
 
 type Err = &'static str;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Game {
+    rounds: Vec<Round>,
     players: Vec<usize>,
     started: bool,
 }
@@ -14,6 +15,7 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         Game { 
+            rounds: vec![],
             players: vec![],
             started: false,
         }
@@ -52,7 +54,14 @@ impl Game {
         }
         self.players.shuffle(&mut rand::rng());
         self.started = true;
+        self.start_new_round();
         Ok(self.current_game_state())
+    }
+
+    fn start_new_round(&mut self) {
+        let next_round_number = self.rounds.len();
+        let new_round = Round::new(next_round_number.try_into().unwrap(), &self.players.clone());
+        self.rounds.push(new_round);
     }
 
     fn current_game_state(&self) -> GameState {
@@ -62,9 +71,9 @@ impl Game {
             .cloned()
             .map(|player| (player, 0))
             .collect::<HashMap<_, _>>();
-
+       
         GameState {
-            current_round: 1,
+            current_round: self.rounds.last().unwrap().to_state(),
             total_rounds: self.total_rounds(),
             players,
         }
@@ -72,7 +81,20 @@ impl Game {
 
     fn total_rounds(&self) -> usize {
         60 / self.players.len()
-    }
+    }   
+
+    // pub fn add_to_scoreboard(&self) -> usize {
+    //         if self.angesagt == self.stiche {
+    //             return 20 + self.stiche * 10;
+    //         }
+    //         else if self.angesagt < self.stiche {
+    //             return 10 * (self.stiche - self.angesagt)
+    //         }
+    //         else {  
+    //             return 10 * (self.angesagt - self.stiche)
+    //         }
+    // }
+    
 }
 
 #[test]
