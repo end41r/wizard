@@ -1,6 +1,9 @@
-use iced::{Point, Size, mouse::Interaction, widget::{Container, MouseArea, Pin, Stack, container, image, pin, stack}};
+use super::GameElement;
+use crate::client::AppMessage;
+use crate::game_elements::hand_card::{Card, CardMessage, CardMoveState};
+
+use iced::{Point, Size, widget::{Container, Stack, container, pin, stack}};
 use indexmap::{IndexMap, map::MutableKeys};
-use crate::client::{AppMessage, GameElement};
 
 static CARD1_PATH:&'static str = "assets/cards/1.png";
 static CARD2_PATH:&'static str = "assets/cards/2.png";
@@ -12,9 +15,7 @@ static MULT_BASE_WIDTH_CARD_STACK_OFFSET: f32 = MULT_BASE_WIDTH_CARD_HEIGHT * 0.
 
 #[derive(Debug, Clone)]
 pub enum HandMessage {
-    CardPlayed(usize),
-    CardHovered(usize),
-    CardNotHovered(usize),
+    CardMessage(CardMessage)
 }
 
 #[derive(Debug)]
@@ -33,23 +34,23 @@ impl Default for Hand {
         Self {
             window_size: Size::new(300.0, 300.0),
             cards: IndexMap::from([
-                (0, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
-                (1, Card::new(CARD3_PATH, Size::new(154.0, 225.0))),
-                (2, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
-                (3, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
-                (4, Card::new(CARD4_PATH, Size::new(154.0, 225.0))),
-                (5, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
-                (6, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
-                (7, Card::new(CARD3_PATH, Size::new(154.0, 225.0))),
-                (8, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
-                (9, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
-                (10, Card::new(CARD4_PATH, Size::new(154.0, 225.0))),
-                (11, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
-                (12, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
-                (13, Card::new(CARD4_PATH, Size::new(154.0, 225.0))),
-                (14, Card::new(CARD2_PATH, Size::new(154.0, 225.0))),
-                (15, Card::new(CARD1_PATH, Size::new(154.0, 225.0))),
-                (16, Card::new(CARD3_PATH, Size::new(154.0, 225.0))),
+                (0, Card::new(0, CARD1_PATH, Size::new(154.0, 225.0))),
+                (1, Card::new(1, CARD3_PATH, Size::new(154.0, 225.0))),
+                (2, Card::new(2, CARD2_PATH, Size::new(154.0, 225.0))),
+                (3, Card::new(3, CARD1_PATH, Size::new(154.0, 225.0))),
+                (4, Card::new(4, CARD4_PATH, Size::new(154.0, 225.0))),
+                (5, Card::new(5, CARD2_PATH, Size::new(154.0, 225.0))),
+                (6, Card::new(6, CARD1_PATH, Size::new(154.0, 225.0))),
+                (7, Card::new(7, CARD3_PATH, Size::new(154.0, 225.0))),
+                (8, Card::new(8, CARD2_PATH, Size::new(154.0, 225.0))),
+                (9, Card::new(9, CARD1_PATH, Size::new(154.0, 225.0))),
+                (10, Card::new(10, CARD4_PATH, Size::new(154.0, 225.0))),
+                (11, Card::new(11, CARD2_PATH, Size::new(154.0, 225.0))),
+                (12, Card::new(12, CARD1_PATH, Size::new(154.0, 225.0))),
+                (13, Card::new(13, CARD4_PATH, Size::new(154.0, 225.0))),
+                (14, Card::new( 14, CARD2_PATH, Size::new(154.0, 225.0))),
+                (15, Card::new(15, CARD1_PATH, Size::new(154.0, 225.0))),
+                (16, Card::new(16, CARD3_PATH, Size::new(154.0, 225.0))),
             ]),
             card_base_size: Size::new(154.0, 225.0),
             focus_card_row_low: true,
@@ -60,10 +61,6 @@ impl Default for Hand {
 }
 
 impl Hand {
-
-    fn get_card(&self, id: usize) -> &Card {
-        self.cards.get(&id).unwrap()
-    }
 
     fn get_card_mut(&mut self, id: usize) -> &mut Card {
         self.cards.get_mut(&id).unwrap()
@@ -141,45 +138,67 @@ impl Hand {
     fn get_hand_row_distance(&self) -> f32 {
         -self.window_size.width * MULT_BASE_WIDTH_CARD_STACK_OFFSET
     }
-
-    fn view_card<'a>(card_id: &usize, card: &Card, x_pos: f32, y_pos: f32) -> Pin<'a, AppMessage> {
-        pin(
-            MouseArea::new(image(card.img_path)
-                     .width(card.size.width * card.size_mult)
-                     .height(card.size.height * card.size_mult))
-                     .on_double_click(AppMessage::HandMessage(HandMessage::CardPlayed(*card_id)))
-                     .on_enter(AppMessage::HandMessage(HandMessage::CardHovered(*card_id)))
-                     .on_exit(AppMessage::HandMessage(HandMessage::CardNotHovered(*card_id)))
-                     .interaction(Interaction::Pointer)
-        )
-        .position(Point::new(x_pos + (card.size.width - card.size.width * card.size_mult) / 2.0,
-                             y_pos-(card.offset as f32)))
-    }
 }
 
 impl GameElement for Hand {
 
-    fn update_uniques(&mut self, msg: AppMessage) {
+    type HigherMessage = AppMessage;
+    type OwnMessage = HandMessage;
+
+    fn convert_msg(msg: AppMessage) -> HandMessage {
         match msg {
-            AppMessage::HandMessage(HandMessage::CardHovered(card_id)) => {
-                self.get_card_mut(card_id).moving_up = CardMoveState::MovingUp;
+            AppMessage::HandMessage(hand_msg) => hand_msg,
+            _ => panic!("Converting AppMessage to HandMessage was not possible")
+        }
+    }
+
+    fn convert_to_app_message(msg: HandMessage) -> AppMessage {
+        AppMessage::HandMessage(msg)
+    }
+
+    fn update_with_msg(&mut self, msg: HandMessage) {
+        let card_msg = Card::convert_msg(msg);
+        match card_msg {
+            CardMessage::CardHovered(id) => {
                 if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
-                                                                .contains(&card_id) {
+                                                                .contains(&id) {
                     self.focus_card_row_low = false;
-                    self.top_card_id_upper = card_id;
+                    self.top_card_id_upper = id;
                 } else {
                     self.focus_card_row_low = true;
-                    self.top_card_id_lower = card_id;
+                    self.top_card_id_lower = id;
                 }
-            }
-            AppMessage::HandMessage(HandMessage::CardPlayed(card_id)) => {
-                println!("Card with id {} played!", card_id);
-            }
-            AppMessage::HandMessage(HandMessage::CardNotHovered(card_id)) => {
-                self.get_card_mut(card_id).moving_up = CardMoveState::MovingDown;
             }
             _ => ()
         }
+        self.get_card_mut(card_msg.get_id()).update_with_msg(card_msg);
+    }
+
+    fn update_size(&mut self, window_size: Size) {
+        self.window_size = window_size;
+        self.card_base_size = Size::new(self.get_card_width(),
+                                        self.get_card_height());
+        for (_, card) in self.cards.iter_mut2() {
+            card.update_size(self.card_base_size);
+        };
+    }
+    
+    fn update_animations(&mut self) {
+        for (id, card) in self.cards.iter_mut2() {
+            card.update_animations();
+            /* Sometimes on_exit for a viewed card won't register
+               and won't send the CardNotHoverd msg.
+               To ensure that an unhovered card is not sticking up
+               following if-statement checks for this unwanted state
+               and instead sends the msg itself.
+            */
+            if *id != self.top_card_id_lower &&
+                    *id != self.top_card_id_upper &&
+                    card.offset != 0.0 &&
+                    card.move_state != CardMoveState::MovingDown {
+                card.update_with_msg(CardMessage::CardNotHovered(*id));
+            }
+        };
     }
 
     fn view<'a>(&self) -> Container<'a, AppMessage> {
@@ -202,8 +221,8 @@ impl GameElement for Hand {
 
         for (i, (card_id, card)) in self.cards.iter().enumerate() {
 
-            let viewable_card: Pin<'_, AppMessage> = Hand::view_card(card_id, card,
-                x_pos + x_pos_offset, y_pos + y_pos_offset);
+            let viewable_card: Container<'_, AppMessage>
+                = card.view_and_move(x_pos + x_pos_offset, y_pos + y_pos_offset);
 
             if move_card_stack_lower {
                 if push_lower {
@@ -246,86 +265,13 @@ impl GameElement for Hand {
             card_stack = card_stack.push(pin(card_stack_upper)
                                             .position(self.get_card_spawn_point_upper_row()));
         }
-
         container(card_stack).width(self.get_hand_width()).height(self.get_hand_height())
     }
 
-    fn update_size(&mut self, window_size: Size) {
-        self.window_size = window_size;
-        self.card_base_size = Size::new(self.get_card_width(),
-                                        self.get_card_height());
-        for (_, card) in self.cards.iter_mut2() {
-            card.size = self.card_base_size;
-        };
+    fn view_and_move<'a>(&self, x: f32, y: f32) -> Container<'a, AppMessage> {
+        container(pin(
+            self.view()).position(Point::new(x, y))
+        )
+        .width(self.get_hand_width()).height(self.get_hand_height())
     }
-    
-    fn update_animations(&mut self) {
-        for card_id in self.get_card_ids().iter() {
-            if self.get_card(*card_id).moving_up == CardMoveState::MovingUp {
-                self.get_card_mut(*card_id).move_card_up();
-            }
-            if self.get_card(*card_id).moving_up == CardMoveState::MovingDown {
-                self.get_card_mut(*card_id).move_card_down();
-            }
-            if *card_id != self.top_card_id_lower &&
-                *card_id != self.top_card_id_upper &&
-                self.get_card_mut(*card_id).offset != 0.0 {
-                    self.get_card_mut(*card_id).move_card_down();
-            }
-        };
-    }
-}
-
-#[derive(Debug)]
-struct Card {
-    img_path: &'static str,
-    offset: f32,
-    size: Size,
-    size_mult: f32,
-    moving_up: CardMoveState,
-}
-
-impl Card {
-
-    fn new(img_path: &'static str, size: Size) -> Self{
-        Card {
-            img_path: img_path,
-            size: size,
-            size_mult: 1.0,
-            offset: 0.0,
-            moving_up: CardMoveState::NotMoving
-        }
-    }
-
-    fn move_card_up(&mut self) {
-        let max_card_offset: f32 = self.size.height * 0.15;
-        if self.moving_up == CardMoveState::MovingUp && self.offset <= max_card_offset {
-            self.size_mult += 0.02;
-            self.offset += max_card_offset * 0.2;
-        }
-        else if self.moving_up != CardMoveState::MovingDown {
-            self.moving_up = CardMoveState::NotMoving;
-        }
-    }
-
-    fn move_card_down(&mut self) {
-        let max_card_offset: f32 = self.size.height * 0.15;
-        if self.moving_up == CardMoveState::MovingDown && self.offset > 0.0 {
-            self.size_mult -= 0.02;
-            self.offset -= max_card_offset * 0.20;
-        }
-        else if self.moving_up != CardMoveState::MovingUp {
-            self.moving_up = CardMoveState::NotMoving;
-            // Correcting floating point error
-            self.size_mult = 1.0;
-            self.offset = 0.0;
-        }
-    }
-}
-
-#[derive(PartialEq, Debug)]
-enum CardMoveState {
-    MovingUp,
-    MovingDown,
-    NotMoving
 }

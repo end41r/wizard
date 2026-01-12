@@ -4,15 +4,15 @@
 use futures::{SinkExt, StreamExt};
 use iced::{
     Element, Size, Subscription, Task, time,
-    widget::{button, column, row, text, text_input, Container},
+    widget::{button, column, row, text, text_input},
     window
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 
-use crate::api::{ServerMessage, C};
-use crate::hand::{Hand, HandMessage};
+use crate::{api::{C, ServerMessage}, game_elements::GameElement};
+use crate::game_elements::hand::{Hand, HandMessage};
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
 type ServerMsgReceiver = Arc<Mutex<Option<std::sync::mpsc::Receiver<ServerMessage>>>>;
@@ -53,15 +53,8 @@ pub enum AppMessage {
     Tick,
 
     WindowResized(Size),
-    FrameTick,
+    AnimationTick,
     HandMessage(HandMessage)
-}
-
-pub trait GameElement {
-    fn update_uniques(&mut self, msg: AppMessage);
-    fn update_animations(&mut self);
-    fn update_size(&mut self, window_size: Size);
-    fn view<'a>(&self) -> Container<'a, AppMessage>;
 }
 
 fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
@@ -110,11 +103,11 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             }
             Task::none()
         }
-        AppMessage::HandMessage(_) => {
-            state.hand.update_uniques(msg);
+        AppMessage::HandMessage(hand_msg) => {
+            state.hand.update_with_msg(hand_msg);
             Task::none()
         }
-        AppMessage::FrameTick => {
+        AppMessage::AnimationTick => {
             state.hand.update_animations();
             Task::none()
         }
@@ -201,7 +194,7 @@ fn subscription(state: &App) -> Subscription<AppMessage> {
     subscriptions.push(window::resize_events()
                        .map(|(_, size)| AppMessage::WindowResized(size)));
     subscriptions.push(time::every(Duration::from_millis(16))
-                       .map(|_| AppMessage::FrameTick));
+                       .map(|_| AppMessage::AnimationTick));
     if state.connected {
         subscriptions.push(time::every(Duration::from_millis(100)).map(|_| AppMessage::Tick));
     };

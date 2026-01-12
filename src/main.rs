@@ -1,6 +1,6 @@
 mod api;
 mod client;
-mod hand;
+mod game_elements;
 mod server;
 
 fn main() {
