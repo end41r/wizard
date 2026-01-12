@@ -11,10 +11,12 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 
-use crate::api::{ServerMessage, C};
+use crate::api::{ServerMessage, B, C, S};
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
 type ServerMsgReceiver = Arc<Mutex<Option<std::sync::mpsc::Receiver<ServerMessage>>>>;
+
+const CVERSION: usize = 1;
 
 #[derive(Debug)]
 struct App {
@@ -49,7 +51,7 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
     match msg {
         AppMessage::Host => {
             if !state.connected {
-                let _ = crate::server::start_server();
+                crate::server::start_server();
                 std::thread::sleep(std::time::Duration::from_millis(300));
                 let ws_tx = Arc::clone(&state.ws_tx);
                 let server_rx = Arc::clone(&state.server_rx);
@@ -74,6 +76,13 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 state.connected = true;
                 state.msg = "Connecting...".into();
             }
+
+            if let Ok(g) = state.ws_tx.lock() {
+                if let Some(ref tx) = *g {
+                    let handshake = C::Handshake { version: 1 };
+                    let _ = tx.send(handshake);
+                }
+            }
             Task::none()
         }
         AppMessage::Ip(v) => {
@@ -84,8 +93,21 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             if let Ok(g) = state.server_rx.lock() {
                 if let Some(ref rx) = *g {
                     while let Ok(m) = rx.try_recv() {
-                        // handle S, B messages
-                        state.msg = format!("{:?}", m);
+                        state.msg = format!("{m:?}");
+                        match m {
+                            ServerMessage::Server(s) => if let S::HandshakeConfirmation { version, supported } = s {
+                                if supported {
+                                    state.msg = format!("Connected! Server version: {version}");
+                                } else {
+                                    state.msg = format!(
+                                        "Incompatible server {version} != client {CVERSION}"
+                                    );
+                                }
+                            },
+                            ServerMessage::Broadcast(b) => if let B::LobbyState { players } = b {
+                                state.msg = format!("Lobby state: {players:?}");
+                            },
+                        }
                     }
                 }
             }
@@ -95,8 +117,8 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
 }
 
 async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: String) {
-    let url = format!("ws://{}:3000/ws", ip);
-    println!("Attempting to connect to {}...", url);
+    let url = format!("ws://{ip}:3000/ws");
+    println!("Attempting to connect to {url}...");
     match connect_async(&url).await {
         Ok((ws_stream, _)) => {
             println!("WebSocket connected!");
@@ -121,9 +143,9 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
             // Recieve a task and directly parse it as a ServerMessage.
             let recv_task = tokio::spawn(async move {
                 while let Some(Ok(WsMessage::Text(txt))) = read.next().await {
-                    println!("Raw message received: {}", txt);
+                    println!("Raw message received: {txt}");
                     if let Ok(server_msg) = serde_json::from_str::<ServerMessage>(&txt) {
-                        println!("Parsed successfully: {:?}", server_msg);
+                        println!("Parsed successfully: {server_msg:?}");
                         let _ = srv_tx.send(server_msg);
                     } else {
                         println!("Failed to parse message");
@@ -139,7 +161,7 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
             }
         }
         Err(e) => {
-            eprintln!("Failed to connect to server: {}", e);
+            eprintln!("Failed to connect to server: {e}");
         }
     }
 }

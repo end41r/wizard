@@ -16,6 +16,7 @@ pub enum ServerMessage {
 #[serde(tag = "type")]
 pub enum C {
     // Sent by client
+    Handshake { version: usize },
     JoinLobby { name: String },
     LeaveLobby,
 
@@ -30,6 +31,7 @@ pub enum C {
 #[serde(tag = "type")]
 pub enum S {
     // Sent by server
+    HandshakeConfirmation { version: usize, supported: bool },
     JoinConfirmation { ok: bool },
     Error { reason: String },
 
