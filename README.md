@@ -3,4 +3,4 @@ A Wizard Card game ( https://en.wikipedia.org/wiki/Wizard_(card_game) ) with a R
 
 
 ## To get the dependencies run 
-`cargo build'`
+`cargo build`
