@@ -1,6 +1,7 @@
 use super::GameElement;
 use crate::client::AppMessage;
-use crate::game_elements::hand_card::{Card, CardMessage, CardMoveState};
+use crate::game_elements::{AnimationCore, AnimationState};
+use crate::game_elements::hand_card::{Card, CardMessage};
 
 use iced::{Point, Size, widget::{Container, Stack, container, pin, stack}};
 use indexmap::{IndexMap, map::MutableKeys};
@@ -25,6 +26,7 @@ pub struct Hand {
     cards: IndexMap<usize, Card>,
     card_base_size: Size,
     focus_card_row_low: bool,
+    focus_card_id: usize,
     top_card_id_upper: usize,
     top_card_id_lower: usize
 }
@@ -54,6 +56,7 @@ impl Default for Hand {
             ]),
             card_base_size: Size::new(154.0, 225.0),
             focus_card_row_low: true,
+            focus_card_id: 100,
             top_card_id_upper: 100, // Impossible to reach
             top_card_id_lower: 100  // Impossible to reach   
         }    
@@ -160,6 +163,7 @@ impl GameElement for Hand {
         let card_msg = Card::convert_msg(msg);
         match card_msg {
             CardMessage::CardHovered(id) => {
+                self.focus_card_id = id;
                 if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
                                                                 .contains(&id) {
                     self.focus_card_row_low = false;
@@ -188,14 +192,13 @@ impl GameElement for Hand {
             card.update_animations();
             /* Sometimes on_exit for a viewed card won't register
                and won't send the CardNotHoverd msg.
-               To ensure that an unhovered card is not sticking up
-               following if-statement checks for this unwanted state
+               To ensure that an unhovered card is not sticking up all the time
+               following if-statement tries to check on this unwanted state
                and instead sends the msg itself.
             */
-            if *id != self.top_card_id_lower &&
-                    *id != self.top_card_id_upper &&
-                    card.offset != 0.0 &&
-                    card.move_state != CardMoveState::MovingDown {
+            if *id != self.focus_card_id &&
+                    card.hover_animation.get_offset() != 0.0 &&
+                    card.hover_animation.animation_state != AnimationState::Reversing {
                 card.update_with_msg(CardMessage::CardNotHovered(*id));
             }
         };

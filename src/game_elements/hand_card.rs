@@ -1,20 +1,56 @@
 use iced::{Point, Size, mouse::Interaction, widget::{Container, MouseArea, container, image, pin}};
-use super::GameElement;
+use super::{GameElement, AnimationCore, ReversableAnimation, AnimationState};
 use crate::game_elements::hand::{Hand, HandMessage};
 use crate::client::AppMessage;
+
+#[derive(Debug)]
+pub struct HoverAnimation {
+    pub max_frame_number: usize,
+    pub current_frame_number: usize,
+    pub animation_state: AnimationState,
+
+    pub max_offset: f32
+}
+
+impl HoverAnimation {
+    fn new(size: Size) -> Self {
+        Self {
+            max_frame_number: 5,
+            current_frame_number: 0,
+            animation_state: AnimationState::NotMoving,
+            max_offset: size.height * 0.15,
+        }
+    }
+    pub fn update_target_max_offset(&mut self, size: Size) {  // TODO: part of trait
+        self.max_offset = size.height * 0.15;
+    }
+    pub fn get_offset(&self) -> f32 {
+        self.max_offset * 0.2 * self.current_frame_number as f32
+    }
+    pub fn get_size_mult(&self) -> f32 {
+        1.0 + self.current_frame_number as f32 * 0.02
+    }
+}
+
+impl AnimationCore for HoverAnimation {
+    fn _mut_max_frame_number(&mut self) -> &mut usize {
+        &mut self.max_frame_number
+    }
+    fn _mut_current_frame_number(&mut self) -> &mut usize {
+        &mut self.current_frame_number
+    }
+    fn _mut_animation_state(&mut self) -> &mut AnimationState {
+        &mut self.animation_state
+    }
+} 
+
+impl ReversableAnimation for HoverAnimation {}
 
 #[derive(Debug, Clone)]
 pub enum CardMessage {
     CardPlayed(usize),
     CardHovered(usize),
     CardNotHovered(usize),
-}
-
-#[derive(PartialEq, Debug)]
-pub enum CardMoveState {
-    MovingUp,
-    MovingDown,
-    NotMoving
 }
 
 impl CardMessage {
@@ -31,10 +67,8 @@ impl CardMessage {
 pub struct Card {
     id: usize,
     img_path: &'static str,
-    pub offset: f32,
     pub size: Size,
-    size_mult: f32,
-    pub move_state: CardMoveState,
+    pub hover_animation: HoverAnimation,
 }
 
 impl Card {
@@ -44,34 +78,7 @@ impl Card {
             id: id,
             img_path: img_path,
             size: size,
-            size_mult: 1.0,
-            offset: 0.0,
-            move_state: CardMoveState::NotMoving
-        }
-    }
-
-    fn move_card_up(&mut self) {
-        let max_card_offset: f32 = self.size.height * 0.15;
-        if self.move_state == CardMoveState::MovingUp && self.offset <= max_card_offset {
-            self.size_mult += 0.02;
-            self.offset += max_card_offset * 0.2;
-        }
-        else if self.move_state != CardMoveState::MovingDown {
-            self.move_state = CardMoveState::NotMoving;
-        }
-    }
-
-    fn move_card_down(&mut self) {
-        let max_card_offset: f32 = self.size.height * 0.15;
-        if self.move_state == CardMoveState::MovingDown && self.offset > 0.0 {
-            self.size_mult -= 0.02;
-            self.offset -= max_card_offset * 0.20;
-        }
-        else if self.move_state != CardMoveState::MovingUp {
-            self.move_state = CardMoveState::NotMoving;
-            // Correcting floating point error
-            self.size_mult = 1.0;
-            self.offset = 0.0;
+            hover_animation: HoverAnimation::new(size),
         }
     }
 }
@@ -94,39 +101,30 @@ impl GameElement for Card {
     fn update_with_msg(&mut self, msg: CardMessage) {
         match msg {
             CardMessage::CardHovered(_) => {
-                self.move_state = CardMoveState::MovingUp;
+                self.hover_animation.start();
             }
             CardMessage::CardPlayed(id) => {
                 println!("Card with id {} played!", id);
             }
             CardMessage::CardNotHovered(_) => {
-                self.move_state = CardMoveState::MovingDown;
+                self.hover_animation.reverse();
             }
         }
     }
 
     fn update_animations(&mut self) {
-        match self.move_state {
-            CardMoveState::MovingUp => {
-                self.move_card_up();
-            }
-            CardMoveState::MovingDown => {
-                self.move_card_down();
-            }
-            CardMoveState::NotMoving => {
-                ();
-            }
-        }
+        self.hover_animation.next_frame();
     }
 
     fn update_size(&mut self, window_size: Size) {
         self.size = window_size;
+        self.hover_animation.update_target_max_offset(self.size);
     }
 
-    fn view<'a>(&self) -> Container<'a, AppMessage> {
+    fn view<'a>(&self) -> Container<'a, AppMessage> {  // TODO: combine various animation offsets via function
         container(MouseArea::new(image(self.img_path)
-            .width(self.size.width * self.size_mult)
-            .height(self.size.height * self.size_mult))
+            .width(self.size.width * self.hover_animation.get_size_mult())
+            .height(self.size.height * self.hover_animation.get_size_mult()))
             .on_double_click(Card::convert_to_app_message(CardMessage::CardPlayed(self.id)))
             .on_enter(Card::convert_to_app_message(CardMessage::CardHovered(self.id)))
             .on_exit(Card::convert_to_app_message(CardMessage::CardNotHovered(self.id)))
@@ -138,8 +136,8 @@ impl GameElement for Card {
         container(pin(self.view())
             .position(
                 Point::new(
-                    x + (self.size.width - self.size.width * self.size_mult) / 2.0,
-                    y - self.offset
+                    x + (self.size.width - self.size.width * self.hover_animation.get_size_mult()) / 2.0,
+                    y - self.hover_animation.get_offset()
                 )
             )
         )
