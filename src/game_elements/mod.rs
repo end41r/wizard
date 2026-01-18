@@ -36,7 +36,6 @@ pub enum AnimationState {
     NotMoving,
     MovingForward,
     Reversing,
-    Rotating
 }
 
 pub trait BasicAnimation: AnimationCore {
@@ -90,15 +89,15 @@ pub trait ReversableAnimation: AnimationCore {
     }
 }
 
-pub trait RotatingAnimation: AnimationCore {
+pub trait RepeatingAnimation: AnimationCore {
 
     fn start(&mut self) {
-       *self._mut_animation_state() = AnimationState::Rotating;
+       *self._mut_animation_state() = AnimationState::MovingForward;
     }
 
     fn next_frame(&mut self) {
         match self._mut_animation_state() {
-            AnimationState::Rotating => {
+            AnimationState::MovingForward => {
                 *self._mut_current_frame_number()
                     = (*self._mut_current_frame_number() + 1) % *self._mut_max_frame_number();
             }

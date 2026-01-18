@@ -1,6 +1,6 @@
 use super::GameElement;
 use crate::client::AppMessage;
-use crate::game_elements::{AnimationCore, AnimationState};
+use crate::game_elements::AnimationState;
 use crate::game_elements::hand_card::{Card, CardMessage};
 
 use iced::{Point, Size, widget::{Container, Stack, container, pin, stack}};
@@ -12,7 +12,7 @@ static CARD3_PATH:&'static str = "assets/cards/3.png";
 static CARD4_PATH:&'static str = "assets/cards/4.png";
 static MULT_BASE_WIDTH_CARD_WIDTH: f32 = 0.12;
 static MULT_BASE_WIDTH_CARD_HEIGHT: f32 = MULT_BASE_WIDTH_CARD_WIDTH * 1.46;
-static MULT_BASE_WIDTH_CARD_STACK_OFFSET: f32 = MULT_BASE_WIDTH_CARD_HEIGHT * 0.53;
+static MULT_BASE_WIDTH_CARD_STACK_OFFSET: f32 = MULT_BASE_WIDTH_CARD_HEIGHT * 0.43;
 
 #[derive(Debug, Clone)]
 pub enum HandMessage {
@@ -25,8 +25,8 @@ pub struct Hand {
 
     cards: IndexMap<usize, Card>,
     card_base_size: Size,
-    focus_card_row_low: bool,
-    focus_card_id: usize,
+    hovered_card_row_low: bool,
+    hovered_card_id: usize,
     top_card_id_upper: usize,
     top_card_id_lower: usize
 }
@@ -55,8 +55,8 @@ impl Default for Hand {
                 (16, Card::new(16, CARD3_PATH, Size::new(154.0, 225.0))),
             ]),
             card_base_size: Size::new(154.0, 225.0),
-            focus_card_row_low: true,
-            focus_card_id: 100,
+            hovered_card_row_low: true,
+            hovered_card_id: 100,
             top_card_id_upper: 100, // Impossible to reach
             top_card_id_lower: 100  // Impossible to reach   
         }    
@@ -64,10 +64,6 @@ impl Default for Hand {
 }
 
 impl Hand {
-
-    fn get_card_mut(&mut self, id: usize) -> &mut Card {
-        self.cards.get_mut(&id).unwrap()
-    }
 
     fn get_card_width(&self) -> f32 {
         self.window_size.width * MULT_BASE_WIDTH_CARD_WIDTH
@@ -163,19 +159,21 @@ impl GameElement for Hand {
         let card_msg = Card::convert_msg(msg);
         match card_msg {
             CardMessage::CardHovered(id) => {
-                self.focus_card_id = id;
+                self.hovered_card_id = id;
                 if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
                                                                 .contains(&id) {
-                    self.focus_card_row_low = false;
+                    self.hovered_card_row_low = false;
                     self.top_card_id_upper = id;
                 } else {
-                    self.focus_card_row_low = true;
+                    self.hovered_card_row_low = true;
                     self.top_card_id_lower = id;
                 }
             }
             _ => ()
         }
-        self.get_card_mut(card_msg.get_id()).update_with_msg(card_msg);
+        for (_, card) in self.cards.iter_mut() {
+            card.update_with_msg(card_msg.clone());
+        }
     }
 
     fn update_size(&mut self, window_size: Size) {
@@ -196,7 +194,7 @@ impl GameElement for Hand {
                following if-statement tries to check on this unwanted state
                and instead sends the msg itself.
             */
-            if *id != self.focus_card_id &&
+            if *id != self.hovered_card_id &&
                     card.hover_animation.get_offset() != 0.0 &&
                     card.hover_animation.animation_state != AnimationState::Reversing {
                 card.update_with_msg(CardMessage::CardNotHovered(*id));
@@ -257,7 +255,7 @@ impl GameElement for Hand {
         }
 
         // Add the upper/lower row to the whole hand.
-        if self.focus_card_row_low {
+        if self.hovered_card_row_low {
             card_stack = card_stack.push(pin(card_stack_upper)
                                             .position(self.get_card_spawn_point_upper_row()));
             card_stack = card_stack.push(pin(card_stack_lower)
