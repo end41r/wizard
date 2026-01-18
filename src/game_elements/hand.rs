@@ -144,35 +144,31 @@ impl GameElement for Hand {
     type HigherMessage = AppMessage;
     type OwnMessage = HandMessage;
 
-    fn convert_msg(msg: AppMessage) -> HandMessage {
-        match msg {
-            AppMessage::HandMessage(hand_msg) => hand_msg,
-            _ => panic!("Converting AppMessage to HandMessage was not possible")
-        }
-    }
-
     fn convert_to_app_message(msg: HandMessage) -> AppMessage {
         AppMessage::HandMessage(msg)
     }
 
     fn update_with_msg(&mut self, msg: HandMessage) {
-        let card_msg = Card::convert_msg(msg);
-        match card_msg {
-            CardMessage::CardHovered(id) => {
-                self.hovered_card_id = id;
-                if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
-                                                                .contains(&id) {
-                    self.hovered_card_row_low = false;
-                    self.top_card_id_upper = id;
-                } else {
-                    self.hovered_card_row_low = true;
-                    self.top_card_id_lower = id;
+        match msg {
+            HandMessage::CardMessage(card_msg) => {
+                match card_msg {
+                        CardMessage::CardHovered(id) => {
+                            self.hovered_card_id = id;
+                            if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
+                                                                            .contains(&id) {
+                                self.hovered_card_row_low = false;
+                                self.top_card_id_upper = id;
+                            } else {
+                                self.hovered_card_row_low = true;
+                                self.top_card_id_lower = id;
+                            }
+                        }
+                        _ => {}
+                }
+                for (_, card) in self.cards.iter_mut() {
+                    card.update_with_msg(card_msg.clone());
                 }
             }
-            _ => ()
-        }
-        for (_, card) in self.cards.iter_mut() {
-            card.update_with_msg(card_msg.clone());
         }
     }
 

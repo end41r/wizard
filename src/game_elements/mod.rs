@@ -7,7 +7,6 @@ use crate::client::AppMessage;
 pub trait GameElement {
     type HigherMessage;
     type OwnMessage;
-    fn convert_msg(msg: Self::HigherMessage) -> Self::OwnMessage;
     fn convert_to_app_message(msg: Self::OwnMessage) -> AppMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage);
     fn update_animations(&mut self);

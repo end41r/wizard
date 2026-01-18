@@ -144,7 +144,7 @@ pub enum CardMessage {
 }
 
 impl CardMessage {
-    pub fn get_id(&self) -> usize{
+    pub fn get_id(&self) -> usize {
         match self {
             CardMessage::CardHovered(id) => *id,
             CardMessage::CardNotHovered(id) => *id,
@@ -181,12 +181,6 @@ impl GameElement for Card {
 
     type HigherMessage = HandMessage;
     type OwnMessage = CardMessage;
-
-    fn convert_msg(msg: HandMessage) -> CardMessage {
-        match msg {
-            HandMessage::CardMessage(card_msg) => card_msg
-        }
-    }
 
     fn convert_to_app_message(msg: CardMessage) -> AppMessage {
         Hand::convert_to_app_message(HandMessage::CardMessage(msg))
