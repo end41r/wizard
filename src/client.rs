@@ -144,6 +144,13 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::HostPlayerCountChanged(count) => {
             state.host_player_count = count;
+            // Send the player count change to the server
+            if let Ok(guard) = state.ws_tx.lock() {
+                if let Some(ref tx) = *guard {
+                    let _ = tx.send(C::SetPlayerCount { count: count.to_usize() });
+                    state.last_msg = format!("Player count set to {}", count);
+                }
+            }
             Task::none()
         }
         AppMessage::JoinNameChanged(name) => {
@@ -293,6 +300,17 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                                     state.last_msg = format!("Lobby: {} players", lobby.as_ref().unwrap().players.len());
                                     state.lobby = lobby;
                                 }
+                                B::PlayerCountChanged { count } => {
+                                    state.last_msg = format!("Max players set to {}", count);
+                                    // Convert usize to PlayerCount
+                                    state.host_player_count = match count {
+                                        3 => PlayerCount::P3,
+                                        4 => PlayerCount::P4,
+                                        5 => PlayerCount::P5,
+                                        6 => PlayerCount::P6,
+                                        _ => PlayerCount::P4,
+                                    };
+                                }
                                 B::ChatMessage { sender, message } => {
                                     state.last_msg = format!("Chat from {}: {}", sender, message);
                                     state.server_messages.push(format!("{}: {}", sender, message));
@@ -303,6 +321,7 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                                 B::GameStarted { players } => {
                                     state.last_msg = format!("Game started: {} players",
                                                              players.len());
+                                    state.menu = MenuState::Playing;
                                 }
                                 B::RoundStarted { round, cards_per_player,
                                                   trump } => {

@@ -22,6 +22,7 @@ pub enum C {
     ChatMessage { sender: String, message: String },
     SetReady { ready: bool },
     StartGame,
+    SetPlayerCount { count: usize },
 
     Bid { amount: usize },
 
@@ -53,6 +54,7 @@ pub enum B {
         lobby : Option<Lobby>,
     },
     ChatMessage { sender: PlayerId, message: String },
+    PlayerCountChanged { count: usize },
     
     GameStarted {
         players: Vec<PlayerId>,

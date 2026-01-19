@@ -16,7 +16,10 @@ type Clients = Arc<RwLock<HashMap<u64, mpsc::UnboundedSender<ServerMessage>>>>;
 type PlayerList = Arc<RwLock<HashMap<u64, Player>>>;
 
 const SVERSION: usize = 1;
-
+struct GameState {
+    // Placeholder for game state
+    max_player_count: usize,
+}
 pub fn local_ip() -> String {
     use std::net::UdpSocket;
     UdpSocket::bind("0.0.0.0:0")
@@ -104,6 +107,9 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
         }
     });
 
+    let mut state = GameState {
+        max_player_count: 6,
+    };
 
     // Run the main receive loop.
     let clients_clone = clients.clone();
@@ -129,6 +135,17 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             println!("Failed to send join confirmation: {e:?}");
                         }
 
+                        let players_map = players_clone.read().await;
+                        if players_map.len() >= state.max_player_count { // TODO: Replace 4 with actual max_player_count from game state
+                            let error = ServerMessage::Server(S::Error {
+                                reason: "Lobby is full".to_string(),
+                            });
+                            if let Err(e) = tx.send(error) {
+                                println!("Failed to send error: {e:?}");
+                            }
+                            return;
+                        }
+                        drop(players_map);
                         // Add player to the players list
                         let is_host = players_clone.read().await.is_empty();
                         let player = Player {
@@ -192,7 +209,12 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             &clients_clone,
                             &players_clone,
                             B::ChatMessage {
-                                sender: id,
+                                sender: players_clone
+                                    .read()
+                                    .await
+                                    .get(&id)
+                                    .map(|p| p.id)
+                                    .unwrap_or(0),
                                 message: message.clone(),
                             },
                         )
@@ -263,6 +285,17 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             B::GameStarted {
                                 players: players_list.iter().map(|p| p.id).collect(),
                             },
+                        )
+                        .await;
+                    }
+                    Ok(C::SetPlayerCount { count }) => {
+                        println!("Player {id} set player count to {count}");
+                        state.max_player_count = count;
+                        // Broadcast player count change to all players
+                        broadcast_to_all(
+                            &clients_clone,
+                            &players_clone,
+                            B::PlayerCountChanged { count },
                         )
                         .await;
                     }
