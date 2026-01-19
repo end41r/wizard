@@ -11,7 +11,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::Message as WsMessage,
 };
-use crate::api::{C, S, B, ServerMessage};
+use crate::api::{B, C, Lobby, S, ServerMessage};
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
 type ServerMsgReceiver = Arc<Mutex<Option<std::sync::mpsc::Receiver<ServerMessage>>>>;
@@ -201,10 +201,11 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::JoinLobby { name: "Player".to_string() });
+                    let _ = tx.send(C::JoinLobby { name: state.join_name.clone() });
                     state.last_msg = "Joining lobby...".to_string();
                 }
             }
+            state.lobby = Some(Lobby { players: Vec::new(), chat: Vec::new() });
             state.menu = MenuState::Lobby;
             Task::none()
         }
@@ -285,6 +286,9 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                             ServerMessage::Broadcast(b) => match b {
                                 B::LobbyState { players } => {
                                     state.last_msg = format!("Lobby: {} players", players.len());
+                                    if let Some(ref mut lobby) = state.lobby {
+                                        lobby.players = players;
+                                    }
                                 }
                                 B::ChatMessage { sender, message } => {
                                     state.last_msg = format!("Chat from {}: {}", sender, message);
@@ -424,7 +428,7 @@ fn view_main_menu<'a>() -> Element<'a, AppMessage> {
     let content = column![
         text("Wizard - Main Menu").size(40),
         button("Host").on_press(AppMessage::Host).padding(10),
-        button("Join").on_press(AppMessage::JoinLobby).padding(10),
+        button("Join").on_press(AppMessage::Navigate(MenuState::Join)).padding(10),
         button("Gamerules").on_press(AppMessage::GameRules).padding(10),
         button("Exit Game").on_press(AppMessage::CloseGame).padding(10),
     ]
