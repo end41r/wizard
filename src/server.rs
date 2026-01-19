@@ -1,4 +1,4 @@
-use crate::api::{ServerMessage, B, C, S, Player};
+use crate::api::{B, C, Lobby, Player, S, ServerMessage};
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
@@ -79,10 +79,12 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
     println!("New connection: player {id}");
 
     let (mut sender, mut receiver) = socket.split();
+
     let (tx, mut rx) = mpsc::unbounded_channel::<ServerMessage>();
 
     // Register the client.
     clients.write().await.insert(id, tx.clone());
+
 
     // Spawn task to forward messages from channel to websocket.
     let mut send_task = tokio::spawn(async move {
@@ -101,6 +103,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
             }
         }
     });
+
 
     // Run the main receive loop.
     let clients_clone = clients.clone();
@@ -127,11 +130,12 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                         }
 
                         // Add player to the players list
+                        let is_host = players_clone.read().await.is_empty();
                         let player = Player {
                             id,
                             name: name.clone(),
                             ready: false,
-                            is_host: false,
+                            is_host,
                         };
                         players_clone.write().await.insert(id, player);
 
@@ -146,7 +150,11 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             &clients_clone,
                             &players_clone,
                             B::LobbyState {
-                                players: players_list,
+                                lobby: Some(Lobby {
+                                    players: players_list,
+                                    chat: vec![],
+                                }),
+
                             },
                         )
                         .await;
@@ -168,13 +176,16 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             &clients_clone,
                             &players_clone,
                             B::LobbyState {
-                                players: players_list,
+                                lobby: Some(Lobby {
+                                    players: players_list,
+                                    chat: vec![],
+                                }),
                             },
                         )
                         .await;
                     }
-                    Ok(C::ChatMessage { message }) => {
-                        println!("Player {id} sent chat message: {message}");
+                    Ok(C::ChatMessage { sender, message }) => {
+                        println!("Player {sender} sent chat message: {message}");
 
                         // Broadcast the chat message.
                         broadcast_to_all(
@@ -206,7 +217,10 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             &clients_clone,
                             &players_clone,
                             B::LobbyState {
-                                players: players_list,
+                                lobby: Some(Lobby {
+                                    players: players_list,
+                                    chat: vec![],
+                                }),
                             },
                         )
                         .await;
@@ -245,11 +259,13 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
         }
     });
 
+
     // Wait for either task to finish.
     tokio::select! {
         _ = &mut send_task => recv_task.abort(),
         _ = &mut recv_task => send_task.abort(),
     }
+
 
     // Cleanup: Remove the client.
     clients.write().await.remove(&id);
