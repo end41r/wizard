@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use iced::{
-    Element, Subscription, Task, time, widget::{Column, button, column, container, pick_list, row, scrollable, shader::wgpu::core::id, text, text_input}
+    Element, Subscription, Task, clipboard, time, widget::{Column, button, column, container, pick_list, row, scrollable, shader::wgpu::core::id, text, text_input}
 };
 use futures::{StreamExt, SinkExt};
 use std::{option, sync::{Arc, Mutex}};
@@ -47,12 +47,12 @@ struct App {
     ws_tx: WsConnection,
     server_rx: ServerMsgReceiver,
     last_msg: String,
-
     menu: MenuState,
-
+    
     host_name: String,
     host_player_count: PlayerCount,
-
+    host_address: String,
+    
     join_name: String,
     
     lobby: Option<crate::api::Lobby>,
@@ -78,6 +78,7 @@ impl Default for App {
 
             host_name: "Host".to_string(),
             host_player_count: PlayerCount::P4,
+            host_address: "localhost:3000".to_string(),
 
             join_name: "Player".to_string(),
 
@@ -97,6 +98,8 @@ enum AppMessage {
     HostNameChanged(String),
     HostPlayerCountChanged(PlayerCount),
     JoinNameChanged(String),
+    ServerAddressChanged(String),
+    CopyToClipboard(String),
 
     SendChat,
     ChatInputChanged(String),
@@ -129,14 +132,19 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 std::thread::sleep(std::time::Duration::from_millis(500));
             }
             
+            // Get the local IP address from server module
+            let local_ip = crate::server::local_ip();
+            state.host_address = local_ip.to_string();
+            
             // Connect to the server.
             if !state.connected {
                 let ws_tx = Arc::clone(&state.ws_tx);
                 let server_rx = Arc::clone(&state.server_rx);
+                let server_addr = "ws://127.0.0.1:3000".to_string();
                 std::thread::spawn(move || {
                     let rt = tokio::runtime::Runtime::new().unwrap();
                     rt.block_on(async {
-                        connect_ws(ws_tx, server_rx).await;
+                        connect_ws(ws_tx, server_rx, &server_addr).await;
                     });
                 });
                 state.connected = true;
@@ -156,6 +164,14 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         AppMessage::JoinNameChanged(name) => {
             state.join_name = name;
             Task::none()
+        }
+        AppMessage::ServerAddressChanged(addr) => {
+            state.server_address = addr;
+            Task::none()
+        }
+        AppMessage::CopyToClipboard(addr) => {
+            state.last_msg = "Server address copied to clipboard.".to_string();
+            clipboard::write(addr)
         }
         
         AppMessage::SendChat => {
@@ -181,18 +197,20 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = "Creating lobby...".to_string();
                 }
             }
+            state.lobby = Some(Lobby { players: Vec::new(), chat: Vec::new() });
             state.menu = MenuState::Lobby;
             Task::none()
         }
         AppMessage::JoinLobby => {
-            // Connect to "localhost:3000" without starting a server.
+            // Connect to the host's server.
             if !state.connected {
                 let ws_tx = Arc::clone(&state.ws_tx);
                 let server_rx = Arc::clone(&state.server_rx);
+                let server_addr = format!("{}", state.server_address);
                 std::thread::spawn(move || {
                     let rt = tokio::runtime::Runtime::new().unwrap();
                     rt.block_on(async {
-                        connect_ws(ws_tx, server_rx).await;
+                        connect_ws(ws_tx, server_rx, &server_addr).await;
                     });
                 });
                 state.connected = true;
@@ -220,12 +238,22 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
 
-        //ToggleReady noch machen
         AppMessage::ToggleReady(p) => {
+            // Find the player and toggle their ready state
+            let new_ready_state = if let Some(lobby) = &state.lobby {
+                if let Some(player) = lobby.players.iter().find(|pl| pl.id == p) {
+                    !player.ready
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+            
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::SetReady { ready: true });
-                    state.last_msg = "Set ready".to_string();
+                    let _ = tx.send(C::SetReady { ready: new_ready_state });
+                    state.last_msg = format!("Set ready: {}", new_ready_state);
                 }
             }
             Task::none()
@@ -350,9 +378,10 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
     }
 }
 
-async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver) {
-    println!("Attempting to connect...");
-    match connect_async("ws://127.0.0.1:3000/ws").await {
+async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, server_address: &str) {
+    let url = format!("ws://{}:3000/", server_address);
+    println!("Attempting to connect to {}...", server_address);
+    match connect_async(url).await {
         Ok((ws_stream, _)) => {
             println!("WebSocket connected!");
             let (mut write, mut read)
@@ -443,11 +472,15 @@ fn view_main_menu<'a>() -> Element<'a, AppMessage> {
         .into()
 }
 
-fn view_host_menu<'a>(state: &App) -> Element<'a, AppMessage> {
+fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let count_options = vec![PlayerCount::P3, PlayerCount::P4, PlayerCount::P5, PlayerCount::P6];
 
     let content = column![
         text("Host").size(30),
+        row![
+            text(&state.host_address),
+            button("copy").on_press(AppMessage::CopyToClipboard(state.host_address.clone())),
+        ].spacing(10),
         text("Name:"),
         text_input("Your Name", &state.host_name).on_input(AppMessage::HostNameChanged),
         text("Player Count:"),
@@ -463,12 +496,18 @@ fn view_host_menu<'a>(state: &App) -> Element<'a, AppMessage> {
     container(content).center_x(iced::Fill).center_y(iced::Fill).into()
 }
 
-fn view_join_menu<'a>(state: &App) -> Element<'a, AppMessage> {
+fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
+    let can_join = !state.server_address.is_empty();
     let content = column![
         text("Join").size(30),
         text("Name:"),
         text_input("Your Name", &state.join_name).on_input(AppMessage::JoinNameChanged),
-        button("Join").on_press(AppMessage::JoinLobby),
+        text_input("Server Address", &state.server_address).on_input(AppMessage::ServerAddressChanged),
+        button("Join Lobby").on_press_maybe(if can_join {
+            Some(AppMessage::JoinLobby)
+        } else {
+            None
+        }),
         button("Back").on_press(AppMessage::BackToMenu),
     ]
     .spacing(10)
@@ -513,6 +552,10 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
 
         let content = column![
             text("Lobby").size(30),
+            row![
+                text("Host Address:"),
+                text_input("Address to share", &state.host_address)
+            ].spacing(10),
             text(format!("Spieler: {}/{}", lobby.players.len(), state.host_player_count.to_usize())),
             player_rows,
             scrollable(chat_block).height(150).width(400),
