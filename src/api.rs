@@ -15,9 +15,10 @@ pub enum ServerMessage {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum C { // Sent by client
+    Handshake { version: usize },
     JoinLobby { name: String },
     LeaveLobby,
-
+    ChatMessage { message: String },
     SetReady { ready: bool },
 
     Bid { amount: usize },
@@ -28,6 +29,7 @@ pub enum C { // Sent by client
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum S { // Sent by server
+    HandshakeConfirmation { version: usize, supported: bool },
     JoinConfirmation { ok: bool },
     Error { reason: String },
 
@@ -44,7 +46,8 @@ pub enum S { // Sent by server
 #[serde(tag = "type")]
 pub enum B { // Broadcasted by server
     LobbyState { players: Vec<Player> },
-
+    ChatMessage { sender: PlayerId, message: String },
+    
     GameStarted { players: Vec<PlayerId> },
     RoundStarted { round: usize, cards_per_player: usize, trump: Option<Suit> },
 
@@ -88,7 +91,13 @@ pub enum Value {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub struct Player {
-    id: PlayerId,
-    name: String,
-    ready: bool,
+    pub id: PlayerId,
+    pub name: String,
+    pub ready: bool,
+    pub is_host: bool,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Lobby {
+    pub players: Vec<Player>,
+    pub chat: Vec<(String, String)>, // (sender, message)
 }
