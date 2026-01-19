@@ -2,6 +2,7 @@ use super::GameElement;
 use crate::client::AppMessage;
 use crate::game_elements::AnimationState;
 use crate::game_elements::hand_card::{Card, CardMessage};
+use super::AnimationTicker;
 
 use iced::{Point, Size, widget::{Container, Stack, container, pin, stack}};
 use indexmap::{IndexMap, map::MutableKeys};
@@ -16,7 +17,9 @@ static MULT_BASE_WIDTH_CARD_STACK_OFFSET: f32 = MULT_BASE_WIDTH_CARD_HEIGHT * 0.
 
 #[derive(Debug, Clone)]
 pub enum HandMessage {
-    CardMessage(CardMessage)
+    CardMessage(CardMessage),
+    DrawCards(Vec<Card>),
+    RemoveCards
 }
 
 #[derive(Debug)]
@@ -28,7 +31,8 @@ pub struct Hand {
     hovered_card_row_low: bool,
     hovered_card_id: usize,
     top_card_id_upper: usize,
-    top_card_id_lower: usize
+    top_card_id_lower: usize,
+    remove_animation_ticker: AnimationTicker,
 }
 
 impl Default for Hand {
@@ -58,7 +62,8 @@ impl Default for Hand {
             hovered_card_row_low: true,
             hovered_card_id: 100,
             top_card_id_upper: 100, // Impossible to reach
-            top_card_id_lower: 100  // Impossible to reach   
+            top_card_id_lower: 100,  // Impossible to reach   
+            remove_animation_ticker: AnimationTicker::new(20, 1)
         }    
     }
 }
@@ -152,7 +157,7 @@ impl GameElement for Hand {
         match msg {
             HandMessage::CardMessage(card_msg) => {
                 match card_msg {
-                        CardMessage::CardHovered(id) => {
+                        CardMessage::Hovered(id) => {
                             self.hovered_card_id = id;
                             if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
                                                                             .contains(&id) {
@@ -169,6 +174,13 @@ impl GameElement for Hand {
                     card.update_with_msg(card_msg.clone());
                 }
             }
+            HandMessage::RemoveCards => {
+                self.remove_animation_ticker.start();
+                for (id, card) in self.cards.iter_mut() {
+                    card.update_with_msg(CardMessage::Remove(*id));
+                }
+            }
+            _ => {}
         }
     }
 
@@ -182,6 +194,10 @@ impl GameElement for Hand {
     }
     
     fn update_animations(&mut self) {
+        if self.remove_animation_ticker.check() {
+            self.cards.clear();
+            println!("Cards removed!");
+        }
         for (id, card) in self.cards.iter_mut2() {
             card.update_animations();
             /* Sometimes on_exit for a viewed card won't register
@@ -193,7 +209,7 @@ impl GameElement for Hand {
             if *id != self.hovered_card_id &&
                     card.hover_animation.get_offset() != 0.0 &&
                     card.hover_animation.animation_state != AnimationState::Reversing {
-                card.update_with_msg(CardMessage::CardNotHovered(*id));
+                card.update_with_msg(CardMessage::NotHovered(*id));
             }
         };
     }

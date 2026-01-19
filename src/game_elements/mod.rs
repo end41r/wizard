@@ -9,7 +9,9 @@ pub trait GameElement {
     type OwnMessage;
     fn convert_to_app_message(msg: Self::OwnMessage) -> AppMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage);
+    /// Call this every AnimationTick.
     fn update_animations(&mut self);
+    /// Call this every window resize.
     fn update_size(&mut self, window_size: Size);
     fn view<'a>(&self) -> Container<'a, AppMessage>;
     fn view_and_move<'a>(&self, x: f32, y: f32) -> Container<'a, AppMessage>;
@@ -102,5 +104,64 @@ pub trait RepeatingAnimation: AnimationCore {
             }
             _ => {}
         }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+enum AnimtionTickerState {
+    Active,
+    Inactive,
+}
+
+/// This struct is designed for 2 use cases:
+/// 1.  Starting multiple animations with a delay:
+///     interval = delay, times = amount of animations
+/// 2.  Detecting if an animation has ended:
+///     interval = animation length, times = 1
+#[derive(Debug)]
+pub struct AnimationTicker {
+    interval: usize,
+    tick: usize,
+    times: usize,
+    state: AnimtionTickerState
+}
+
+impl AnimationTicker {
+    fn new(interval: usize, times: usize) -> Self {
+        Self {
+            interval: interval,
+            tick: 0,
+            times: times,
+            state: AnimtionTickerState::Inactive
+        }
+    }
+    fn start(&mut self) {
+        if self.state == AnimtionTickerState::Inactive {
+            self.state = AnimtionTickerState::Active
+        }
+    }
+    /// Use this every time update_animations from the GameElement trait is called.
+    /// 
+    /// Retuns true if the current AnimationTick for an action is reached
+    /// 
+    /// Example for interval = 3, times = 4 (x = true, o = false):
+    /// o o x o o x o o x o o x
+    fn check(&mut self) -> bool {
+        if self.state == AnimtionTickerState::Active {
+            if self.tick == self.times * self.interval {  // Last tick reached
+                self.state = AnimtionTickerState::Inactive;
+                self.tick = 0;
+                return true
+            };
+            
+            self.tick += 1;
+
+            if self.tick - 1 == 0 {
+                return false  // Not on first tick
+            } else {
+                return (self.tick - 1) % self.interval == 0
+            }
+        }
+        false
     }
 }
