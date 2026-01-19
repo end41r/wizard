@@ -247,6 +247,25 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                         .await;
                         // TODO: Validate the play and check if the pool is complete.
                     }
+                    Ok(C::StartGame) => {
+                        println!("Player {id} requested to start game");
+                        let players_list: Vec<Player> = players_clone
+                            .read()
+                            .await
+                            .values()
+                            .cloned()
+                            .collect();
+                        
+                        // Broadcast game started to all players
+                        broadcast_to_all(
+                            &clients_clone,
+                            &players_clone,
+                            B::GameStarted {
+                                players: players_list.iter().map(|p| p.id).collect(),
+                            },
+                        )
+                        .await;
+                    }
                     Err(err) => {
                         println!("Parse error from player {id}: {err}");
                         let error = ServerMessage::Server(S::Error {

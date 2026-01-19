@@ -131,7 +131,9 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     rt.block_on(connect_ws(ws_tx, server_rx, "127.0.0.1".into()));
                 });
                 state.connected = true;
-                state.msg = format!("Hosting on {}", crate::server::local_ip());
+                let local_ip = crate::server::local_ip();
+                state.msg = format!("Hosting on {}", local_ip);
+                state.ip = local_ip;
             }
             state.menu = MenuState::Host;
             Task::none()
@@ -231,11 +233,10 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         AppMessage::StartGame => {
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::SetReady { ready: true });
+                    let _ = tx.send(C::StartGame);
                     state.last_msg = "Starting game...".to_string();
                 }
             }
-            state.menu = MenuState::Playing;
             Task::none()
         }
         
@@ -523,14 +524,22 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
         // determine if start button should be enabled
         let can_start = lobby.players.len() >= 3 && lobby.players.iter().all(|p| p.ready);
         let start_button = 
-            if can_start && lobby.players.iter().any(|p| p.is_host) {
-                button("Starten").on_press(AppMessage::StartGame)
-            } else if lobby.players.iter().any(|p| p.is_host) {
-                button("Starten (nicht verfügbar)")
-            } else {
-                button("Starten (nur für Host verfügbar)")
-            };
-
+        row![button("Starten").on_press_maybe(
+                if can_start && lobby.players.iter().any(|p| p.is_host) { Some(AppMessage::StartGame)}
+                else {
+                    None
+                }
+            ),
+            text(if !can_start {
+                " (Warten auf Spieler...)"
+                } 
+                else if !lobby.players.iter().any(|p| p.is_host) {
+                    " (Nur der Host kann starten)"
+                } 
+                else {
+                    ""
+                }
+            )].spacing(5);
 
         let content = column![
             text("Lobby").size(30),

@@ -21,6 +21,7 @@ pub enum C {
     LeaveLobby,
     ChatMessage { sender: String, message: String },
     SetReady { ready: bool },
+    StartGame,
 
     Bid { amount: usize },
 
