@@ -1,14 +1,22 @@
-use iced::{Point, Size, mouse::Interaction, widget::{Container, MouseArea, container, image, pin, stack}};
+use iced::{ContentFit::Fill, Point, Size, mouse::Interaction, widget::{Container, MouseArea, container, image, pin, stack}};
 use super::{GameElement, AnimationCore, ReversableAnimation, AnimationState};
 use crate::game_elements::{BasicAnimation, RepeatingAnimation, hand::{Hand, HandMessage}};
 use crate::client::AppMessage;
+
+fn f32_min_2(v1: f32, v2: f32) -> f32 {
+    if v1 < v2 {
+        return v1
+    }
+    v2
+}
 
 #[derive(Debug, Clone)]
 pub enum CardMessage {
     Played(usize),
     Hovered(usize),
     NotHovered(usize),
-    Remove(usize)
+    Hide(usize),
+    Show(usize)
 }
 
 impl CardMessage {
@@ -17,7 +25,8 @@ impl CardMessage {
             CardMessage::Hovered(id) => *id,
             CardMessage::NotHovered(id) => *id,
             CardMessage::Played(id) => *id,
-            CardMessage::Remove(id) => *id
+            CardMessage::Hide(id) => *id,
+            CardMessage::Show(id) => *id
         }
     }
 }
@@ -46,7 +55,7 @@ impl HoverAnimation {
     pub fn get_offset(&self) -> f32 {
         self.max_offset * 0.2 * self.current_frame_number as f32
     }
-    pub fn get_size_mult(&self) -> f32 {
+    pub fn get_expansion(&self) -> f32 {
         1.0 + self.current_frame_number as f32 * 0.02
     }
 }
@@ -66,7 +75,7 @@ impl AnimationCore for HoverAnimation {
 impl ReversableAnimation for HoverAnimation {}
 
 #[derive(Debug, Clone)]
-pub struct RemoveAnimation {
+pub struct PlayAnimation {
     pub max_frame_number: usize,
     pub current_frame_number: usize,
     pub animation_state: AnimationState,
@@ -75,7 +84,7 @@ pub struct RemoveAnimation {
     pub contraction:f32
 }
 
-impl RemoveAnimation {
+impl PlayAnimation {
     fn new() -> Self {
         Self {
             max_frame_number: 20,
@@ -95,7 +104,7 @@ impl RemoveAnimation {
     }
 }
 
-impl AnimationCore for RemoveAnimation {
+impl AnimationCore for PlayAnimation {
     fn _mut_max_frame_number(&mut self) -> &mut usize {
         &mut self.max_frame_number
     }
@@ -107,7 +116,7 @@ impl AnimationCore for RemoveAnimation {
     }
 }
 
-impl BasicAnimation for RemoveAnimation {}
+impl BasicAnimation for PlayAnimation {}
 
 #[derive(Debug, Clone)]
 pub struct FocusAnimation {
@@ -155,13 +164,57 @@ impl AnimationCore for FocusAnimation {
 impl RepeatingAnimation for FocusAnimation {}
 
 #[derive(Debug, Clone)]
+pub struct HideAnimation {
+    pub max_frame_number: usize,
+    pub current_frame_number: usize,
+    pub animation_state: AnimationState,
+    pub opacity: f32,
+    pub contraction: f32
+}
+
+impl HideAnimation {
+    fn new() -> Self {
+        Self {
+            max_frame_number: 20,
+            current_frame_number: 0,
+            animation_state: AnimationState::NotMoving,
+            opacity: 1.0,
+            contraction: 1.0
+        }
+    }
+
+    fn get_opacity(&self) -> f32 {
+        self.opacity - self.current_frame_number as f32 * (1.0 / self.max_frame_number as f32)
+    }
+
+    fn get_contraction(&self) -> f32 {
+        self.contraction * (1.0 - 0.125 * self.current_frame_number as f32)
+    }
+}
+
+impl AnimationCore for HideAnimation {
+    fn _mut_max_frame_number(&mut self) -> &mut usize {
+        &mut self.max_frame_number
+    }
+    fn _mut_current_frame_number(&mut self) -> &mut usize {
+        &mut self.current_frame_number
+    }
+    fn _mut_animation_state(&mut self) -> &mut AnimationState {
+        &mut self.animation_state
+    }
+}
+
+impl ReversableAnimation for HideAnimation {}
+
+#[derive(Debug, Clone)]
 pub struct Card {
     id: usize,
     img_path: &'static str,
     pub size: Size,
     pub hover_animation: HoverAnimation,
-    pub remove_animation: RemoveAnimation,
-    pub focus_animation: FocusAnimation
+    pub play_animation: PlayAnimation,
+    pub focus_animation: FocusAnimation,
+    pub hide_animation: HideAnimation
 }
 
 impl Card {
@@ -172,8 +225,9 @@ impl Card {
             img_path: img_path,
             size: size,
             hover_animation: HoverAnimation::new(size),
-            remove_animation: RemoveAnimation::new(),
-            focus_animation: FocusAnimation::new()
+            play_animation: PlayAnimation::new(),
+            focus_animation: FocusAnimation::new(),
+            hide_animation: HideAnimation::new()
         }
     }
 }
@@ -196,14 +250,17 @@ impl GameElement for Card {
                 }
                 CardMessage::Played(id) => {
                     println!("Card with id {} played!", id);
-                    self.remove_animation.start();
+                    self.play_animation.start();
                 }
                 CardMessage::NotHovered(_) => {
                     self.hover_animation.reverse();
                     self.focus_animation.reset();
                 }
-                CardMessage::Remove(_) => {
-                    self.remove_animation.start();
+                CardMessage::Hide(_) => {
+                    self.hide_animation.start();
+                }
+                CardMessage::Show(_) => {
+                    self.hide_animation.start_from_reverse();
                 }
             }
         }
@@ -211,8 +268,9 @@ impl GameElement for Card {
 
     fn update_animations(&mut self) {
         self.hover_animation.next_frame();
-        self.remove_animation.next_frame();
+        self.play_animation.next_frame();
         self.focus_animation.next_frame();
+        self.hide_animation.next_frame();
     }
 
     fn update_size(&mut self, window_size: Size) {
@@ -221,27 +279,44 @@ impl GameElement for Card {
     }
 
     fn view<'a>(&self) -> Container<'a, AppMessage> {
+
+        let img_opacity: f32 = f32_min_2(self.play_animation.get_opacity(),
+                                         self.hide_animation.get_opacity());
+
+        let hover_effect_opacity = f32_min_2(img_opacity,
+                                                  self.focus_animation.get_opacity());
+
+        let width: f32 = self.size.width * self.hover_animation.get_expansion() *
+                         self.play_animation.get_contraction() *
+                         self.hide_animation.get_contraction();
+
+        let height: f32 = self.size.height * self.hover_animation.get_expansion();
+
+        let rotation: f32 = self.focus_animation.get_rotation();
+
+        let scale: f32 = 0.88 * self.hide_animation.get_contraction();
+
+
+
         let mut card = stack!();
         let img = image(self.img_path)
-                    .content_fit(iced::ContentFit::Fill)
-                    .width(self.size.width * self.hover_animation.get_size_mult() * self.remove_animation.get_contraction())
-                    .height(self.size.height * self.hover_animation.get_size_mult())
-                    .rotation(self.focus_animation.get_rotation())
-                    .scale(0.9)
-                    .opacity(self.remove_animation.get_opacity());
+                    .content_fit(Fill)
+                    .width(width)
+                    .height(height)
+                    .rotation(rotation)
+                    .scale(scale)
+                    .opacity(img_opacity);
         card = card.push(img);
-
         let hover_effect = image(self.focus_animation.img_path)
-                    .content_fit(iced::ContentFit::Fill)
-                    .width(self.size.width * self.hover_animation.get_size_mult() * self.remove_animation.get_contraction())
-                    .height(self.size.height * self.hover_animation.get_size_mult())
-                    .rotation(self.focus_animation.get_rotation())
-                    .scale(0.9)
-                    .opacity(if self.remove_animation.get_opacity() > self.focus_animation.get_opacity() {self.focus_animation.get_opacity()} else {self.remove_animation.get_opacity()});
+                    .content_fit(Fill)
+                    .width(width)
+                    .height(height)
+                    .rotation(rotation)
+                    .scale(scale)
+                    .opacity(hover_effect_opacity);
         card = card.push(hover_effect);
 
         container(MouseArea::new(card)
-            .on_right_press(Hand::convert_to_app_message(HandMessage::RemoveCards))
             .on_double_click(Card::convert_to_app_message(CardMessage::Played(self.id)))
             .on_enter(Card::convert_to_app_message(CardMessage::Hovered(self.id)))
             .on_exit(Card::convert_to_app_message(CardMessage::NotHovered(self.id)))
@@ -254,7 +329,7 @@ impl GameElement for Card {
         container(pin(self.view())
             .position(
                 Point::new(
-                    x + ((1.0 - self.remove_animation.get_contraction()) / 2.0) * self.size.width * self.hover_animation.get_size_mult() + (self.size.width - self.size.width * self.hover_animation.get_size_mult()) / 2.0,
+                    x + ((1.0 - self.play_animation.get_contraction()) / 2.0) * self.size.width * self.hover_animation.get_expansion() + (self.size.width - self.size.width * self.hover_animation.get_expansion()) / 2.0,
                     y - self.hover_animation.get_offset()
                 )
             )

@@ -8,8 +8,10 @@ pub trait GameElement {
     type HigherMessage;
     type OwnMessage;
     fn convert_to_app_message(msg: Self::OwnMessage) -> AppMessage;
+    /// Convey the msg to lower GameElements asap (if they exist) before doing anything else.
     fn update_with_msg(&mut self, msg: Self::OwnMessage);
     /// Call this every AnimationTick.
+    /// First call other update_animations then animation tickers.
     fn update_animations(&mut self);
     /// Call this every window resize.
     fn update_size(&mut self, window_size: Size);
@@ -30,6 +32,13 @@ pub trait AnimationCore {
         *self._mut_current_frame_number() = 0;
         *self._mut_animation_state() = AnimationState::NotMoving;
     }
+    fn active(&mut self) -> bool{
+        match *self._mut_animation_state() {
+            AnimationState::NotMoving => false,
+            AnimationState::Ended => false,
+            _ => true
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -37,6 +46,7 @@ pub enum AnimationState {
     NotMoving,
     MovingForward,
     Reversing,
+    Ended
 }
 
 pub trait BasicAnimation: AnimationCore {
@@ -51,10 +61,17 @@ pub trait BasicAnimation: AnimationCore {
                 if *self._mut_current_frame_number() < *self._mut_max_frame_number() {
                     *self._mut_current_frame_number() += 1;
                 } else {
-                    *self._mut_animation_state() = AnimationState::NotMoving;
+                    *self._mut_animation_state() = AnimationState::Ended;
                 }
             }
             _ => {}
+        }
+    }
+
+    fn ended(&mut self) -> bool {
+        match *self._mut_animation_state() {
+            AnimationState::Ended => true,
+            _ => false
         }
     }
 }
@@ -67,6 +84,11 @@ pub trait ReversableAnimation: AnimationCore {
 
     fn reverse(&mut self) {
         *self._mut_animation_state() = AnimationState::Reversing;
+    }
+
+    fn start_from_reverse(&mut self) {
+        *self._mut_animation_state() = AnimationState::Reversing;
+        *self._mut_current_frame_number() = *self._mut_max_frame_number()
     }
 
     fn next_frame(&mut self) {

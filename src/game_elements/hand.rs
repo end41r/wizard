@@ -1,6 +1,6 @@
 use super::GameElement;
 use crate::client::AppMessage;
-use crate::game_elements::AnimationState;
+use crate::game_elements::{AnimationCore, AnimationState, BasicAnimation};
 use crate::game_elements::hand_card::{Card, CardMessage};
 use super::AnimationTicker;
 
@@ -19,7 +19,8 @@ static MULT_BASE_WIDTH_CARD_STACK_OFFSET: f32 = MULT_BASE_WIDTH_CARD_HEIGHT * 0.
 pub enum HandMessage {
     CardMessage(CardMessage),
     DrawCards(Vec<Card>),
-    RemoveCards
+    HideCards,
+    ShowCards
 }
 
 #[derive(Debug)]
@@ -32,7 +33,7 @@ pub struct Hand {
     hovered_card_id: usize,
     top_card_id_upper: usize,
     top_card_id_lower: usize,
-    remove_animation_ticker: AnimationTicker,
+    hide_animation_ticker: AnimationTicker
 }
 
 impl Default for Hand {
@@ -62,8 +63,8 @@ impl Default for Hand {
             hovered_card_row_low: true,
             hovered_card_id: 100,
             top_card_id_upper: 100, // Impossible to reach
-            top_card_id_lower: 100,  // Impossible to reach   
-            remove_animation_ticker: AnimationTicker::new(20, 1)
+            top_card_id_lower: 100,  // Impossible to reach
+            hide_animation_ticker: AnimationTicker::new(20, 1)
         }    
     }
 }
@@ -111,8 +112,8 @@ impl Hand {
 
     fn get_card_ids(&self) -> Vec<usize> {
         let mut card_ids: Vec<usize> = vec!();
-        for card in self.cards.iter() {
-            card_ids.push(*card.0);
+        for (id, _) in self.cards.iter() {
+            card_ids.push(*id);
         }
         card_ids
     }
@@ -156,28 +157,39 @@ impl GameElement for Hand {
     fn update_with_msg(&mut self, msg: HandMessage) {
         match msg {
             HandMessage::CardMessage(card_msg) => {
-                match card_msg {
-                        CardMessage::Hovered(id) => {
-                            self.hovered_card_id = id;
-                            if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
-                                                                            .contains(&id) {
-                                self.hovered_card_row_low = false;
-                                self.top_card_id_upper = id;
-                            } else {
-                                self.hovered_card_row_low = true;
-                                self.top_card_id_lower = id;
-                            }
-                        }
-                        _ => {}
-                }
+                // The for-lopp needs to come before the match.
                 for (_, card) in self.cards.iter_mut() {
                     card.update_with_msg(card_msg.clone());
                 }
+                match card_msg {
+                    CardMessage::Hovered(id) => {
+                        self.hovered_card_id = id;
+                        if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
+                                                                        .contains(&id) {
+                            self.hovered_card_row_low = false;
+                            self.top_card_id_upper = id;
+                        } else {
+                            self.hovered_card_row_low = true;
+                            self.top_card_id_lower = id;
+                        }
+                    }
+                    CardMessage::Played(_) => {
+                        self.update_with_msg(HandMessage::HideCards);
+                        self.hide_animation_ticker.start();
+                    }
+                    _ => {}
+                }
             }
-            HandMessage::RemoveCards => {
-                self.remove_animation_ticker.start();
+            HandMessage::HideCards => {
                 for (id, card) in self.cards.iter_mut() {
-                    card.update_with_msg(CardMessage::Remove(*id));
+                    if !card.play_animation.active() {
+                        card.update_with_msg(CardMessage::Hide(*id));
+                    }
+                }
+            }
+            HandMessage::ShowCards => {
+                for (id, card) in self.cards.iter_mut() {
+                    card.update_with_msg(CardMessage::Show(*id));
                 }
             }
             _ => {}
@@ -194,10 +206,6 @@ impl GameElement for Hand {
     }
     
     fn update_animations(&mut self) {
-        if self.remove_animation_ticker.check() {
-            self.cards.clear();
-            println!("Cards removed!");
-        }
         for (id, card) in self.cards.iter_mut2() {
             card.update_animations();
             /* Sometimes on_exit for a viewed card won't register
@@ -211,6 +219,18 @@ impl GameElement for Hand {
                     card.hover_animation.animation_state != AnimationState::Reversing {
                 card.update_with_msg(CardMessage::NotHovered(*id));
             }
+        };
+        if self.hide_animation_ticker.check() {
+
+            // Remove the played card from cards after all cards are hidden.
+            let mut played_card_id: usize = 1000;  // Impossible to reach
+            for (id, card) in self.cards.iter_mut() {
+                if card.play_animation.ended() {
+                    played_card_id = *id;
+                };
+            }
+            self.cards.shift_remove(&played_card_id);
+            self.update_with_msg(HandMessage::ShowCards);
         };
     }
 
