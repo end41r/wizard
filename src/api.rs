@@ -27,6 +27,8 @@ pub enum C {
     Bid { amount: usize },
 
     PlayCard { card: Card },
+
+    RequestShutdown,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -34,7 +36,7 @@ pub enum C {
 pub enum S {
     // Sent by server
     HandshakeConfirmation { version: usize, supported: bool },
-    JoinConfirmation { ok: bool },
+    JoinConfirmation { ok: bool, id: PlayerId },
     Error { reason: String },
 
     HandDealt { cards: Vec<Card> },
@@ -105,6 +107,8 @@ pub enum B {
         final_scores: HashMap<PlayerId, usize>,
         winner: PlayerId,
     },
+    /// Server is shutting down (host stopped server)
+    ServerShutdown,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

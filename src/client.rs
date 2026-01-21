@@ -3,7 +3,7 @@
 
 use futures::{SinkExt, StreamExt};
 use iced::{
-    Element, Subscription, Task, clipboard, time, widget::{Column, button, column, container, pick_list, row, scrollable, shader::wgpu::core::id, text, text_input}
+    Element, Subscription, Task, clipboard, time, widget::{Column, button, column, container, pick_list, row, scrollable, text, text_input}
 };
 use std::{sync::{Arc, Mutex}};
 use std::time::Duration;
@@ -11,7 +11,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::Message as WsMessage,
 };
-use crate::api::{B, C, Lobby, S, ServerMessage};
+use crate::api::{B, C, Lobby, S, ServerMessage, PlayerId};
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
 type ServerMsgReceiver = Arc<Mutex<Option<std::sync::mpsc::Receiver<ServerMessage>>>>;
@@ -43,6 +43,7 @@ impl std::fmt::Display for PlayerCount {
 }
 struct App {
     connected: bool,
+    connecting: bool,
     ws_tx: WsConnection,
     server_rx: ServerMsgReceiver,
     msg: String,
@@ -53,7 +54,8 @@ struct App {
     host_player_count: PlayerCount,
     
     join_name: String,
-    
+    my_id: Option<PlayerId>,
+
     lobby: Option<Lobby>,
     chat_input: String,
     server_messages: Vec<String>,
@@ -67,6 +69,7 @@ impl Default for App {
     fn default() -> Self {
         Self {
             connected: false,
+            connecting: false,
             ws_tx: Arc::new(Mutex::new(None)),
             server_rx: Arc::new(Mutex::new(None)),
             msg: String::new(),
@@ -75,13 +78,14 @@ impl Default for App {
             
             host_name: "".to_string(),
             host_player_count: PlayerCount::P4,
-
             join_name: "".to_string(),
+            
+            my_id: None,
 
             lobby: Some(Lobby { players: Vec::new(), chat: Vec::new() }),
             chat_input: String::new(),
             server_messages: Vec::new(),
-            ip: String::from("ws://localhost:3000"),
+            ip: String::from("localhost"),
             last_msg: String::new(),
         }
     }
@@ -203,17 +207,9 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     let rt = tokio::runtime::Runtime::new().unwrap();
                     rt.block_on(connect_ws(ws_tx, server_rx, ip));
                 });
-                state.connected = true;
                 state.msg = "Connecting...".into();
+                state.connecting = true;
             }
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            if let Ok(guard) = state.ws_tx.lock() {
-                if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::JoinLobby { name: state.join_name.clone() });
-                    state.last_msg = "Joining lobby...".to_string();
-                }
-            }
-            state.menu = MenuState::Lobby;
             Task::none()
         }
 
@@ -252,6 +248,43 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
         AppMessage::BackToMenu => {
+            // If we're the host, stop the server; otherwise drop the connection.
+            let am_host = if let (Some(lobby), Some(my_id)) = (&state.lobby, state.my_id) {
+                lobby.players.iter().any(|p| p.id == my_id && p.is_host)
+            } else {
+                false
+            };
+
+            if am_host {
+                // send ShutdownRequest
+                if let Ok(guard) = state.ws_tx.lock() {
+                    if let Some(ref tx) = *guard {
+                        let _ = tx.send(C::RequestShutdown);
+                    }
+                }
+            }
+
+            // If connected, try to send LeaveLobby before dropping (best-effort).
+            if let Ok(mut guard) = state.ws_tx.lock() {
+                if let Some(ref tx) = *guard {
+                    let _ = tx.send(C::LeaveLobby);
+                }
+                *guard = None;
+            }
+            if let Ok(mut guard_rx) = state.server_rx.lock() {
+                *guard_rx = None;
+            }
+
+            state.connected = false;
+            state.connecting = false;
+            state.my_id = None;
+            state.lobby = Some(Lobby { players: Vec::new(), chat: Vec::new() });
+            state.chat_input.clear();
+            state.server_messages.clear();
+            state.last_msg.clear();
+            state.join_name.clear();
+            state.host_name.clear();
+            state.host_player_count = PlayerCount::P4;
             state.menu = MenuState::Main;
             Task::none()
         }
@@ -261,6 +294,20 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         }
         
         AppMessage::Tick => {
+            if state.connecting && !state.connected {
+                state.last_msg = "Connecting".to_string();
+                if let Ok(guard) = state.ws_tx.lock() {
+                    if guard.is_some() {
+                        state.connected = true;
+                        state.connecting = false;
+                        if let Some(ref tx) = *guard {
+                            let _ = tx.send(C::JoinLobby { name: state.join_name.clone() });
+                            state.last_msg = "Joining lobby...".to_string();
+                            state.menu = MenuState::Lobby;
+                        }
+                    }
+                }
+            }
             // Check for messages from the server.
             if let Ok(guard) = state.server_rx.lock() {
                 if let Some(ref rx) = *guard {
@@ -271,8 +318,9 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                                 S::HandshakeConfirmation { version, supported } => {
                                     state.last_msg = format!("Handshake: version {version}, supported {supported}");
                                 }
-                                S::JoinConfirmation { ok } => {
-                                    state.last_msg = format!("Join: {}", ok);
+                                S::JoinConfirmation { ok, id } => {
+                                    state.last_msg = format!("Join: {ok}, id: {id}");
+                                    state.my_id = Some(id);
                                 }
                                 S::Error { reason } => {
                                     state.last_msg = format!("Error: {}", reason);
@@ -324,11 +372,11 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                                     state.menu = MenuState::Playing;
                                 }
                                 B::RoundStarted { round, cards_per_player,
-                                                  trump } => {
+                                                  trump: _ } => {
                                     state.last_msg = format!("Round {} started: {} cards", round,
                                                              cards_per_player);
                                 }
-                                B::BiddingStarted { starting_player,
+                                B::BiddingStarted { starting_player: _,
                                                     cards_per_player } => {
                                     state.last_msg = format!("Bidding started: {} cards",
                                                              cards_per_player);
@@ -348,19 +396,33 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                                 B::TurnChanged { player } => {
                                     state.last_msg = format!("Turn: player {}", player);
                                 }
-                                B::CardPlayed { player, card } => {
+                                B::CardPlayed { player, card: _ } => {
                                     state.last_msg = format!("Player {} played card", player);
                                 }
-                                B::PoolFinished { winner, cards } => {
+                                B::PoolFinished { winner, cards: _ } => {
                                     state.last_msg = format!("Pool won by {}", winner);
                                 }
-                                B::RoundFinished { scores,
-                                                   won_amounts } => {
+                                B::RoundFinished { scores: _,
+                                                   won_amounts: _ } => {
                                     state.last_msg = format!("Round finished");
                                 }
-                                B::GameFinished { final_scores,
+                                B::GameFinished { final_scores: _,
                                                   winner } => {
                                     state.last_msg = format!("Game won by {}", winner);
+                                }
+                                B::ServerShutdown => {
+                                    println!("Client: received ServerShutdown broadcast");
+                                    state.last_msg = "Lost connection to host".to_string();
+                                    // Reset client-visible state and return to main menu.
+                                    // Do NOT touch the shared handles here; the
+                                    // background connection task will clear them.
+                                    state.menu = MenuState::Main;
+                                    state.connected = false;
+                                    state.connecting = false;
+                                    state.my_id = None;
+                                    state.lobby = Some(Lobby { players: Vec::new(), chat: Vec::new() });
+                                    state.chat_input.clear();
+                                    state.server_messages.clear();
                                 }
                             }
                         }
@@ -368,7 +430,7 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 }
             }
             Task::none()
-        } // send C messages if needed
+        }
     }
 }
 
@@ -415,6 +477,14 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
                 _ = send_task => println!("Send task ended"),
                 _ = recv_task => println!("Receive task ended"),
             }
+
+            if let Ok(mut w) = ws_tx.lock() {
+                *w = None;
+            }
+            if let Ok(mut s) = server_rx.lock() {
+                *s = None;
+            }
+            println!("Connection tasks finished and shared handles cleared");
         }
         Err(e) => {
             eprintln!("Failed to connect to server: {}", e);
@@ -424,7 +494,7 @@ async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: Strin
 
 fn view(state: &'_ App) -> Element<'_, AppMessage> {
     match state.menu {
-        MenuState::Main => view_main_menu(),
+        MenuState::Main => view_main_menu(state),
         MenuState::Host => view_host_menu(state),
         MenuState::Join => view_join_menu(state),
         MenuState::Rules => view_rules_menu(),
@@ -436,20 +506,21 @@ fn view(state: &'_ App) -> Element<'_, AppMessage> {
 
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
-    if state.connected {
+    if state.connected || state.connecting {
         time::every(Duration::from_millis(100)).map(|_| AppMessage::Tick)
     } else {
         Subscription::none()
     }
 }
 
-fn view_main_menu<'a>() -> Element<'a, AppMessage> {
+fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = column![
         text("Wizard - Main Menu").size(40),
         button("Host").on_press(AppMessage::Host).padding(10),
         button("Join").on_press(AppMessage::Navigate(MenuState::Join)).padding(10),
         button("Gamerules").on_press(AppMessage::GameRules).padding(10),
         button("Exit Game").on_press(AppMessage::CloseGame).padding(10),
+        text(state.last_msg.clone()),
     ]
     .spacing(20)
     .align_x(iced::alignment::Horizontal::Center);
@@ -502,6 +573,8 @@ fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
         } else {
             None
         }),
+        text("Progress:"),
+        text(&state.last_msg),
         button("Back").on_press(AppMessage::BackToMenu),
     ]
     .spacing(10)
@@ -526,11 +599,18 @@ fn view_rules_menu<'a>() -> Element<'a, AppMessage> {
 }
 
 fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
+    if !state.connected {
+        return container(column![text("Nicht verbunden zum Server. / IP wurde falsch eingegeben"), button("Zurück").on_press(AppMessage::BackToMenu)]).center_x(iced::Fill).center_y(iced::Fill).into();
+    }
     if let Some(lobby) = &state.lobby {
         let mut player_rows = Column::new().spacing(10);
         for p in &lobby.players {
             let ready_text = if p.ready { "Bereit" } else { "Nicht bereit" };
-            let toggle = button(ready_text).on_press(AppMessage::ToggleReady(p.id));
+            let toggle = button(ready_text).on_press_maybe(if Some(p.id) == state.my_id {
+                Some(AppMessage::ToggleReady(p.id))
+            } else {
+                None
+            });
             let row = row![text(format!("{}{}", if p.is_host { "(Host) " } else { "" }, p.name)), toggle];
             player_rows = player_rows.push(row);
         }
@@ -541,10 +621,11 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
         }
 
         // determine if start button should be enabled
-        let can_start = lobby.players.len() >= 3 && lobby.players.iter().all(|p| p.ready);
+        let can_start = lobby.players.len() == state.host_player_count.to_usize() && lobby.players.iter().all(|p| p.ready);
         let start_button = 
         row![button("Starten").on_press_maybe(
-                if can_start && lobby.players.iter().any(|p| p.is_host) { Some(AppMessage::StartGame)}
+                if can_start && state.my_id.is_some() && state.my_id.unwrap() == lobby.players.iter().find(|p| p.is_host).map(|p| p.id).unwrap_or_default() 
+                { Some(AppMessage::StartGame) }
                 else {
                     None
                 }
@@ -552,7 +633,7 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
             text(if !can_start {
                 " (Warten auf Spieler...)"
                 } 
-                else if !lobby.players.iter().any(|p| p.is_host) {
+                else if state.my_id.is_some() && state.my_id.unwrap() != lobby.players.iter().find(|p| p.is_host).map(|p| p.id).unwrap_or_default() {
                     " (Nur der Host kann starten)"
                 } 
                 else {
@@ -585,7 +666,7 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
     }
 
 }
-fn view_gameplay<'a>(state: &App) -> Element<'a, AppMessage> {
+fn view_gameplay<'a>(_state: &App) -> Element<'a, AppMessage> {
     let content = column![
         text("Gameplay Screen").size(30),
         text("Game in progress... (placeholder)"),

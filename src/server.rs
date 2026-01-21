@@ -8,7 +8,9 @@ use axum::{
 use futures::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::{mpsc, RwLock};
 use uuid::Uuid;
 
@@ -16,10 +18,11 @@ type Clients = Arc<RwLock<HashMap<u64, mpsc::UnboundedSender<ServerMessage>>>>;
 type PlayerList = Arc<RwLock<HashMap<u64, Player>>>;
 
 const SVERSION: usize = 1;
-struct GameState {
-    // Placeholder for game state
-    max_player_count: usize,
-}
+
+// evade unsafe static mut
+static MAX_PLAYER_COUNT: AtomicUsize = AtomicUsize::new(4);
+
+static SHUTDOWN_SENDER: Mutex<Option<tokio::sync::oneshot::Sender<()>>> = Mutex::new(None);
 pub fn local_ip() -> String {
     use std::net::UdpSocket;
     UdpSocket::bind("0.0.0.0:0")
@@ -33,17 +36,27 @@ pub fn local_ip() -> String {
 }
 
 pub fn start_server() {
-    std::thread::spawn(|| {
+    // create the shared state up-front so we can expose it to `stop_server()`
+    let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
+    let players: PlayerList = Arc::new(RwLock::new(HashMap::new()));
+
+    // store globals for `stop_server` to use
+    // create a oneshot channel that will be used to trigger graceful shutdown
+    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+    // store the sender in the global so stop_server() can use it
+    if let Ok(mut guard) = SHUTDOWN_SENDER.lock() {
+        *guard = Some(tx);
+    }
+
+    std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
-            let players: PlayerList = Arc::new(RwLock::new(HashMap::new()));
-            run_server(clients, players).await;
+        rt.block_on(async move {
+            run_server(clients, players, rx).await;
         });
     });
 }
 
-async fn run_server(clients: Clients, players: PlayerList) {
+async fn run_server(clients: Clients, players: PlayerList, shutdown_rx: tokio::sync::oneshot::Receiver<()>) {
     let app = Router::new().route(
         "/ws",
         get({
@@ -57,11 +70,30 @@ async fn run_server(clients: Clients, players: PlayerList) {
     println!("server on {addr}");
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+
+    tokio::select! {
+        res = axum::serve(listener, app) => {
+            if let Err(e) = res {
+                eprintln!("server error: {e}");
+            }
+        }
+        _ = shutdown_rx => {
+            println!("Shutdown signal received, broadcasting shutdown and stopping server");
+        }
+    }
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, clients: Clients, players: PlayerList) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, clients, players))
+}
+
+// part with shutting down was made with help from chatgpt
+pub fn stop_server() {
+    if let Ok(mut guard) = SHUTDOWN_SENDER.lock() {
+        if let Some(tx) = guard.take() {
+            let _ = tx.send(());
+        }
+    }
 }
 
 // Broadcast to all connected clients.
@@ -107,10 +139,6 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
         }
     });
 
-    let mut state = GameState {
-        max_player_count: 6,
-    };
-
     // Run the main receive loop.
     let clients_clone = clients.clone();
     let players_clone = players.clone();
@@ -129,14 +157,10 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                         }
                     }
                     Ok(C::JoinLobby { name }) => {
-                        println!("Player {id} joining lobby as {name}");
-                        let response = ServerMessage::Server(S::JoinConfirmation { ok: true });
-                        if let Err(e) = tx.send(response) {
-                            println!("Failed to send join confirmation: {e:?}");
-                        }
-
+                        println!("Player {id} trying to join lobby as {name}");
                         let players_map = players_clone.read().await;
-                        if players_map.len() >= state.max_player_count { // TODO: Replace 4 with actual max_player_count from game state
+
+                        if players_map.len() >= MAX_PLAYER_COUNT.load(Ordering::Relaxed) {
                             let error = ServerMessage::Server(S::Error {
                                 reason: "Lobby is full".to_string(),
                             });
@@ -145,9 +169,24 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             }
                             return;
                         }
+                        else if players_map.values().any(|p| p.name == name) {
+                            let error = ServerMessage::Server(S::Error {
+                                reason: "Name already taken".to_string(),
+                            });
+                            if let Err(e) = tx.send(error) {
+                                println!("Failed to send error: {e:?}");
+                            }
+                            return;
+                        }
+                        else {
+                            let response = ServerMessage::Server(S::JoinConfirmation { ok: true, id: id });
+                            if let Err(e) = tx.send(response) {
+                                println!("Failed to send join confirmation: {e:?}");
+                            }
+                        }
                         drop(players_map);
                         // Add player to the players list
-                        let is_host = players_clone.read().await.is_empty();
+                        let is_host = players_clone.read().await.is_empty(); // thats really unsafe
                         let player = Player {
                             id,
                             name: name.clone(),
@@ -173,6 +212,11 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                                 }),
 
                             },
+                        ).await;
+                        broadcast_to_all(
+                            &clients_clone,
+                            &players_clone,
+                            B::PlayerCountChanged { count: MAX_PLAYER_COUNT.load(Ordering::Relaxed) },
                         )
                         .await;
                     }
@@ -290,7 +334,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     }
                     Ok(C::SetPlayerCount { count }) => {
                         println!("Player {id} set player count to {count}");
-                        state.max_player_count = count;
+                        MAX_PLAYER_COUNT.store(count, Ordering::Relaxed);
                         // Broadcast player count change to all players
                         broadcast_to_all(
                             &clients_clone,
@@ -298,6 +342,13 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             B::PlayerCountChanged { count },
                         )
                         .await;
+                    }
+                    Ok(C::RequestShutdown) => {
+                        println!("Player {id} requested server shutdown");
+                        // Best-effort broadcast shutdown to all connected clients before stopping server.
+                        broadcast_to_all(&clients_clone, &players_clone, B::ServerShutdown).await;
+                        tokio::time::sleep(Duration::from_millis(200)).await;
+                        stop_server();
                     }
                     Err(err) => {
                         println!("Parse error from player {id}: {err}");
