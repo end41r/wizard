@@ -1,24 +1,27 @@
 //#![allow(unused_variables)]
 //#![allow(dead_code)]
 
+use crate::api::{Lobby, PlayerId, ServerMessage, B, C, S};
 use futures::{SinkExt, StreamExt};
 use iced::{
-    Element, Subscription, Task, clipboard, time, widget::{Column, button, column, container, pick_list, row, scrollable, text, text_input}
+    clipboard, time,
+    widget::{button, column, container, pick_list, row, scrollable, text, text_input, Column},
+    Element, Subscription, Task,
 };
-use std::{sync::{Arc, Mutex}};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio_tungstenite::{
-    connect_async,
-    tungstenite::Message as WsMessage,
-};
-use crate::api::{B, C, Lobby, S, ServerMessage, PlayerId};
+use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
 type ServerMsgReceiver = Arc<Mutex<Option<std::sync::mpsc::Receiver<ServerMessage>>>>;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PlayerCount { P3, P4, P5, P6 }
+enum PlayerCount {
+    P3,
+    P4,
+    P5,
+    P6,
+}
 
 impl PlayerCount {
     fn to_usize(self) -> usize {
@@ -49,10 +52,10 @@ struct App {
     msg: String,
     ip: String,
     menu: MenuState,
-    
+
     host_name: String,
     host_player_count: PlayerCount,
-    
+
     join_name: String,
     my_id: Option<PlayerId>,
 
@@ -63,7 +66,14 @@ struct App {
 }
 
 #[derive(Debug, Clone)]
-enum MenuState { Main, Host, Join, Rules, Lobby, Playing }
+enum MenuState {
+    Main,
+    Host,
+    Join,
+    Rules,
+    Lobby,
+    Playing,
+}
 
 impl Default for App {
     fn default() -> Self {
@@ -75,14 +85,17 @@ impl Default for App {
             msg: String::new(),
 
             menu: MenuState::Main,
-            
+
             host_name: "".to_string(),
             host_player_count: PlayerCount::P4,
             join_name: "".to_string(),
-            
+
             my_id: None,
 
-            lobby: Some(Lobby { players: Vec::new(), chat: Vec::new() }),
+            lobby: Some(Lobby {
+                players: Vec::new(),
+                chat: Vec::new(),
+            }),
             chat_input: String::new(),
             server_messages: Vec::new(),
             ip: String::from("localhost"),
@@ -113,20 +126,20 @@ enum AppMessage {
     GameRules,
     BackToMenu,
     CloseGame,
-    
+
     Tick,
 }
 
 fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
     match msg {
-        AppMessage::Navigate (menu) => {
+        AppMessage::Navigate(menu) => {
             state.menu = menu;
             Task::none()
         }
         AppMessage::Host => {
             // Host a server.
             if !state.connected {
-                let _ = crate::server::start_server();
+                crate::server::start_server();
                 std::thread::sleep(std::time::Duration::from_millis(300));
                 let ws_tx = Arc::clone(&state.ws_tx);
                 let server_rx = Arc::clone(&state.server_rx);
@@ -151,7 +164,9 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             // Send the player count change to the server
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::SetPlayerCount { count: count.to_usize() });
+                    let _ = tx.send(C::SetPlayerCount {
+                        count: count.to_usize(),
+                    });
                     state.last_msg = format!("Player count set to {}", count);
                 }
             }
@@ -169,12 +184,15 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.last_msg = "Server address copied to clipboard.".to_string();
             clipboard::write(addr)
         }
-        
+
         AppMessage::SendChat => {
             // Send chat message to server.
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::ChatMessage {sender: state.join_name.clone(), message: state.chat_input.clone() });
+                    let _ = tx.send(C::ChatMessage {
+                        sender: state.join_name.clone(),
+                        message: state.chat_input.clone(),
+                    });
                     state.last_msg = "Sending chat message...".to_string();
                     state.chat_input.clear();
                 }
@@ -190,7 +208,9 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             println!("Creating lobby...");
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::JoinLobby { name: state.host_name.clone() });
+                    let _ = tx.send(C::JoinLobby {
+                        name: state.host_name.clone(),
+                    });
                     state.last_msg = "Creating lobby...".to_string();
                 }
             }
@@ -224,10 +244,12 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             } else {
                 false
             };
-            
+
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::SetReady { ready: new_ready_state });
+                    let _ = tx.send(C::SetReady {
+                        ready: new_ready_state,
+                    });
                     state.last_msg = format!("Set ready: {}", new_ready_state);
                 }
             }
@@ -242,7 +264,7 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             }
             Task::none()
         }
-        
+
         AppMessage::GameRules => {
             state.menu = MenuState::Rules;
             Task::none()
@@ -278,7 +300,10 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.connected = false;
             state.connecting = false;
             state.my_id = None;
-            state.lobby = Some(Lobby { players: Vec::new(), chat: Vec::new() });
+            state.lobby = Some(Lobby {
+                players: Vec::new(),
+                chat: Vec::new(),
+            });
             state.chat_input.clear();
             state.server_messages.clear();
             state.last_msg.clear();
@@ -292,7 +317,7 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             //close the Application
             std::process::exit(0);
         }
-        
+
         AppMessage::Tick => {
             if state.connecting && !state.connected {
                 state.last_msg = "Connecting".to_string();
@@ -301,7 +326,9 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                         state.connected = true;
                         state.connecting = false;
                         if let Some(ref tx) = *guard {
-                            let _ = tx.send(C::JoinLobby { name: state.join_name.clone() });
+                            let _ = tx.send(C::JoinLobby {
+                                name: state.join_name.clone(),
+                            });
                             state.last_msg = "Joining lobby...".to_string();
                             state.menu = MenuState::Lobby;
                         }
@@ -316,7 +343,9 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                         match msg {
                             ServerMessage::Server(s) => match s {
                                 S::HandshakeConfirmation { version, supported } => {
-                                    state.last_msg = format!("Handshake: version {version}, supported {supported}");
+                                    state.last_msg = format!(
+                                        "Handshake: version {version}, supported {supported}"
+                                    );
                                 }
                                 S::JoinConfirmation { ok, id } => {
                                     state.last_msg = format!("Join: {ok}, id: {id}");
@@ -335,17 +364,19 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                                     state.last_msg = format!("Invalid bid: {}", reason);
                                 }
                                 S::YourTurn { valid_cards } => {
-                                    state.last_msg = format!("Your turn: {} cards",
-                                                             valid_cards.len());
+                                    state.last_msg =
+                                        format!("Your turn: {} cards", valid_cards.len());
                                 }
                                 S::InvalidMove { reason } => {
                                     state.last_msg = format!("Invalid move: {}", reason);
                                 }
-                                
-                            }
+                            },
                             ServerMessage::Broadcast(b) => match b {
                                 B::LobbyState { lobby } => {
-                                    state.last_msg = format!("Lobby: {} players", lobby.as_ref().unwrap().players.len());
+                                    state.last_msg = format!(
+                                        "Lobby: {} players",
+                                        lobby.as_ref().unwrap().players.len()
+                                    );
                                     state.lobby = lobby;
                                 }
                                 B::PlayerCountChanged { count } => {
@@ -361,25 +392,34 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                                 }
                                 B::ChatMessage { sender, message } => {
                                     state.last_msg = format!("Chat from {}: {}", sender, message);
-                                    state.server_messages.push(format!("{}: {}", sender, message));
+                                    state
+                                        .server_messages
+                                        .push(format!("{}: {}", sender, message));
                                     if let Some(ref mut lobby) = state.lobby {
                                         lobby.chat.push((sender.to_string(), message));
                                     }
                                 }
                                 B::GameStarted { players } => {
-                                    state.last_msg = format!("Game started: {} players",
-                                                             players.len());
+                                    state.last_msg =
+                                        format!("Game started: {} players", players.len());
                                     state.menu = MenuState::Playing;
                                 }
-                                B::RoundStarted { round, cards_per_player,
-                                                  trump: _ } => {
-                                    state.last_msg = format!("Round {} started: {} cards", round,
-                                                             cards_per_player);
+                                B::RoundStarted {
+                                    round,
+                                    cards_per_player,
+                                    trump: _,
+                                } => {
+                                    state.last_msg = format!(
+                                        "Round {} started: {} cards",
+                                        round, cards_per_player
+                                    );
                                 }
-                                B::BiddingStarted { starting_player: _,
-                                                    cards_per_player } => {
-                                    state.last_msg = format!("Bidding started: {} cards",
-                                                             cards_per_player);
+                                B::BiddingStarted {
+                                    starting_player: _,
+                                    cards_per_player,
+                                } => {
+                                    state.last_msg =
+                                        format!("Bidding started: {} cards", cards_per_player);
                                 }
                                 B::BidTurn { player } => {
                                     state.last_msg = format!("Player {} bidding", player);
@@ -402,12 +442,16 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                                 B::PoolFinished { winner, cards: _ } => {
                                     state.last_msg = format!("Pool won by {}", winner);
                                 }
-                                B::RoundFinished { scores: _,
-                                                   won_amounts: _ } => {
-                                    state.last_msg = format!("Round finished");
+                                B::RoundFinished {
+                                    scores: _,
+                                    won_amounts: _,
+                                } => {
+                                    state.last_msg = "Round finished".to_string();
                                 }
-                                B::GameFinished { final_scores: _,
-                                                  winner } => {
+                                B::GameFinished {
+                                    final_scores: _,
+                                    winner,
+                                } => {
                                     state.last_msg = format!("Game won by {}", winner);
                                 }
                                 B::ServerShutdown => {
@@ -420,11 +464,14 @@ fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                                     state.connected = false;
                                     state.connecting = false;
                                     state.my_id = None;
-                                    state.lobby = Some(Lobby { players: Vec::new(), chat: Vec::new() });
+                                    state.lobby = Some(Lobby {
+                                        players: Vec::new(),
+                                        chat: Vec::new(),
+                                    });
                                     state.chat_input.clear();
                                     state.server_messages.clear();
                                 }
-                            }
+                            },
                         }
                     }
                 }
@@ -501,9 +548,7 @@ fn view(state: &'_ App) -> Element<'_, AppMessage> {
         MenuState::Lobby => view_lobby_menu(state),
         MenuState::Playing => view_gameplay(state),
     }
-
 }
-
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
     if state.connected || state.connecting {
@@ -517,9 +562,15 @@ fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = column![
         text("Wizard - Main Menu").size(40),
         button("Host").on_press(AppMessage::Host).padding(10),
-        button("Join").on_press(AppMessage::Navigate(MenuState::Join)).padding(10),
-        button("Gamerules").on_press(AppMessage::GameRules).padding(10),
-        button("Exit Game").on_press(AppMessage::CloseGame).padding(10),
+        button("Join")
+            .on_press(AppMessage::Navigate(MenuState::Join))
+            .padding(10),
+        button("Gamerules")
+            .on_press(AppMessage::GameRules)
+            .padding(10),
+        button("Exit Game")
+            .on_press(AppMessage::CloseGame)
+            .padding(10),
         text(state.last_msg.clone()),
     ]
     .spacing(20)
@@ -534,18 +585,28 @@ fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
 }
 
 fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
-    let count_options = vec![PlayerCount::P3, PlayerCount::P4, PlayerCount::P5, PlayerCount::P6];
+    let count_options = vec![
+        PlayerCount::P3,
+        PlayerCount::P4,
+        PlayerCount::P5,
+        PlayerCount::P6,
+    ];
     let can_join = !state.host_name.is_empty();
     let content = column![
         text("Host").size(30),
         row![
             text(&state.ip),
             button("copy").on_press(AppMessage::CopyToClipboard(state.ip.clone())),
-        ].spacing(10),
+        ]
+        .spacing(10),
         text("Name:"),
         text_input("Your Name", &state.host_name).on_input(AppMessage::HostNameChanged),
         text("Player Count:"),
-        pick_list(count_options.clone(), Some(state.host_player_count), |p| AppMessage::HostPlayerCountChanged(p)),
+        pick_list(
+            count_options.clone(),
+            Some(state.host_player_count),
+            AppMessage::HostPlayerCountChanged
+        ),
         button("Create Lobby").on_press_maybe(if can_join {
             Some(AppMessage::CreateLobby)
         } else {
@@ -558,7 +619,10 @@ fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .width(400)
     .align_x(iced::alignment::Horizontal::Left);
 
-    container(content).center_x(iced::Fill).center_y(iced::Fill).into()
+    container(content)
+        .center_x(iced::Fill)
+        .center_y(iced::Fill)
+        .into()
 }
 
 fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
@@ -582,7 +646,10 @@ fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .width(400)
     .align_x(iced::alignment::Horizontal::Left);
 
-    container(content).center_x(iced::Fill).center_y(iced::Fill).into()
+    container(content)
+        .center_x(iced::Fill)
+        .center_y(iced::Fill)
+        .into()
 }
 
 fn view_rules_menu<'a>() -> Element<'a, AppMessage> {
@@ -595,12 +662,21 @@ fn view_rules_menu<'a>() -> Element<'a, AppMessage> {
     .padding(20)
     .align_x(iced::alignment::Horizontal::Left);
 
-    container(content).center_x(iced::Fill).center_y(iced::Fill).into()
+    container(content)
+        .center_x(iced::Fill)
+        .center_y(iced::Fill)
+        .into()
 }
 
 fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
     if !state.connected {
-        return container(column![text("Nicht verbunden zum Server. / IP wurde falsch eingegeben"), button("Zurück").on_press(AppMessage::BackToMenu)]).center_x(iced::Fill).center_y(iced::Fill).into();
+        return container(column![
+            text("Nicht verbunden zum Server. / IP wurde falsch eingegeben"),
+            button("Zurück").on_press(AppMessage::BackToMenu)
+        ])
+        .center_x(iced::Fill)
+        .center_y(iced::Fill)
+        .into();
     }
     if let Some(lobby) = &state.lobby {
         let mut player_rows = Column::new().spacing(10);
@@ -611,7 +687,14 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
             } else {
                 None
             });
-            let row = row![text(format!("{}{}", if p.is_host { "(Host) " } else { "" }, p.name)), toggle];
+            let row = row![
+                text(format!(
+                    "{}{}",
+                    if p.is_host { "(Host) " } else { "" },
+                    p.name
+                )),
+                toggle
+            ];
             player_rows = player_rows.push(row);
         }
 
@@ -621,33 +704,55 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
         }
 
         // determine if start button should be enabled
-        let can_start = lobby.players.len() == state.host_player_count.to_usize() && lobby.players.iter().all(|p| p.ready);
-        let start_button = 
-        row![button("Starten").on_press_maybe(
-                if can_start && state.my_id.is_some() && state.my_id.unwrap() == lobby.players.iter().find(|p| p.is_host).map(|p| p.id).unwrap_or_default() 
-                { Some(AppMessage::StartGame) }
-                else {
+        let can_start = lobby.players.len() == state.host_player_count.to_usize()
+            && lobby.players.iter().all(|p| p.ready);
+        let start_button = row![
+            button("Starten").on_press_maybe(
+                if can_start
+                    && state.my_id.is_some()
+                    && state.my_id.unwrap()
+                        == lobby
+                            .players
+                            .iter()
+                            .find(|p| p.is_host)
+                            .map(|p| p.id)
+                            .unwrap_or_default()
+                {
+                    Some(AppMessage::StartGame)
+                } else {
                     None
                 }
             ),
             text(if !can_start {
                 " (Warten auf Spieler...)"
-                } 
-                else if state.my_id.is_some() && state.my_id.unwrap() != lobby.players.iter().find(|p| p.is_host).map(|p| p.id).unwrap_or_default() {
-                    " (Nur der Host kann starten)"
-                } 
-                else {
-                    ""
-                }
-            )].spacing(5);
+            } else if state.my_id.is_some()
+                && state.my_id.unwrap()
+                    != lobby
+                        .players
+                        .iter()
+                        .find(|p| p.is_host)
+                        .map(|p| p.id)
+                        .unwrap_or_default()
+            {
+                " (Nur der Host kann starten)"
+            } else {
+                ""
+            })
+        ]
+        .spacing(5);
 
         let content = column![
             text("Lobby").size(30),
             row![
                 text("Host Address:"),
                 text_input("Address to share", &state.ip)
-            ].spacing(10),
-            text(format!("Spieler: {}/{}", lobby.players.len(), state.host_player_count.to_usize())),
+            ]
+            .spacing(10),
+            text(format!(
+                "Spieler: {}/{}",
+                lobby.players.len(),
+                state.host_player_count.to_usize()
+            )),
             player_rows,
             scrollable(chat_block).height(150).width(400),
             row![
@@ -660,11 +765,19 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
         .spacing(10)
         .padding(20);
 
-        container(content).center_x(iced::Fill).center_y(iced::Fill).into()
+        container(content)
+            .center_x(iced::Fill)
+            .center_y(iced::Fill)
+            .into()
     } else {
-        container(column![text("Keine Lobby vorhanden"), button("Zurück").on_press(AppMessage::BackToMenu)]).center_x(iced::Fill).center_y(iced::Fill).into()
+        container(column![
+            text("Keine Lobby vorhanden"),
+            button("Zurück").on_press(AppMessage::BackToMenu)
+        ])
+        .center_x(iced::Fill)
+        .center_y(iced::Fill)
+        .into()
     }
-
 }
 fn view_gameplay<'a>(_state: &App) -> Element<'a, AppMessage> {
     let content = column![
@@ -676,9 +789,11 @@ fn view_gameplay<'a>(_state: &App) -> Element<'a, AppMessage> {
     .padding(20)
     .align_x(iced::alignment::Horizontal::Left);
 
-    container(content).center_x(iced::Fill).center_y(iced::Fill).into()
+    container(content)
+        .center_x(iced::Fill)
+        .center_y(iced::Fill)
+        .into()
 }
-
 
 pub fn main() -> iced::Result {
     iced::application("Wizard", update, view)

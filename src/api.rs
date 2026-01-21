@@ -53,11 +53,16 @@ pub enum S {
 pub enum B {
     // Broadcasted by server
     LobbyState {
-        lobby : Option<Lobby>,
+        lobby: Option<Lobby>,
     },
-    ChatMessage { sender: PlayerId, message: String },
-    PlayerCountChanged { count: usize },
-    
+    ChatMessage {
+        sender: PlayerId,
+        message: String,
+    },
+    PlayerCountChanged {
+        count: usize,
+    },
+
     GameStarted {
         players: Vec<PlayerId>,
     },

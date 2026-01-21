@@ -1,4 +1,4 @@
-use crate::api::{B, C, Lobby, Player, S, ServerMessage};
+use crate::api::{Lobby, Player, ServerMessage, B, C, S};
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
@@ -8,9 +8,9 @@ use axum::{
 use futures::{SinkExt, StreamExt};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::{mpsc, RwLock};
 use uuid::Uuid;
 
@@ -56,7 +56,11 @@ pub fn start_server() {
     });
 }
 
-async fn run_server(clients: Clients, players: PlayerList, shutdown_rx: tokio::sync::oneshot::Receiver<()>) {
+async fn run_server(
+    clients: Clients,
+    players: PlayerList,
+    shutdown_rx: tokio::sync::oneshot::Receiver<()>,
+) {
     let app = Router::new().route(
         "/ws",
         get({
@@ -83,7 +87,11 @@ async fn run_server(clients: Clients, players: PlayerList, shutdown_rx: tokio::s
     }
 }
 
-async fn ws_handler(ws: WebSocketUpgrade, clients: Clients, players: PlayerList) -> impl IntoResponse {
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    clients: Clients,
+    players: PlayerList,
+) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, clients, players))
 }
 
@@ -119,7 +127,6 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
 
     // Register the client.
     clients.write().await.insert(id, tx.clone());
-
 
     // Spawn task to forward messages from channel to websocket.
     let mut send_task = tokio::spawn(async move {
@@ -168,8 +175,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                                 println!("Failed to send error: {e:?}");
                             }
                             return;
-                        }
-                        else if players_map.values().any(|p| p.name == name) {
+                        } else if players_map.values().any(|p| p.name == name) {
                             let error = ServerMessage::Server(S::Error {
                                 reason: "Name already taken".to_string(),
                             });
@@ -177,9 +183,9 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                                 println!("Failed to send error: {e:?}");
                             }
                             return;
-                        }
-                        else {
-                            let response = ServerMessage::Server(S::JoinConfirmation { ok: true, id: id });
+                        } else {
+                            let response =
+                                ServerMessage::Server(S::JoinConfirmation { ok: true, id });
                             if let Err(e) = tx.send(response) {
                                 println!("Failed to send join confirmation: {e:?}");
                             }
@@ -196,12 +202,8 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                         players_clone.write().await.insert(id, player);
 
                         // Broadcast the updated lobby state.
-                        let players_list: Vec<Player> = players_clone
-                            .read()
-                            .await
-                            .values()
-                            .cloned()
-                            .collect();
+                        let players_list: Vec<Player> =
+                            players_clone.read().await.values().cloned().collect();
                         broadcast_to_all(
                             &clients_clone,
                             &players_clone,
@@ -210,13 +212,15 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                                     players: players_list,
                                     chat: vec![],
                                 }),
-
                             },
-                        ).await;
+                        )
+                        .await;
                         broadcast_to_all(
                             &clients_clone,
                             &players_clone,
-                            B::PlayerCountChanged { count: MAX_PLAYER_COUNT.load(Ordering::Relaxed) },
+                            B::PlayerCountChanged {
+                                count: MAX_PLAYER_COUNT.load(Ordering::Relaxed),
+                            },
                         )
                         .await;
                     }
@@ -227,12 +231,8 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                         players_clone.write().await.remove(&id);
 
                         // Broadcast the updated lobby state.
-                        let players_list: Vec<Player> = players_clone
-                            .read()
-                            .await
-                            .values()
-                            .cloned()
-                            .collect();
+                        let players_list: Vec<Player> =
+                            players_clone.read().await.values().cloned().collect();
                         broadcast_to_all(
                             &clients_clone,
                             &players_clone,
@@ -273,12 +273,8 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                         }
 
                         // Broadcast the updated lobby state.
-                        let players_list: Vec<Player> = players_clone
-                            .read()
-                            .await
-                            .values()
-                            .cloned()
-                            .collect();
+                        let players_list: Vec<Player> =
+                            players_clone.read().await.values().cloned().collect();
                         broadcast_to_all(
                             &clients_clone,
                             &players_clone,
@@ -295,7 +291,12 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                         println!("Player {id} bid: {amount}");
 
                         // Broadcast the bid.
-                        broadcast_to_all(&clients_clone, &players_clone, B::BidMade { player: id, amount }).await;
+                        broadcast_to_all(
+                            &clients_clone,
+                            &players_clone,
+                            B::BidMade { player: id, amount },
+                        )
+                        .await;
                         // TODO: Validate the bid and check if the bidding is complete.
                     }
                     Ok(C::PlayCard { card }) => {
@@ -315,13 +316,9 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     }
                     Ok(C::StartGame) => {
                         println!("Player {id} requested to start game");
-                        let players_list: Vec<Player> = players_clone
-                            .read()
-                            .await
-                            .values()
-                            .cloned()
-                            .collect();
-                        
+                        let players_list: Vec<Player> =
+                            players_clone.read().await.values().cloned().collect();
+
                         // Broadcast game started to all players
                         broadcast_to_all(
                             &clients_clone,
@@ -362,13 +359,11 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
         }
     });
 
-
     // Wait for either task to finish.
     tokio::select! {
         _ = &mut send_task => recv_task.abort(),
         _ = &mut recv_task => send_task.abort(),
     }
-
 
     // Cleanup: Remove the client.
     clients.write().await.remove(&id);
