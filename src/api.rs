@@ -15,7 +15,7 @@ pub enum ServerMessage {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum C {
-    // Sent by client
+    // Messages sent by the client.
     Handshake { version: usize },
     JoinLobby { name: String },
     LeaveLobby,
@@ -34,7 +34,7 @@ pub enum C {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum S {
-    // Sent by server
+    // Messages sent by the server.
     HandshakeConfirmation { version: usize, supported: bool },
     JoinConfirmation { ok: bool, id: PlayerId },
     Error { reason: String },
@@ -51,12 +51,12 @@ pub enum S {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum B {
-    // Broadcasted by server
+    // Messages broadcasted by the server.
     LobbyState {
         lobby: Option<Lobby>,
     },
     ChatMessage {
-        sender: PlayerId,
+        sender: String,
         message: String,
     },
     PlayerCountChanged {
@@ -148,5 +148,6 @@ pub struct Player {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Lobby {
     pub players: Vec<Player>,
-    pub chat: Vec<(String, String)>, // (sender, message)
+    /// Contains tuples of (sender, message).
+    pub chat: Vec<(String, String)>,
 }

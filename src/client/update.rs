@@ -11,21 +11,10 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
         AppMessage::Host => {
-            // Host a server.
-            if !state.connected {
-                crate::server::start_server();
-                std::thread::sleep(std::time::Duration::from_millis(300));
-                let ws_tx = Arc::clone(&state.ws_tx);
-                let server_rx = Arc::clone(&state.server_rx);
-                std::thread::spawn(move || {
-                    let rt = tokio::runtime::Runtime::new().unwrap();
-                    rt.block_on(connect_ws(ws_tx, server_rx, "127.0.0.1".into()));
-                });
-                state.connected = true;
-                let local_ip = crate::server::local_ip();
-                state.msg = format!("Hosting on {local_ip}");
-                state.ip = local_ip;
-            }
+            let local_ip = crate::server::local_ip();
+            state.msg = format!("Hosting on {local_ip}");
+            state.ip = local_ip;
+
             state.menu = MenuState::Host;
             Task::none()
         }
@@ -35,7 +24,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::HostPlayerCountChanged(count) => {
             state.host_player_count = count;
-            // Send the player count change to the server
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
                     let _ = tx.send(C::SetPlayerCount {
@@ -60,7 +48,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         }
 
         AppMessage::SendChat => {
-            // Send chat message to server.
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
                     let _ = tx.send(C::ChatMessage {
@@ -78,8 +65,21 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
         AppMessage::CreateLobby => {
-            // Send JoinLobby message to server.
+            if !state.connected {
+                crate::server::start_server();
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                let ws_tx = Arc::clone(&state.ws_tx);
+                let server_rx = Arc::clone(&state.server_rx);
+                std::thread::spawn(move || {
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    rt.block_on(connect_ws(ws_tx, server_rx, "127.0.0.1".into()));
+                });
+                state.connected = true;
+            }
+
             println!("Creating lobby...");
+            std::thread::sleep(std::time::Duration::from_millis(2000));
+
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
                     let _ = tx.send(C::JoinLobby {
@@ -92,7 +92,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
         AppMessage::Connect => {
-            // Connect to "localhost:3000" without starting a server.
             if !state.connected {
                 let ws_tx = Arc::clone(&state.ws_tx);
                 let server_rx = Arc::clone(&state.server_rx);
@@ -107,11 +106,15 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
 
-        AppMessage::ToggleReady(p) => {
-            // Find the player and toggle their ready state
+        AppMessage::ToggleReady(player_to_toggle) => {
+            // Finds the player and toggles their ready state.
             let new_ready_state = if let Some(lobby) = &state.lobby {
-                if let Some(player) = lobby.players.iter().find(|pl| pl.id == p) {
-                    !player.ready
+                if let Some(our_player) = lobby
+                    .players
+                    .iter()
+                    .find(|player| player.id == player_to_toggle)
+                {
+                    !our_player.ready
                 } else {
                     false
                 }
@@ -144,7 +147,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
         AppMessage::BackToMenu => {
-            // If we're the host, stop the server; otherwise drop the connection.
+            // Stops the server if the player is the host; otherwise drops the connection.
             let am_host = if let (Some(lobby), Some(my_id)) = (&state.lobby, state.my_id) {
                 lobby.players.iter().any(|p| p.id == my_id && p.is_host)
             } else {
@@ -152,7 +155,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             };
 
             if am_host {
-                // send ShutdownRequest
                 if let Ok(guard) = state.ws_tx.lock() {
                     if let Some(ref tx) = *guard {
                         let _ = tx.send(C::RequestShutdown);
@@ -160,7 +162,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 }
             }
 
-            // If connected, try to send LeaveLobby before dropping (best-effort).
             if let Ok(mut guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
                     let _ = tx.send(C::LeaveLobby);
@@ -188,7 +189,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
         AppMessage::CloseGame => {
-            //close the Application
+            // Calls the Application exit.
             std::process::exit(0);
         }
 
@@ -216,7 +217,7 @@ fn handle_tick(state: &mut App) {
             }
         }
     }
-    // Collect messages first to avoid borrowing issues
+    // Collects messages first to avoid borrowing issues.
     let messages: Vec<ServerMessage> = if let Ok(guard) = state.server_rx.lock() {
         if let Some(ref rx) = *guard {
             let mut msgs = Vec::new();
@@ -274,7 +275,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
             }
             B::PlayerCountChanged { count } => {
                 state.last_msg = format!("Max players set to {count}");
-                // Convert usize to PlayerCount
+
+                // Converts the usize to a `PlayerCount` enum.
+                // Needed for easier view handling.
                 state.host_player_count = match count {
                     3 => PlayerCount::P3,
                     4 => PlayerCount::P4,
@@ -287,7 +290,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.last_msg = format!("Chat from {sender}: {message}");
                 state.server_messages.push(format!("{sender}: {message}"));
                 if let Some(ref mut lobby) = state.lobby {
-                    lobby.chat.push((sender.to_string(), message));
+                    lobby.chat.push((sender, message));
                 }
             }
             B::GameStarted { players } => {
@@ -342,8 +345,8 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
             }
             B::ServerShutdown => {
                 println!("Client: received ServerShutdown broadcast");
+                // Performs a cleanup (although maybe we can make a function for that)
                 state.last_msg = "Lost connection to host".to_string();
-                // Reset client-visible state and return to main menu.
                 state.menu = MenuState::Main;
                 state.connected = false;
                 state.connecting = false;

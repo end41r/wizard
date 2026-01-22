@@ -161,7 +161,6 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
             chat_block = chat_block.push(text(format!("{}: {}", sender, msg)));
         }
 
-        // determine if start button should be enabled
         let can_start = lobby.players.len() == state.host_player_count.to_usize()
             && lobby.players.iter().all(|p| p.ready);
         let start_button = row![

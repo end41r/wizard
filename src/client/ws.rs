@@ -22,7 +22,7 @@ pub async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: S
             *server_rx.lock().unwrap() = Some(srv_rx);
             println!("Receiver set successfully!");
 
-            // Send task.
+            // Spawns a task that forwards outgoing messages to the WebSocket.
             let send_task = tokio::spawn(async move {
                 while let Some(msg) = rx.recv().await {
                     let text = serde_json::to_string(&msg).unwrap();
@@ -32,7 +32,7 @@ pub async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: S
                 }
             });
 
-            // Receive task and directly parse it as a ServerMessage.
+            // Spawns a task that receives messages and parses them as ServerMessage.
             let recv_task = tokio::spawn(async move {
                 while let Some(Ok(WsMessage::Text(txt))) = read.next().await {
                     println!("Raw message received: {txt}");
@@ -46,7 +46,7 @@ pub async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: S
                 println!("Receive loop ended");
             });
 
-            // Wait for either task to complete.
+            // Waits for either task to complete.
             tokio::select! {
                 _ = send_task => println!("Send task ended"),
                 _ = recv_task => println!("Receive task ended"),

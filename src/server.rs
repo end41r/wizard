@@ -19,7 +19,7 @@ type PlayerList = Arc<RwLock<HashMap<u64, Player>>>;
 
 const SVERSION: usize = 1;
 
-// evade unsafe static mut
+// Uses an atomic to avoid unsafe static mut use.
 static MAX_PLAYER_COUNT: AtomicUsize = AtomicUsize::new(4);
 
 static SHUTDOWN_SENDER: Mutex<Option<tokio::sync::oneshot::Sender<()>>> = Mutex::new(None);
@@ -95,7 +95,8 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_socket(socket, clients, players))
 }
 
-// part with shutting down was made with help from chatgpt
+/// Stops the server by sending a shutdown signal.
+/// Was made using Claude Opuss' help.
 pub fn stop_server() {
     if let Ok(mut guard) = SHUTDOWN_SENDER.lock() {
         if let Some(tx) = guard.take() {
@@ -104,7 +105,6 @@ pub fn stop_server() {
     }
 }
 
-// Broadcast to all connected clients.
 async fn broadcast_to_all(clients: &Clients, _players: &PlayerList, broadcast: B) {
     let wrapped = ServerMessage::Broadcast(broadcast);
     let message_text = serde_json::to_string(&wrapped).unwrap();
@@ -125,10 +125,9 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
 
     let (tx, mut rx) = mpsc::unbounded_channel::<ServerMessage>();
 
-    // Register the client.
     clients.write().await.insert(id, tx.clone());
 
-    // Spawn task to forward messages from channel to websocket.
+    // Spawns a task to forward messages from the channel to the WebSocket.
     let mut send_task = tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
             match serde_json::to_string(&msg) {
@@ -146,7 +145,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
         }
     });
 
-    // Run the main receive loop.
+    // Runs the main receive loop.
     let clients_clone = clients.clone();
     let players_clone = players.clone();
     let mut recv_task = tokio::spawn(async move {
@@ -191,7 +190,6 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             }
                         }
                         drop(players_map);
-                        // Add player to the players list
                         let is_host = players_clone.read().await.is_empty(); // thats really unsafe
                         let player = Player {
                             id,
@@ -201,7 +199,6 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                         };
                         players_clone.write().await.insert(id, player);
 
-                        // Broadcast the updated lobby state.
                         let players_list: Vec<Player> =
                             players_clone.read().await.values().cloned().collect();
                         broadcast_to_all(
@@ -227,10 +224,8 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     Ok(C::LeaveLobby) => {
                         println!("Player {id} leaving lobby");
 
-                        // Remove player from the players list
                         players_clone.write().await.remove(&id);
 
-                        // Broadcast the updated lobby state.
                         let players_list: Vec<Player> =
                             players_clone.read().await.values().cloned().collect();
                         broadcast_to_all(
@@ -248,7 +243,6 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     Ok(C::ChatMessage { sender, message }) => {
                         println!("Player {sender} sent chat message: {message}");
 
-                        // Broadcast the chat message.
                         broadcast_to_all(
                             &clients_clone,
                             &players_clone,
@@ -257,8 +251,8 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                                     .read()
                                     .await
                                     .get(&id)
-                                    .map(|p| p.id)
-                                    .unwrap_or(0),
+                                    .map(|p| p.name.clone())
+                                    .unwrap_or("Unknown".to_string()),
                                 message: message.clone(),
                             },
                         )
@@ -267,12 +261,10 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     Ok(C::SetReady { ready }) => {
                         println!("Player {id} set ready: {ready}");
 
-                        // Update player ready status
                         if let Some(player) = players_clone.write().await.get_mut(&id) {
                             player.ready = ready;
                         }
 
-                        // Broadcast the updated lobby state.
                         let players_list: Vec<Player> =
                             players_clone.read().await.values().cloned().collect();
                         broadcast_to_all(
@@ -290,19 +282,17 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     Ok(C::Bid { amount }) => {
                         println!("Player {id} bid: {amount}");
 
-                        // Broadcast the bid.
                         broadcast_to_all(
                             &clients_clone,
                             &players_clone,
                             B::BidMade { player: id, amount },
                         )
                         .await;
-                        // TODO: Validate the bid and check if the bidding is complete.
+                        // TODO: Validates the bid and checks if the bidding is complete.
                     }
                     Ok(C::PlayCard { card }) => {
                         println!("Player {id} played card: {card:?}");
 
-                        // Broadcast the played card.
                         broadcast_to_all(
                             &clients_clone,
                             &players_clone,
@@ -312,14 +302,13 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             },
                         )
                         .await;
-                        // TODO: Validate the play and check if the pool is complete.
+                        // TODO: Validates the play and checks if the pool is complete.
                     }
                     Ok(C::StartGame) => {
                         println!("Player {id} requested to start game");
                         let players_list: Vec<Player> =
                             players_clone.read().await.values().cloned().collect();
 
-                        // Broadcast game started to all players
                         broadcast_to_all(
                             &clients_clone,
                             &players_clone,
@@ -332,7 +321,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     Ok(C::SetPlayerCount { count }) => {
                         println!("Player {id} set player count to {count}");
                         MAX_PLAYER_COUNT.store(count, Ordering::Relaxed);
-                        // Broadcast player count change to all players
+
                         broadcast_to_all(
                             &clients_clone,
                             &players_clone,
@@ -342,7 +331,6 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     }
                     Ok(C::RequestShutdown) => {
                         println!("Player {id} requested server shutdown");
-                        // Best-effort broadcast shutdown to all connected clients before stopping server.
                         broadcast_to_all(&clients_clone, &players_clone, B::ServerShutdown).await;
                         tokio::time::sleep(Duration::from_millis(200)).await;
                         stop_server();
@@ -359,13 +347,13 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
         }
     });
 
-    // Wait for either task to finish.
+    // Waits for either task to finish.
     tokio::select! {
         _ = &mut send_task => recv_task.abort(),
         _ = &mut recv_task => send_task.abort(),
     }
 
-    // Cleanup: Remove the client.
+    // Removes the client from the shared map.
     clients.write().await.remove(&id);
     println!("Player {id} disconnected");
 }
