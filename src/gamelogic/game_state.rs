@@ -8,7 +8,6 @@ pub struct GameState {
     pub over: bool,
 }
 
-
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RoundState {
     pub round_number: usize,
@@ -20,7 +19,6 @@ pub struct RoundState {
     pub trump: Option<crate::gamelogic::card::Suit>,
     pub dealer_needs_to_set_trump: bool,
 }
-
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct PlayerState {

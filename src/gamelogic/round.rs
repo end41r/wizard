@@ -1,6 +1,6 @@
 // use iced::window::UserAttention;
-use rand::Rng;
 use rand::rng;
+use rand::Rng;
 use std::collections::HashMap;
 
 use strum::IntoEnumIterator;
@@ -19,7 +19,7 @@ pub struct Player {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Round {
-    pub players: HashMap<usize,Player>,
+    pub players: HashMap<usize, Player>,
     pub order: Vec<usize>,
     pub round_number: usize,
     pub current_trick: Vec<(usize, Card)>,
@@ -32,7 +32,6 @@ pub struct Round {
 
 impl Round {
     pub fn new(round_number: usize, player_ids: &Vec<usize>) -> Self {
-
         if player_ids.len() == 0 {
             panic!("Cannot create a round with no players");
         }
@@ -43,10 +42,17 @@ impl Round {
             }
         }
 
-
         let mut players = HashMap::new();
         for id in player_ids {
-            players.insert(id.clone(), Player { called: usize::MAX, hand: draw_random_cards(&mut deck, round_number + 1), tricks_won: 0, points: 0});
+            players.insert(
+                id.clone(),
+                Player {
+                    called: usize::MAX,
+                    hand: draw_random_cards(&mut deck, round_number + 1),
+                    tricks_won: 0,
+                    points: 0,
+                },
+            );
         }
         let dealer_position_in_player_ids = round_number % player_ids.len();
         let dealer_id = player_ids[dealer_position_in_player_ids];
@@ -94,7 +100,6 @@ impl Round {
         Ok(())
     }
 
-
     pub fn set_trump(&mut self, player_id: usize, suit: Suit) -> Result<(), Err> {
         if self.dealer != player_id {
             return Err("Only the dealer can set the trump");
@@ -117,7 +122,7 @@ impl Round {
             Some(index) => {
                 player.hand.remove(index);
                 self.current_trick.push((player_id, card));
-            },
+            }
             None => {
                 return Err("Player does not have this card in hand");
             }
@@ -136,11 +141,11 @@ impl Round {
             panic!("Cannot calculate trick winner before all players have played a card. This should never happen");
         }
 
-        let mut winner =  self.current_trick[0].clone();
+        let mut winner = self.current_trick[0].clone();
         for (id, card) in self.current_trick.clone() {
             if card.symbol == Symbol::Wizard {
                 winner = (id, card);
-                break
+                break;
             }
             if self.better_than_winner(&winner.1, &card) {
                 winner = (id, card);
@@ -204,16 +209,20 @@ impl Round {
     pub fn to_state(&self) -> crate::gamelogic::game_state::RoundState {
         crate::gamelogic::game_state::RoundState {
             round_number: self.round_number,
-            player_states: self.players.iter().map(|(id, player)| {
-                let player_state = crate::gamelogic::game_state::PlayerState {
-                    hand: player.hand.clone(),
-                    called: player.called,
-                    tricks_won: player.tricks_won,
-                    id: id.clone(),
-                    points: player.points,
-                };
-                (id.clone(), player_state)
-            }).collect(),
+            player_states: self
+                .players
+                .iter()
+                .map(|(id, player)| {
+                    let player_state = crate::gamelogic::game_state::PlayerState {
+                        hand: player.hand.clone(),
+                        called: player.called,
+                        tricks_won: player.tricks_won,
+                        id: id.clone(),
+                        points: player.points,
+                    };
+                    (id.clone(), player_state)
+                })
+                .collect(),
             dealer: self.dealer,
             order: self.order.clone(),
             current_trick: self.current_trick.clone(),

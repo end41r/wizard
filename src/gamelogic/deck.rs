@@ -1,5 +1,5 @@
-use strum::IntoEnumIterator;
 use std::fmt::Display;
+use strum::IntoEnumIterator;
 
 use crate::gamelogic::card::{Card, Suit, Symbol};
 

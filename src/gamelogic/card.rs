@@ -5,7 +5,7 @@ pub enum Suit {
     Clubs,
     Diamonds,
     Hearts,
-    Spades
+    Spades,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, EnumIter)]
@@ -24,13 +24,13 @@ pub enum Symbol {
     King,
     Ace,
     Wizard,
-    Jester
+    Jester,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Copy)]
 pub struct Card {
     pub suit: Suit,
-    pub symbol: Symbol
+    pub symbol: Symbol,
 }
 
 impl Card {
