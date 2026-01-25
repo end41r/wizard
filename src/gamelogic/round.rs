@@ -32,7 +32,7 @@ pub struct Round {
 
 impl Round {
     pub fn new(round_number: usize, player_ids: &Vec<usize>) -> Self {
-        if player_ids.len() == 0 {
+        if player_ids.is_empty() {
             panic!("Cannot create a round with no players");
         }
         let mut deck = vec![];
@@ -45,7 +45,7 @@ impl Round {
         let mut players = HashMap::new();
         for id in player_ids {
             players.insert(
-                id.clone(),
+                *id,
                 Player {
                     called: usize::MAX,
                     hand: draw_random_cards(&mut deck, round_number + 1),
@@ -67,7 +67,7 @@ impl Round {
         let mut trump = None;
 
         let mut dealer_needs_to_set_trump = false;
-        if deck.len() > 0 {
+        if !deck.is_empty() {
             let trump_card = draw_random_card(&mut deck);
             if trump_card.symbol != Symbol::Jester && trump_card.symbol != Symbol::Wizard {
                 trump = Some(trump_card.suit);
@@ -76,14 +76,14 @@ impl Round {
         }
 
         Round {
-            players: players,
-            order: order,
+            players,
+            order,
             current_trick: vec![],
             dealer: dealer_id,
             current_player: current_player_id,
-            trump: trump,
-            dealer_needs_to_set_trump: dealer_needs_to_set_trump,
-            round_number: round_number,
+            trump,
+            dealer_needs_to_set_trump,
+            round_number,
             is_over: false,
         }
     }
@@ -141,7 +141,7 @@ impl Round {
             panic!("Cannot calculate trick winner before all players have played a card. This should never happen");
         }
 
-        let mut winner = self.current_trick[0].clone();
+        let mut winner = self.current_trick[0];
         for (id, card) in self.current_trick.clone() {
             if card.symbol == Symbol::Wizard {
                 winner = (id, card);
@@ -153,7 +153,7 @@ impl Round {
         }
         self.players.get_mut(&winner.0).unwrap().tricks_won += 1;
 
-        if self.players[&0].hand.len() == 0 {
+        if self.players[&0].hand.is_empty() {
             self.get_points();
             self.is_over = true;
         }
@@ -185,7 +185,7 @@ impl Round {
         };
 
         let suit_bonus: usize = match self.trump {
-            Some(trump_suit) if &card.suit == &trump_suit => 16,
+            Some(trump_suit) if card.suit == trump_suit => 16,
             _ => 0,
         };
 
@@ -217,10 +217,10 @@ impl Round {
                         hand: player.hand.clone(),
                         called: player.called,
                         tricks_won: player.tricks_won,
-                        id: id.clone(),
+                        id: *id,
                         points: player.points,
                     };
-                    (id.clone(), player_state)
+                    (*id, player_state)
                 })
                 .collect(),
             dealer: self.dealer,

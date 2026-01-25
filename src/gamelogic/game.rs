@@ -13,6 +13,12 @@ pub struct Game {
     pub is_over: bool,
 }
 
+impl Default for Game {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Game {
     pub fn new() -> Self {
         Game {
@@ -30,7 +36,7 @@ impl Game {
         let current_round = self.rounds.last_mut().unwrap();
         match current_round.set_trump(player_id, suit) {
             Ok(_) => Ok(self.current_game_state()),
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
         }
     }
 
@@ -41,7 +47,7 @@ impl Game {
         let current_round = self.rounds.last_mut().unwrap();
         match current_round.set_called(player_id, value) {
             Ok(_) => Ok(self.current_game_state()),
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
         }
     }
 
@@ -65,7 +71,7 @@ impl Game {
                 }
                 Ok(self.current_game_state())
             }
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
         }
     }
 
