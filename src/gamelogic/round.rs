@@ -59,7 +59,7 @@ impl Round {
         let current_player_position = (dealer_position_in_player_ids + 1) % player_ids.len();
         let current_player_id = player_ids[current_player_position];
 
-        let mut order = vec![usize::max_value(); player_ids.len()];
+        let mut order = vec![usize::MAX; player_ids.len()];
         for i in 0..player_ids.len() {
             order[i] = player_ids[(current_player_position + i) % player_ids.len()];
         }

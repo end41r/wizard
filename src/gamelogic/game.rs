@@ -115,7 +115,7 @@ impl Game {
     fn start_new_round(&mut self) {
         let next_round_number = self.rounds.len();
         println!("[Game] Starting a new round: {}", next_round_number);
-        let new_round = Round::new(next_round_number.try_into().unwrap(), &self.players.clone());
+        let new_round = Round::new(next_round_number, &self.players.clone());
         self.rounds.push(new_round);
     }
 
