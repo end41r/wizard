@@ -167,10 +167,10 @@ fn new_game_with_3_players() -> Game {
 #[test]
 fn start_game_with_3_players() {
     let mut game = new_game_with_3_players();
-    assert_eq!(game.started, false);
+    assert!(!game.started);
     assert!(game.start().is_ok());
     assert_eq!(game.players.len(), 3);
-    assert_eq!(game.started, true);
+    assert!(game.started);
 }
 
 #[test]
