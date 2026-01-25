@@ -1,23 +1,72 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use rand::seq::SliceRandom;
-use crate::gamelogic::{game_state::GameState, round::Round};
+use crate::gamelogic::{card::Suit, game_state::GameState, round::Round};
 
 type Err = &'static str;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Game {
-    rounds: Vec<Round>,
-    players: Vec<usize>,
-    started: bool,
+    pub rounds: Vec<Round>,
+    pub players: Vec<usize>,
+    pub started: bool,
+    pub is_over: bool,
 }
 
 impl Game {
     pub fn new() -> Self {
-        Game { 
+        Game {
             rounds: vec![],
             players: vec![],
             started: false,
+            is_over: false
+        }
+    }
+
+    pub fn set_trump(&mut self, player_id: usize, suit: Suit) -> Result<GameState, Err> {
+        if !self.started {
+            return Err("Game has not started yet");
+        }
+        let current_round = self.rounds.last_mut().unwrap();
+        match current_round.set_trump(player_id, suit) {
+            Ok(_) => {
+                Ok(self.current_game_state())
+            },
+            Err(e) => return Err(e),
+        }
+    }
+
+    pub fn set_called(&mut self, player_id: usize, value: usize) -> Result<GameState, Err> {
+        if !self.started {
+            return Err("Game has not started yet");
+        }
+        let current_round = self.rounds.last_mut().unwrap();
+        match current_round.set_called(player_id, value) {
+            Ok(_) => {
+                Ok(self.current_game_state())
+            },
+            Err(e) => return Err(e),
+        }
+    }
+
+    pub fn play_card(&mut self, player_id: usize, card: crate::gamelogic::card::Card) -> Result<GameState, Err> {
+        if !self.started {
+            return Err("Game has not started yet");
+        }
+        let current_round = self.rounds.last_mut().unwrap();
+        match current_round.play_card(player_id, card) {
+            Ok(_) => {
+                if current_round.is_over {
+                    if  self.rounds.len() < self.total_rounds() - 1 {
+                        println!("{:#?}", self.current_game_state());
+                        self.start_new_round();
+                    } else {
+                        self.is_over = true;
+                    }
+                }
+                Ok(self.current_game_state())
+            },
+            Err(e) => return Err(e),
         }
     }
 
@@ -34,7 +83,7 @@ impl Game {
         if self.started {
             return Err("Cannot add a player after the game started")
         }
-       
+
         let index_result = self.players.iter().position(|x| *x == id);
         match index_result {
             Some(index) => {
@@ -60,6 +109,7 @@ impl Game {
 
     fn start_new_round(&mut self) {
         let next_round_number = self.rounds.len();
+        println!("[Game] Starting a new round: {}", next_round_number);
         let new_round = Round::new(next_round_number.try_into().unwrap(), &self.players.clone());
         self.rounds.push(new_round);
     }
@@ -69,32 +119,20 @@ impl Game {
             .players
             .iter()
             .cloned()
-            .map(|player| (player, 0))
-            .collect::<HashMap<_, _>>();
-       
+            .map(|player| (player, self.rounds.iter().map(|round| round.players.get(&player).unwrap().points).sum()))
+            .collect::<HashMap<usize, i32>>();
         GameState {
             current_round: self.rounds.last().unwrap().to_state(),
             total_rounds: self.total_rounds(),
             players,
+            over: self.is_over,
         }
     }
 
     fn total_rounds(&self) -> usize {
         60 / self.players.len()
-    }   
+    }
 
-    // pub fn add_to_scoreboard(&self) -> usize {
-    //         if self.angesagt == self.stiche {
-    //             return 20 + self.stiche * 10;
-    //         }
-    //         else if self.angesagt < self.stiche {
-    //             return 10 * (self.stiche - self.angesagt)
-    //         }
-    //         else {  
-    //             return 10 * (self.angesagt - self.stiche)
-    //         }
-    // }
-    
 }
 
 #[test]
@@ -156,5 +194,5 @@ fn remove_player_after_game_start() {
     let i_wont_play = game.add_player();
     let _ = game.start();
     assert!(game.remove_player(i_wont_play.unwrap()).is_err());
-}    
+}
 

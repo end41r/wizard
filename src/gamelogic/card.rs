@@ -27,7 +27,7 @@ pub enum Symbol {
     Jester
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Copy)]
 pub struct Card {
     pub suit: Suit,
     pub symbol: Symbol
