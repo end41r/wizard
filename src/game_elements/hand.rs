@@ -1,9 +1,10 @@
 use super::GameElement;
 use crate::client::AppMessage;
-use crate::game_elements::{AnimationCore, AnimationState, BasicAnimation};
-use crate::game_elements::hand_card::{Card, CardMessage};
-use super::AnimationTicker;
+use crate::game_elements::{AnimationCore, AnimationState};
+use crate::game_elements::hand_card::hand_card::{Card, CardMessage};
+use super::{AnimationEndSensor, AnimationStarter};
 
+use std::num::NonZero;
 use iced::{Point, Size, widget::{Container, Stack, container, pin, stack}};
 use indexmap::{IndexMap, map::MutableKeys};
 
@@ -33,38 +34,22 @@ pub struct Hand {
     hovered_card_id: usize,
     top_card_id_upper: usize,
     top_card_id_lower: usize,
-    hide_animation_ticker: AnimationTicker
+    hide_animation_ticker: AnimationEndSensor<usize>,
+    draw_animation_ticker: AnimationStarter<Vec<Card>>
 }
 
 impl Default for Hand {
     fn default() -> Self {
         Self {
             window_size: Size::new(300.0, 300.0),
-            cards: IndexMap::from([
-                (0, Card::new(0, CARD1_PATH, Size::new(154.0, 225.0))),
-                (1, Card::new(1, CARD3_PATH, Size::new(154.0, 225.0))),
-                (2, Card::new(2, CARD2_PATH, Size::new(154.0, 225.0))),
-                (3, Card::new(3, CARD1_PATH, Size::new(154.0, 225.0))),
-                (4, Card::new(4, CARD4_PATH, Size::new(154.0, 225.0))),
-                (5, Card::new(5, CARD2_PATH, Size::new(154.0, 225.0))),
-                (6, Card::new(6, CARD1_PATH, Size::new(154.0, 225.0))),
-                (7, Card::new(7, CARD3_PATH, Size::new(154.0, 225.0))),
-                (8, Card::new(8, CARD2_PATH, Size::new(154.0, 225.0))),
-                (9, Card::new(9, CARD1_PATH, Size::new(154.0, 225.0))),
-                (10, Card::new(10, CARD4_PATH, Size::new(154.0, 225.0))),
-                (11, Card::new(11, CARD2_PATH, Size::new(154.0, 225.0))),
-                (12, Card::new(12, CARD1_PATH, Size::new(154.0, 225.0))),
-                (13, Card::new(13, CARD4_PATH, Size::new(154.0, 225.0))),
-                (14, Card::new( 14, CARD2_PATH, Size::new(154.0, 225.0))),
-                (15, Card::new(15, CARD1_PATH, Size::new(154.0, 225.0))),
-                (16, Card::new(16, CARD3_PATH, Size::new(154.0, 225.0))),
-            ]),
+            cards: IndexMap::from([]),
             card_base_size: Size::new(154.0, 225.0),
             hovered_card_row_low: true,
             hovered_card_id: 100,
             top_card_id_upper: 100, // Impossible to reach
             top_card_id_lower: 100,  // Impossible to reach
-            hide_animation_ticker: AnimationTicker::new(20, 1)
+            hide_animation_ticker: AnimationEndSensor::new(NonZero::new(20).unwrap()),
+            draw_animation_ticker: AnimationStarter::new(NonZero::new(3).unwrap())
         }    
     }
 }
@@ -118,6 +103,36 @@ impl Hand {
         card_ids
     }
 
+    pub fn get_cards(&self) -> Vec<Card> {
+        let mut cards: Vec<Card> = vec!();
+        for (_, card) in self.cards.iter() {
+            cards.push(card.clone());
+        }
+        cards
+    }
+
+    pub fn build_test_cards() -> Vec<Card> {
+        vec![
+            Card::new(0, CARD1_PATH, Size::new(154.0, 225.0)),
+            Card::new(1, CARD3_PATH, Size::new(154.0, 225.0)),
+            Card::new(2, CARD2_PATH, Size::new(154.0, 225.0)),
+            Card::new(3, CARD1_PATH, Size::new(154.0, 225.0)),
+            Card::new(4, CARD4_PATH, Size::new(154.0, 225.0)),
+            Card::new(5, CARD2_PATH, Size::new(154.0, 225.0)),
+            Card::new(6, CARD1_PATH, Size::new(154.0, 225.0)),
+            Card::new(7, CARD3_PATH, Size::new(154.0, 225.0)),
+            Card::new(8, CARD2_PATH, Size::new(154.0, 225.0)),
+            Card::new(9, CARD1_PATH, Size::new(154.0, 225.0)),
+            Card::new(10, CARD4_PATH, Size::new(154.0, 225.0)),
+            Card::new(11, CARD2_PATH, Size::new(154.0, 225.0)),
+            Card::new(12, CARD1_PATH, Size::new(154.0, 225.0)),
+            Card::new(13, CARD4_PATH, Size::new(154.0, 225.0)),
+            Card::new( 14, CARD2_PATH, Size::new(154.0, 225.0)),
+            Card::new(15, CARD1_PATH, Size::new(154.0, 225.0)),
+            Card::new(16, CARD3_PATH, Size::new(154.0, 225.0)),
+            ]
+    }
+
     fn get_hand_width(&self) -> f32 {
         // 10 cards layered size with max width reached while left and right card at max size
         self.card_base_size.width * 3.0 +
@@ -143,11 +158,23 @@ impl Hand {
     fn get_hand_row_distance(&self) -> f32 {
         -self.window_size.width * MULT_BASE_WIDTH_CARD_STACK_OFFSET
     }
+
+    fn change_cards(&mut self, cards: Vec<Card>) {
+        self.cards.clear();
+        for card in cards.iter() {
+            self.cards.insert(card.id, card.clone());
+        }
+    }
+
+    fn update_cards_with_msg(&mut self, msg: CardMessage) {
+        for (_, card) in self.cards.iter_mut() {
+            card.update_with_msg(msg.clone());
+        }
+    }
 }
 
 impl GameElement for Hand {
 
-    type HigherMessage = AppMessage;
     type OwnMessage = HandMessage;
 
     fn convert_to_app_message(msg: HandMessage) -> AppMessage {
@@ -157,25 +184,27 @@ impl GameElement for Hand {
     fn update_with_msg(&mut self, msg: HandMessage) {
         match msg {
             HandMessage::CardMessage(card_msg) => {
-                // The for-lopp needs to come before the match.
-                for (_, card) in self.cards.iter_mut() {
-                    card.update_with_msg(card_msg.clone());
-                }
                 match card_msg {
                     CardMessage::Hovered(id) => {
-                        self.hovered_card_id = id;
-                        if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
-                                                                        .contains(&id) {
-                            self.hovered_card_row_low = false;
-                            self.top_card_id_upper = id;
-                        } else {
-                            self.hovered_card_row_low = true;
-                            self.top_card_id_lower = id;
+                        if !self.hide_animation_ticker.active() {
+                            self.update_cards_with_msg(card_msg);
+                            self.hovered_card_id = id;
+                            if self.cards.len() > 10 && self.get_card_ids()[..self.cards.len() - 10]
+                                                                            .contains(&id) {
+                                self.hovered_card_row_low = false;
+                                self.top_card_id_upper = id;
+                            } else {
+                                self.hovered_card_row_low = true;
+                                self.top_card_id_lower = id;
+                            }
                         }
                     }
-                    CardMessage::Played(_) => {
-                        self.update_with_msg(HandMessage::HideCards);
-                        self.hide_animation_ticker.start();
+                    CardMessage::Played(id) => {
+                        if !self.draw_animation_ticker.active() {
+                            self.update_cards_with_msg(card_msg);
+                            self.update_with_msg(HandMessage::HideCards);
+                            self.hide_animation_ticker.start(Some(id));
+                        }
                     }
                     _ => {}
                 }
@@ -192,7 +221,15 @@ impl GameElement for Hand {
                     card.update_with_msg(CardMessage::Show(*id));
                 }
             }
-            _ => {}
+            HandMessage::DrawCards(cards) => {
+                self.change_cards(cards.clone());
+                self.hovered_card_row_low = true;
+                self.hovered_card_id = 1000;  // Impossible to reach
+                self.top_card_id_lower = 1000;  // Impossible to reach
+                self.top_card_id_upper = 1000;  // Impossible to reach
+                self.update_size(self.window_size);
+                self.draw_animation_ticker.start(None, self.cards.len());
+            }
         }
     }
 
@@ -208,30 +245,27 @@ impl GameElement for Hand {
     fn update_animations(&mut self) {
         for (id, card) in self.cards.iter_mut2() {
             card.update_animations();
-            /* Sometimes on_exit for a viewed card won't register
-               and won't send the CardNotHoverd msg.
-               To ensure that an unhovered card is not sticking up all the time
-               following if-statement tries to check on this unwanted state
-               and instead sends the msg itself.
-            */
+            // Sometimes on_exit for a viewed card won't register
+            // and won't send the CardNotHoverd msg.
+            // To ensure that an unhovered card is not sticking up all the time
+            // following if-statement tries to check on this unwanted state
+            // and instead sends the msg itself.
             if *id != self.hovered_card_id &&
                     card.hover_animation.get_offset() != 0.0 &&
                     card.hover_animation.animation_state != AnimationState::Reversing {
                 card.update_with_msg(CardMessage::NotHovered(*id));
             }
         };
-        if self.hide_animation_ticker.check() {
-
-            // Remove the played card from cards after all cards are hidden.
-            let mut played_card_id: usize = 1000;  // Impossible to reach
-            for (id, card) in self.cards.iter_mut() {
-                if card.play_animation.ended() {
-                    played_card_id = *id;
-                };
-            }
-            self.cards.shift_remove(&played_card_id);
+        if self.hide_animation_ticker.check(|h: &mut AnimationEndSensor<usize>| {
+            let key: &usize = h.content().unwrap();
+            self.cards.shift_remove(key);
+        }) {
             self.update_with_msg(HandMessage::ShowCards);
         };
+        self.draw_animation_ticker.check(|d: &mut AnimationStarter<Vec<Card>>| {
+            let id = self.cards[d.cycle()].id;
+            self.cards[d.cycle()].update_with_msg(CardMessage::Draw(id));
+        });
     }
 
     fn view<'a>(&self) -> Container<'a, AppMessage> {

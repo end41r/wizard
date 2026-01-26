@@ -185,7 +185,12 @@ fn view(state: &'_ App) -> Element<'_, AppMessage> {
         .padding(20)
         .into()
     } else {
-        state.hand.view().into()
+        column![state.hand.view(),
+                button("Draw Cards")
+                .on_press(
+                    Hand::convert_to_app_message(HandMessage::DrawCards(Hand::build_test_cards()))
+                )
+               ].into()
     }
 }
 

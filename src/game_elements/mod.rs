@@ -1,11 +1,11 @@
 pub mod hand;
 pub mod hand_card;
 
+use std::num::NonZero;
 use iced::{Size, widget::Container};
 use crate::client::AppMessage;
 
 pub trait GameElement {
-    type HigherMessage;
     type OwnMessage;
     fn convert_to_app_message(msg: Self::OwnMessage) -> AppMessage;
     /// Convey the msg to lower GameElements asap (if they exist) before doing anything else.
@@ -14,6 +14,8 @@ pub trait GameElement {
     /// First call other update_animations then animation tickers.
     fn update_animations(&mut self);
     /// Call this every window resize.
+    /// If you create new game elements within the update function make sure to call this function
+    /// to give them their correct size!
     fn update_size(&mut self, window_size: Size);
     fn view<'a>(&self) -> Container<'a, AppMessage>;
     fn view_and_move<'a>(&self, x: f32, y: f32) -> Container<'a, AppMessage>;
@@ -135,55 +137,134 @@ enum AnimtionTickerState {
     Inactive,
 }
 
-/// This struct is designed for 2 use cases:
-/// 1.  Starting multiple animations with a delay:
-///     interval = delay, times = amount of animations
-/// 2.  Detecting if an animation has ended:
-///     interval = animation length, times = 1
+/// An AnimationEndSensor executes a caode block when an animation ends.
+/// Start the sensor with fn start and execute the code with fn check.
 #[derive(Debug)]
-pub struct AnimationTicker {
-    interval: usize,
+pub struct AnimationEndSensor<C> {
+    animation_length: NonZero<usize>,
     tick: usize,
-    times: usize,
-    state: AnimtionTickerState
+    state: AnimtionTickerState,
+    content: Option<C>
 }
 
-impl AnimationTicker {
-    fn new(interval: usize, times: usize) -> Self {
+impl<C> AnimationEndSensor<C> {
+    fn new(duration: NonZero<usize>) -> Self {
         Self {
-            interval: interval,
+            animation_length: duration,
             tick: 0,
-            times: times,
-            state: AnimtionTickerState::Inactive
+            state: AnimtionTickerState::Inactive,
+            content: None
         }
     }
-    fn start(&mut self) {
+    fn content(&self) -> Option<&C> {
+        self.content.as_ref()
+    }
+    fn active(&self) -> bool {
+        match self.state {
+            AnimtionTickerState::Active => true,
+            AnimtionTickerState::Inactive => false
+        }
+    }
+    fn last_tick_reached(&self) -> bool {
+        self.tick == self.animation_length.get()
+    }
+    fn start(&mut self, content: Option<C>) {
         if self.state == AnimtionTickerState::Inactive {
             self.state = AnimtionTickerState::Active
         }
+        self.content = content;
+    }
+    fn reset(&mut self) {
+        self.state = AnimtionTickerState::Inactive;
+        self.tick = 0;
     }
     /// Use this every time update_animations from the GameElement trait is called.
     /// 
-    /// Retuns true if the current AnimationTick for an action is reached
+    /// This function executes the action when the last tick is reached.
     /// 
-    /// Example for interval = 3, times = 4 (x = true, o = false):
-    /// o o x o o x o o x o o x
-    fn check(&mut self) -> bool {
+    /// This function returns true when the last tick is reached.
+    /// This property is useful when facing borrowing issues within the action.
+    fn check<A>(&mut self, action: A) -> bool where A: FnOnce(&mut Self) {
         if self.state == AnimtionTickerState::Active {
-            if self.tick == self.times * self.interval {  // Last tick reached
-                self.state = AnimtionTickerState::Inactive;
-                self.tick = 0;
-                return true
-            };
-            
-            self.tick += 1;
-
-            if self.tick - 1 == 0 {
-                return false  // Not on first tick
+            if self.last_tick_reached() {
+                action(self);
+                self.reset();
+                return true;
             } else {
-                return (self.tick - 1) % self.interval == 0
-            }
+                self.tick += 1;
+            };
         }
         false
+    }
+}
+
+/// An AnimationStarter is used for starting multiple animations with a delay.
+/// It allows you to execute a code block when the last animation has started (NOT ended).
+#[derive(Debug)]
+pub struct AnimationStarter<C> {
+    animation_delay: NonZero<usize>,
+    tick: usize,
+    times: usize,
+    state: AnimtionTickerState,
+    content: Option<C>
+}
+
+impl<C> AnimationStarter<C> {
+    fn new(delay: NonZero<usize>) -> Self {
+        Self {
+            animation_delay: delay,
+            tick: 0,
+            times: 0,  // Will be set in fn start() where it first matters
+            state: AnimtionTickerState::Inactive,
+            content: None
+        }
+    }
+    fn content(&self) -> Option<&C> {
+        self.content.as_ref()
+    }
+    fn active(&self) -> bool {
+        match self.state {
+            AnimtionTickerState::Active => true,
+            AnimtionTickerState::Inactive => false
+        }
+    }
+    fn last_tick_reached(& self) -> bool {
+        self.tick == self.times * self.animation_delay.get()
+    }
+    fn start(&mut self, content: Option<C>, times: usize) {
+        if self.state == AnimtionTickerState::Inactive {
+            self.state = AnimtionTickerState::Active
+        }
+        self.times = if times == 0 {times} else {times - 1};
+        self.content = content;
+    }
+    fn reset(&mut self) {
+        self.state = AnimtionTickerState::Inactive;
+        self.tick = 0;
+    }
+    /// Use this every time update_animations from the GameElement trait is called.
+    /// 
+    /// This function executes the action used for starting an animation
+    /// everytime the delay period has passed.
+    /// 
+    /// This function returns true when the last tick is reached
+    /// and all animations are started (NOT ended).
+    /// You can use this property with an if-statement then to immediately execute an action.
+    fn check<A>(&mut self, action: A) -> bool where A: FnOnce(&mut Self) {
+        if self.state == AnimtionTickerState::Active {
+            if self.tick % self.animation_delay == 0 {
+                action(self);
+            }
+            if self.last_tick_reached() {
+                self.reset();
+                return true;
+            } else {
+                self.tick += 1;
+            }
+        };
+        false
+    }
+    fn cycle(&self) -> usize {
+        (self.tick - (self.tick % self.animation_delay)) / self.animation_delay
     }
 }
