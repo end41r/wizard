@@ -65,7 +65,7 @@ impl Hand {
         self.window_size.width * MULT_BASE_WIDTH_CARD_HEIGHT
     }
 
-    fn get_card_spawn_point_upper_row(&self) -> Point {
+    fn get_card_spawn_point_upper_row(&self, x_pos_step: f32) -> Point {
 
         let max_row_len: f32 = 4.0 * self.card_base_size.width;
 
@@ -74,21 +74,23 @@ impl Hand {
         let mut row_x_offset: f32 = 0.0;
         if self.cards.len() > 10 {
             let cards_in_row: usize = self.cards.len() - 10;
-            let row_len: f32 = (cards_in_row as f32) * self.card_base_size.width / 3.0 +
-                                     self.card_base_size.width * (2.0/3.0);
+            let row_len: f32 = ((cards_in_row as f32) - 1.0) * x_pos_step +
+                                     self.card_base_size.width;
             row_x_offset = (max_row_len - row_len) / 2.0;
         }
 
         Point::new(row_x_offset, row_y_offset)
     }
 
-    fn get_card_spawn_point_lower_row(&self) -> Point {
+    fn get_card_spawn_point_lower_row(&self, x_pos_step: f32) -> Point {
 
         let max_row_len: f32 = 4.0 * self.card_base_size.width;
 
         let cards_in_row: usize = std::cmp::min(self.cards.len(), 10);
-        let row_len: f32 = (cards_in_row as f32) * self.card_base_size.width / 3.0 +
-                           self.card_base_size.width * (2.0/3.0);
+        let mut row_len: f32 = 0.0;
+        if self.cards.len() != 0 {
+            row_len = ((cards_in_row as f32) - 1.0) * x_pos_step + self.card_base_size.width;
+        };
         let row_x_offset: f32 = (max_row_len - row_len) / 2.0;
         let row_y_offset: f32 = 0.0;
 
@@ -222,13 +224,15 @@ impl GameElement for Hand {
                 }
             }
             HandMessage::DrawCards(cards) => {
-                self.change_cards(cards.clone());
-                self.hovered_card_row_low = true;
-                self.hovered_card_id = 1000;  // Impossible to reach
-                self.top_card_id_lower = 1000;  // Impossible to reach
-                self.top_card_id_upper = 1000;  // Impossible to reach
-                self.update_size(self.window_size);
-                self.draw_animation_ticker.start(None, self.cards.len());
+                if !self.draw_animation_ticker.active() {  // redrawing while drawing causes bugs
+                    self.change_cards(cards.clone());
+                    self.hovered_card_row_low = true;
+                    self.hovered_card_id = 1000;  // Impossible to reach
+                    self.top_card_id_lower = 1000;  // Impossible to reach
+                    self.top_card_id_upper = 1000;  // Impossible to reach
+                    self.update_size(self.window_size);
+                    self.draw_animation_ticker.start(None, self.cards.len());
+                }
             }
         }
     }
@@ -277,12 +281,26 @@ impl GameElement for Hand {
 
         // Push all cards in self.cards to their row.
         let mut x_pos: f32 = 0.0;
+        let mut x_pos_step: f32 = 0.0;
+        let mut x_pos_step_upper: f32 = 0.0;
+        let mut x_pos_step_lower: f32 = 0.0;
         let y_pos: f32 = 0.0;
         let x_pos_offset: f32 = self.get_hand_width_offset();
         let y_pos_offset: f32 = self.get_hand_height_offset();
         let mut move_card_stack_lower = true;
         if self.cards.len() > 10 {
+            x_pos_step = match self.cards.len() {
+                11..=14 => self.card_base_size.width,
+                _ => self.card_base_size.width / 3.0 + (4.0 * self.card_base_size.width - ((self.cards.len() as f32 - 11.0) * self.card_base_size.width / 3.0 + self.card_base_size.width)) / (self.cards.len() as f32 - 11.0)
+            };
+            x_pos_step_upper = x_pos_step;
             move_card_stack_lower = false;
+        } else {
+            x_pos_step = match self.cards.len() {
+                1..=4 => self.card_base_size.width,
+                _ => self.card_base_size.width / 3.0 + (4.0 * self.card_base_size.width - ((self.cards.len() as f32 - 1.0) * self.card_base_size.width / 3.0 + self.card_base_size.width)) / (self.cards.len() as f32 - 1.0)
+            };
+            x_pos_step_lower = x_pos_step;
         }
         let mut push_lower = false;
 
@@ -310,11 +328,13 @@ impl GameElement for Hand {
                     push_lower = true;
             }
 
-            x_pos = x_pos + card.size.width / 3.0;
+            x_pos = x_pos + x_pos_step;
 
             // Switch the current row.
             if self.cards.len() > 10 && i + 1 == self.cards.len() - 10 {
                 x_pos = 0.0;
+                x_pos_step = self.card_base_size.width / 3.0;
+                x_pos_step_lower = x_pos_step;
                 push_lower = false;
                 move_card_stack_lower = true;
             }
@@ -323,14 +343,14 @@ impl GameElement for Hand {
         // Add the upper/lower row to the whole hand.
         if self.hovered_card_row_low {
             card_stack = card_stack.push(pin(card_stack_upper)
-                                            .position(self.get_card_spawn_point_upper_row()));
+                                            .position(self.get_card_spawn_point_upper_row(x_pos_step_upper)));
             card_stack = card_stack.push(pin(card_stack_lower)
-                                            .position(self.get_card_spawn_point_lower_row()));
+                                            .position(self.get_card_spawn_point_lower_row(x_pos_step_lower)));
         } else {
             card_stack = card_stack.push(pin(card_stack_lower)
-                                            .position(self.get_card_spawn_point_lower_row()));
+                                            .position(self.get_card_spawn_point_lower_row(x_pos_step_lower)));
             card_stack = card_stack.push(pin(card_stack_upper)
-                                            .position(self.get_card_spawn_point_upper_row()));
+                                            .position(self.get_card_spawn_point_upper_row(x_pos_step_upper)));
         }
         container(card_stack).width(self.get_hand_width()).height(self.get_hand_height())
     }
