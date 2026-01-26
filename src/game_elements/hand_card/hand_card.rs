@@ -17,7 +17,8 @@ pub enum CardMessage {
     NotHovered(usize),
     Hide(usize),
     Show(usize),
-    Draw(usize)
+    Draw(usize),
+    CursorMoved(usize, Point)
 }
 
 impl CardMessage {
@@ -28,7 +29,8 @@ impl CardMessage {
             CardMessage::Played(id) => *id,
             CardMessage::Hide(id) => *id,
             CardMessage::Show(id) => *id,
-            CardMessage::Draw(id) => *id
+            CardMessage::Draw(id) => *id,
+            CardMessage::CursorMoved(id, _) => *id
         }
     }
 }
@@ -38,6 +40,9 @@ pub struct Card {
     pub id: usize,
     img_path: &'static str,
     pub size: Size,
+    pub contraction_width: f32,
+    pub contraction_height: f32,
+    pub rotation: f32,
     pub draw_animation: DrawAnimation,
     pub hover_animation: HoverAnimation,
     pub play_animation: PlayAnimation,
@@ -52,6 +57,9 @@ impl Card {
             id: id,
             img_path: img_path,
             size: size,
+            contraction_width: 1.0,
+            contraction_height: 1.0,
+            rotation: 0.0,
             draw_animation: DrawAnimation::new(),
             hover_animation: HoverAnimation::new(size),
             play_animation: PlayAnimation::new(),
@@ -76,12 +84,15 @@ impl GameElement for Card {
                     self.hover_animation.start();
                     self.focus_animation.start();
                 }
-                CardMessage::Played(id) => {
+                CardMessage::Played(_) => {
                     self.play_animation.start();
                 }
                 CardMessage::NotHovered(_) => {
                     self.hover_animation.reverse();
                     self.focus_animation.reset();
+                    self.contraction_height = 1.0;
+                    self.contraction_width = 1.0;
+                    self.rotation = 0.0;
                 }
                 CardMessage::Hide(_) => {
                     self.hide_animation.start();
@@ -91,6 +102,19 @@ impl GameElement for Card {
                 }
                 CardMessage::Draw(_) => {
                     self.draw_animation.start();
+                }
+                CardMessage::CursorMoved(_, point) => {
+                    let halve_card_width: f32 = self.size.width * (1.0/2.0);
+                    let halve_card_height: f32 = self.size.height * (1.0/2.0);
+                    let point_from_middle: Point = Point::new(point.x - halve_card_width,
+                                                              point.y - halve_card_height);
+                    let factor_width: f32 = point_from_middle.x / halve_card_width;
+                    let factor_height: f32 = point_from_middle.y / halve_card_height;
+
+                    self.contraction_height = 0.95 + 0.05 * (1.0 - factor_height.abs());
+                    self.contraction_width = 0.95 + 0.05 * (1.0 - factor_width.abs());
+                    self.rotation = -0.05 * factor_width.abs() * factor_height *
+                                    (if factor_width > 0.0 {-1.0} else {1.0});
                 }
             }
         }
@@ -118,14 +142,16 @@ impl GameElement for Card {
         let hover_effect_opacity = f32_min_2(img_opacity,
                                                   self.focus_animation.get_opacity());
 
-        let width: f32 = self.size.width * self.hover_animation.get_expansion() *
+        let width: f32 = self.size.width * self.contraction_width *
+                         self.hover_animation.get_expansion() *
                          self.play_animation.get_contraction() *
                          self.hide_animation.get_contraction() *
                          self.draw_animation.get_contraction();
 
-        let height: f32 = self.size.height * self.hover_animation.get_expansion();
+        let height: f32 = self.size.height * self.contraction_height *
+                          self.hover_animation.get_expansion();
 
-        let rotation: f32 = self.focus_animation.get_rotation();
+        let rotation: f32 = self.rotation;
 
         let scale: f32 = 0.88 * self.hide_animation.get_scale() * self.draw_animation.get_scale();
 
@@ -148,10 +174,12 @@ impl GameElement for Card {
                     .opacity(hover_effect_opacity);
         card = card.push(hover_effect);
 
+        let card_id = self.id.clone();
         container(MouseArea::new(card)
             .on_double_click(Card::convert_to_app_message(CardMessage::Played(self.id)))
             .on_enter(Card::convert_to_app_message(CardMessage::Hovered(self.id)))
             .on_exit(Card::convert_to_app_message(CardMessage::NotHovered(self.id)))
+            .on_move(move |position| Card::convert_to_app_message(CardMessage::CursorMoved(card_id, position)))
             .interaction(Interaction::Pointer)
         )
     }
@@ -163,10 +191,11 @@ impl GameElement for Card {
                 Point::new(
                     x + ((1.0 - self.play_animation.get_contraction()) / 2.0) *
                            self.size.width * self.hover_animation.get_expansion() +
+                           (self.size.width - self.contraction_width * self.size.width) / 2.0 +
                            (self.size.width - self.size.width *
                             self.hover_animation.get_expansion()) /
                            2.0,
-                    y - self.hover_animation.get_offset()
+                    y - self.hover_animation.get_offset() + (self.size.height - self.contraction_height * self.size.height) / 2.0
                 )
             )
         )
