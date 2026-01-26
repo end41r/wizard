@@ -9,8 +9,17 @@ let player_id = game.add_player()
 
 // Start the game. Returns infos about the current state of the game.
 let game_state = game.start()
-```
 
+// Check if the trump needs to be set.
+games_state.dealer_needs_to_set_Trump()
 
+// Player Actions.
 
-https://excalidraw.com/#json=uZRTd7sxo4Y3O2uDC0EI-,31coxGJRnZZA_sLDBKBbXg
+// Only the dealer can set the trump. To set the trump
+game.set_trump(dealer, suit)
+
+// To make a call for a Player.
+game.set_called(player_id, value)
+
+// To play a card for player 1 and the first card of his hand.
+game.play_card(player_id, card)
