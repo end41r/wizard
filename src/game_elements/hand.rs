@@ -8,10 +8,10 @@ use std::num::NonZero;
 use iced::{Point, Size, widget::{Container, Stack, container, pin, stack}};
 use indexmap::{IndexMap, map::MutableKeys};
 
-static CARD1_PATH:&'static str = "assets/cards/1.png";
-static CARD2_PATH:&'static str = "assets/cards/2.png";
-static CARD3_PATH:&'static str = "assets/cards/3.png";
-static CARD4_PATH:&'static str = "assets/cards/4.png";
+static CARD1_PATH:&'static str = "assets/cards/back.png";
+static CARD2_PATH:&'static str = "assets/cards/diamond.png";
+static CARD3_PATH:&'static str = "assets/cards/heart.png";
+static CARD4_PATH:&'static str = "assets/cards/spade.png";
 static MULT_BASE_WIDTH_CARD_WIDTH: f32 = 0.12;
 static MULT_BASE_WIDTH_CARD_HEIGHT: f32 = MULT_BASE_WIDTH_CARD_WIDTH * 1.46;
 static MULT_BASE_WIDTH_CARD_STACK_OFFSET: f32 = MULT_BASE_WIDTH_CARD_HEIGHT * 0.43;

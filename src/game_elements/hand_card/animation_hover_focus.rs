@@ -14,7 +14,7 @@ impl HoverFocusAnimation {
             max_frame_number: 200,
             current_frame_number: 0,
             animation_state: AnimationState::NotMoving,
-            img_path: "assets/cards/glowing_frame.png",
+            img_path: "assets/cards/frame_yellow.png",
         }
     }
 
