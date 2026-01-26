@@ -40,8 +40,6 @@ pub struct Card {
     pub id: usize,
     img_path: &'static str,
     pub size: Size,
-    pub contraction_width: f32,
-    pub contraction_height: f32,
     pub rotation: f32,
     pub draw_animation: DrawAnimation,
     pub hover_animation: HoverAnimation,
@@ -57,8 +55,6 @@ impl Card {
             id: id,
             img_path: img_path,
             size: size,
-            contraction_width: 1.0,
-            contraction_height: 1.0,
             rotation: 0.0,
             draw_animation: DrawAnimation::new(),
             hover_animation: HoverAnimation::new(size),
@@ -90,8 +86,6 @@ impl GameElement for Card {
                 CardMessage::NotHovered(_) => {
                     self.hover_animation.reverse();
                     self.focus_animation.reset();
-                    self.contraction_height = 1.0;
-                    self.contraction_width = 1.0;
                     self.rotation = 0.0;
                 }
                 CardMessage::Hide(_) => {
