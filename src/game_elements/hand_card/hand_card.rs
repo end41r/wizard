@@ -105,16 +105,9 @@ impl GameElement for Card {
                 }
                 CardMessage::CursorMoved(_, point) => {
                     let halve_card_width: f32 = self.size.width * (1.0/2.0);
-                    let halve_card_height: f32 = self.size.height * (1.0/2.0);
-                    let point_from_middle: Point = Point::new(point.x - halve_card_width,
-                                                              point.y - halve_card_height);
-                    let factor_width: f32 = point_from_middle.x / halve_card_width;
-                    let factor_height: f32 = point_from_middle.y / halve_card_height;
+                    let factor_width: f32 = (point.x - halve_card_width) / halve_card_width;
 
-                    self.contraction_height = 0.95 + 0.05 * (1.0 - factor_height.abs());
-                    self.contraction_width = 0.95 + 0.05 * (1.0 - factor_width.abs());
-                    self.rotation = -0.05 * factor_width.abs() * factor_height *
-                                    (if factor_width > 0.0 {-1.0} else {1.0});
+                    self.rotation = 0.05 * factor_width;
                 }
             }
         }
@@ -142,13 +135,13 @@ impl GameElement for Card {
         let hover_effect_opacity = f32_min_2(img_opacity,
                                                   self.focus_animation.get_opacity());
 
-        let width: f32 = self.size.width * self.contraction_width *
+        let width: f32 = self.size.width *
                          self.hover_animation.get_expansion() *
                          self.play_animation.get_contraction() *
                          self.hide_animation.get_contraction() *
                          self.draw_animation.get_contraction();
 
-        let height: f32 = self.size.height * self.contraction_height *
+        let height: f32 = self.size.height *
                           self.hover_animation.get_expansion();
 
         let rotation: f32 = self.rotation;
@@ -191,11 +184,10 @@ impl GameElement for Card {
                 Point::new(
                     x + ((1.0 - self.play_animation.get_contraction()) / 2.0) *
                            self.size.width * self.hover_animation.get_expansion() +
-                           (self.size.width - self.contraction_width * self.size.width) / 2.0 +
                            (self.size.width - self.size.width *
                             self.hover_animation.get_expansion()) /
                            2.0,
-                    y - self.hover_animation.get_offset() + (self.size.height - self.contraction_height * self.size.height) / 2.0
+                    y - self.hover_animation.get_offset()
                 )
             )
         )
