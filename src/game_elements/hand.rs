@@ -206,7 +206,7 @@ impl GameElement for Hand {
                             self.hide_animation_ticker.start(Some(id));
                         }
                     }
-                    _ => {}
+                    _ => {self.update_cards_with_msg(card_msg);}
                 }
             }
             HandMessage::HideCards => {
