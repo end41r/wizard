@@ -232,7 +232,8 @@ impl Game {
             events.push(GameEvent::DealerMustSetTrump {
                 dealer: round.dealer,
             });
-        } else { // else we start bidding
+        } else {
+            // else we start bidding
             let starting_player = round.order[0];
             events.push(GameEvent::BiddingStarted {
                 starting_player,

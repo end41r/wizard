@@ -58,7 +58,7 @@ impl Round {
                 },
             );
         }
-        
+
         let dealer_position = round_number % player_ids.len();
         let dealer_id = player_ids[dealer_position];
         let current_player_position = (dealer_position + 1) % player_ids.len();
@@ -254,14 +254,14 @@ impl Round {
 
     fn card_value(&self, card: &Card, lead_suit: Option<Suit>) -> usize {
         let base: usize = match card.value {
-            Value::Jester => 0 as usize,
+            Value::Jester => 0_usize,
             Value::Number(n) => n as usize,
             Value::Wizard => 100, // Wizard always highest
         };
 
         let is_trump = self.trump.map(|t| card.suit == t).unwrap_or(false);
         let is_lead = lead_suit.map(|l| card.suit == l).unwrap_or(false);
-        
+
         // just to be sure :)
         if card.value == Value::Wizard {
             return usize::MAX;
