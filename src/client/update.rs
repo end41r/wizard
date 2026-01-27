@@ -2,7 +2,34 @@ use iced::{clipboard, Task};
 use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
-use crate::api::{Lobby, ServerMessage, B, C, S};
+use crate::api::{Card, Lobby, ServerMessage, Value, B, C, S};
+
+/// Helper function to get player name from ID using lobby data
+fn get_player_name(state: &App, player_id: u64) -> String {
+    if state.my_id == Some(player_id) {
+        return "You".to_string();
+    }
+    if let Some(ref lobby) = state.lobby {
+        if let Some(player) = lobby.players.iter().find(|p| p.id == player_id) {
+            return player.name.clone();
+        }
+    }
+    format!("Player {}", player_id)
+}
+
+/// Format a card for display (e.g., "5 Red", "Wizard", "Jester")
+fn format_card(card: &Card) -> String {
+    let value_str = match card.value {
+        Value::Jester => "Jester".to_string(),
+        Value::Wizard => "Wizard".to_string(),
+        Value::Number(n) => n.to_string(),
+    };
+
+    match card.value {
+        Value::Jester | Value::Wizard => value_str,
+        Value::Number(_) => format!("{} {:?}", value_str, card.suit),
+    }
+}
 
 pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
     match msg {
@@ -82,6 +109,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
 
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
+                    let _ = tx.send(C::SetPlayerCount {
+                        count: state.host_player_count.to_usize(),
+                    });
                     let _ = tx.send(C::JoinLobby {
                         name: state.host_name.clone(),
                     });
@@ -185,12 +215,76 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.join_name.clear();
             state.host_name.clear();
             state.host_player_count = PlayerCount::P4;
+            // Reset gameplay state
+            state.game_log.clear();
+            state.my_hand.clear();
+            state.current_trick.clear();
+            state.trump = None;
+            state.round_number = 0;
+            state.is_my_turn = false;
+            state.is_bidding_phase = false;
+            state.must_set_trump = false;
+            state.current_player = None;
+            state.player_order.clear();
+            state.bids.clear();
+            state.tricks_won.clear();
+            state.scores.clear();
+            state.bid_input.clear();
+            state.valid_cards.clear();
+            state.dealer = None;
+            state.game_over = false;
+            state.winner = None;
             state.menu = MenuState::Main;
             Task::none()
         }
         AppMessage::CloseGame => {
             // Calls the Application exit.
             std::process::exit(0);
+        }
+
+        // Gameplay message handlers
+        AppMessage::BidInputChanged(input) => {
+            state.bid_input = input;
+            Task::none()
+        }
+        AppMessage::SubmitBid => {
+            if let Ok(amount) = state.bid_input.parse::<usize>() {
+                if let Ok(guard) = state.ws_tx.lock() {
+                    if let Some(ref tx) = *guard {
+                        let _ = tx.send(C::Bid { amount });
+                        let log = format!("[YOU] Submitting bid: {}", amount);
+                        println!("{}", log);
+                        state.game_log.push(log);
+                        state.bid_input.clear();
+                    }
+                }
+            } else {
+                state.last_msg = "Invalid bid - enter a number".to_string();
+            }
+            Task::none()
+        }
+        AppMessage::PlayCard(card) => {
+            if let Ok(guard) = state.ws_tx.lock() {
+                if let Some(ref tx) = *guard {
+                    let _ = tx.send(C::PlayCard { card });
+                    let log = format!("[YOU] Playing card: {:?} of {:?}", card.value, card.suit);
+                    println!("{}", log);
+                    state.game_log.push(log);
+                }
+            }
+            Task::none()
+        }
+        AppMessage::SetTrump(suit) => {
+            if let Ok(guard) = state.ws_tx.lock() {
+                if let Some(ref tx) = *guard {
+                    let _ = tx.send(C::SetTrump { suit });
+                    let log = format!("[YOU] Setting trump to: {:?}", suit);
+                    println!("{}", log);
+                    state.game_log.push(log);
+                    state.must_set_trump = false;
+                }
+            }
+            Task::none()
         }
 
         AppMessage::Tick => {
@@ -242,29 +336,74 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
     match msg {
         ServerMessage::Server(s) => match s {
             S::HandshakeConfirmation { version, supported } => {
-                state.last_msg = format!("Handshake: version {version}, supported {supported}");
+                let log = format!("[SERVER] Handshake: version {version}, supported {supported}");
+                println!("{}", log);
+                state.last_msg = log.clone();
             }
             S::JoinConfirmation { ok, id } => {
-                state.last_msg = format!("Join: {ok}, id: {id}");
+                let log = format!("[SERVER] Join confirmed: ok={ok}, your_id={id}");
+                println!("{}", log);
+                state.last_msg = log;
                 state.my_id = Some(id);
             }
             S::Error { reason } => {
-                state.last_msg = format!("Error: {reason}");
+                let log = format!("[ERROR] {reason}");
+                println!("{}", log);
+                state.last_msg = log.clone();
+                state.game_log.push(log);
             }
             S::HandDealt { cards } => {
-                state.last_msg = format!("Hand dealt: {} cards", cards.len());
+                let log = format!("[SERVER] Hand dealt: {} cards", cards.len());
+                println!("{}", log);
+                for card in &cards {
+                    println!("  - {:?} of {:?}", card.value, card.suit);
+                }
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.my_hand = cards;
+            }
+            S::TrumpRequest => {
+                let log = "[SERVER] You must set the trump suit!".to_string();
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.must_set_trump = true;
+                state.is_my_turn = true;
             }
             S::BidRequest { min, max } => {
-                state.last_msg = format!("Bid request: {min}-{max}");
+                let log = format!("[SERVER] Your turn to bid! (range: {min}-{max})");
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.is_my_turn = true;
+                state.is_bidding_phase = true;
             }
             S::InvalidBid { reason } => {
-                state.last_msg = format!("Invalid bid: {reason}");
+                let log = format!("[ERROR] Invalid bid: {reason}");
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
             }
             S::YourTurn { valid_cards } => {
-                state.last_msg = format!("Your turn: {} cards", valid_cards.len());
+                let log = format!(
+                    "[SERVER] Your turn to play! {} valid cards",
+                    valid_cards.len()
+                );
+                println!("{}", log);
+                for card in &valid_cards {
+                    println!("  - {:?} of {:?}", card.value, card.suit);
+                }
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.is_my_turn = true;
+                state.is_bidding_phase = false;
+                state.valid_cards = valid_cards;
             }
             S::InvalidMove { reason } => {
-                state.last_msg = format!("Invalid move: {reason}");
+                let log = format!("[ERROR] Invalid move: {reason}");
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
             }
         },
         ServerMessage::Broadcast(b) => match b {
@@ -275,9 +414,6 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
             }
             B::PlayerCountChanged { count } => {
                 state.last_msg = format!("Max players set to {count}");
-
-                // Converts the usize to a `PlayerCount` enum.
-                // Needed for easier view handling.
                 state.host_player_count = match count {
                     3 => PlayerCount::P3,
                     4 => PlayerCount::P4,
@@ -294,58 +430,234 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 }
             }
             B::GameStarted { players } => {
-                state.last_msg = format!("Game started: {} players", players.len());
+                state.player_order = players.clone();
+                let player_names: Vec<String> = players
+                    .iter()
+                    .map(|id| get_player_name(state, *id))
+                    .collect();
+                let log = format!(
+                    "[GAME] Game started with {} players: {}",
+                    players.len(),
+                    player_names.join(", ")
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
                 state.menu = MenuState::Playing;
+                state.scores.clear();
+                state.bids.clear();
+                state.tricks_won.clear();
             }
             B::RoundStarted {
                 round,
                 cards_per_player,
-                trump: _,
+                trump,
             } => {
-                state.last_msg = format!("Round {round} started: {cards_per_player} cards");
+                let log = format!(
+                    "[ROUND] Round {} started: {} cards, trump: {:?}",
+                    round, cards_per_player, trump
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.round_number = round;
+                state.trump = trump;
+                state.current_trick.clear();
+                state.bids.clear();
+                state.tricks_won.clear();
+                state.is_bidding_phase = true;
+                // Reset turn state - only the player who receives BidRequest should be able to bid
+                state.is_my_turn = false;
+                state.must_set_trump = false;
+                state.valid_cards.clear();
+            }
+            B::DealerMustSetTrump { dealer } => {
+                let is_me = state.my_id == Some(dealer);
+                let dealer_name = get_player_name(state, dealer);
+                let log = format!(
+                    "[ROUND] {} must set trump (Wizard drawn){}",
+                    dealer_name,
+                    if is_me { " - THAT'S YOU!" } else { "" }
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.dealer = Some(dealer);
+                if is_me {
+                    state.must_set_trump = true;
+                }
+            }
+            B::TrumpSet { suit, by_dealer } => {
+                let dealer_name = get_player_name(state, by_dealer);
+                let log = format!("[ROUND] Trump set to {:?} by {}", suit, dealer_name);
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.trump = Some(suit);
+                state.must_set_trump = false;
             }
             B::BiddingStarted {
-                starting_player: _,
+                starting_player,
                 cards_per_player,
             } => {
-                state.last_msg = format!("Bidding started: {cards_per_player} cards");
+                let player_name = get_player_name(state, starting_player);
+                let log = format!(
+                    "[BIDDING] Bidding started: {} cards, starting with {}",
+                    cards_per_player, player_name
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.is_bidding_phase = true;
+                state.current_player = Some(starting_player);
             }
             B::BidTurn { player } => {
-                state.last_msg = format!("Player {player} bidding");
+                let is_me = state.my_id == Some(player);
+                let player_name = get_player_name(state, player);
+                let log = format!(
+                    "[BIDDING] {}'s turn to bid{}",
+                    player_name,
+                    if is_me { " - YOUR TURN!" } else { "" }
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.current_player = Some(player);
             }
             B::BidMade { player, amount } => {
-                state.last_msg = format!("Player {player} bid {amount}");
+                let player_name = get_player_name(state, player);
+                let log = format!("[BIDDING] {} bid {}", player_name, amount);
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.bids.insert(player, amount);
+                state.is_my_turn = false;
             }
             B::BiddingFinished { bids } => {
-                state.last_msg = format!("Bidding done: {} bids", bids.len());
+                let bids_with_names: Vec<String> = bids
+                    .iter()
+                    .map(|(id, amount)| format!("{}: {}", get_player_name(state, *id), amount))
+                    .collect();
+                let log = format!("[BIDDING] Bidding complete: {}", bids_with_names.join(", "));
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.bids = bids.into_iter().collect();
+                state.is_bidding_phase = false;
+                state.is_my_turn = false;
             }
             B::PoolStarted { leader } => {
-                state.last_msg = format!("Pool started, leader: {leader}");
+                let is_me = state.my_id == Some(leader);
+                let leader_name = get_player_name(state, leader);
+                let log = format!(
+                    "[TRICK] New trick started, leader: {}{}",
+                    leader_name,
+                    if is_me { " - YOUR LEAD!" } else { "" }
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.current_trick.clear();
+                state.current_player = Some(leader);
+                // Reset turn - only the leader who receives YourTurn should be able to play
+                state.is_my_turn = false;
+                state.valid_cards.clear();
             }
             B::TurnChanged { player } => {
-                state.last_msg = format!("Turn: player {player}");
+                let is_me = state.my_id == Some(player);
+                let player_name = get_player_name(state, player);
+                let log = format!(
+                    "[TRICK] Turn changed to {}{}",
+                    player_name,
+                    if is_me { " - YOUR TURN!" } else { "" }
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.current_player = Some(player);
             }
-            B::CardPlayed { player, card: _ } => {
-                state.last_msg = format!("Player {player} played card");
+            B::CardPlayed { player, card } => {
+                let player_name = get_player_name(state, player);
+                let card_str = format_card(&card);
+                let log = format!("[TRICK] {} played {}", player_name, card_str);
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                state.current_trick.push((player, card));
+                state.is_my_turn = false;
+                // Remove card from hand if it was ours
+                if state.my_id == Some(player) {
+                    state.my_hand.retain(|c| *c != card);
+                }
             }
-            B::PoolFinished { winner, cards: _ } => {
-                state.last_msg = format!("Pool won by {winner}");
+            B::PoolFinished { winner, cards } => {
+                let is_me = state.my_id == Some(winner);
+                let winner_name = get_player_name(state, winner);
+                let log = format!(
+                    "[TRICK] Trick won by {}{}",
+                    winner_name,
+                    if is_me { " - YOU WON!" } else { "" }
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                *state.tricks_won.entry(winner).or_insert(0) += 1;
+                state.current_trick = cards;
             }
             B::RoundFinished {
-                scores: _,
-                won_amounts: _,
+                scores,
+                won_amounts,
             } => {
-                state.last_msg = "Round finished".to_string();
+                let scores_with_names: Vec<String> = scores
+                    .iter()
+                    .map(|(id, score)| format!("{}: {}", get_player_name(state, *id), score))
+                    .collect();
+                let tricks_with_names: Vec<String> = won_amounts
+                    .iter()
+                    .map(|(id, won)| format!("{}: {}", get_player_name(state, *id), won))
+                    .collect();
+                let log = format!(
+                    "[ROUND] Round finished! Scores: {} | Tricks won: {}",
+                    scores_with_names.join(", "),
+                    tricks_with_names.join(", ")
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                for (player, score) in scores {
+                    println!("[DEBUG] Inserting score for player {}: {}", player, score);
+                    state.scores.insert(player, score);
+                }
+                println!("[DEBUG] state.scores after update: {:?}", state.scores);
             }
             B::GameFinished {
-                final_scores: _,
+                final_scores,
                 winner,
             } => {
-                state.last_msg = format!("Game won by {winner}");
+                let is_me = state.my_id == Some(winner);
+                let winner_name = get_player_name(state, winner);
+                let scores_with_names: Vec<String> = final_scores
+                    .iter()
+                    .map(|(id, score)| format!("{}: {}", get_player_name(state, *id), score))
+                    .collect();
+                let log = format!(
+                    "[GAME] GAME OVER! Winner: {}{} Final scores: {}",
+                    winner_name,
+                    if is_me { " - YOU WON!" } else { "" },
+                    scores_with_names.join(", ")
+                );
+                println!("{}", log);
+                state.game_log.push(log.clone());
+                state.last_msg = log;
+                // Store final scores and mark game as over
+                for (player, score) in final_scores {
+                    state.scores.insert(player, score);
+                }
+                state.game_over = true;
+                state.winner = Some(winner);
             }
             B::ServerShutdown => {
-                println!("Client: received ServerShutdown broadcast");
-                // Performs a cleanup (although maybe we can make a function for that)
+                println!("[SERVER] Server shutdown received");
                 state.last_msg = "Lost connection to host".to_string();
                 state.menu = MenuState::Main;
                 state.connected = false;

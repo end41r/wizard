@@ -4,6 +4,7 @@
 
 mod api;
 mod client;
+pub mod gamelogic;
 mod server;
 
 fn main() {

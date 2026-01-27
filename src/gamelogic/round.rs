@@ -5,40 +5,44 @@ use std::collections::HashMap;
 
 use strum::IntoEnumIterator;
 
-type Err = &'static str;
+use crate::api::PlayerId;
 
-use crate::gamelogic::card::{Card, Suit, Symbol};
+use crate::api::{Card, Suit, Value};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Player {
-    called: usize,
-    hand: Vec<Card>,
-    tricks_won: usize,
+    pub called: usize,
+    pub hand: Vec<Card>,
+    pub tricks_won: usize,
     pub points: i32,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Round {
-    pub players: HashMap<usize, Player>,
-    pub order: Vec<usize>,
+    pub players: HashMap<PlayerId, Player>,
+    pub order: Vec<PlayerId>,
     pub round_number: usize,
-    pub current_trick: Vec<(usize, Card)>,
-    pub dealer: usize,
-    pub current_player: usize,
+    pub current_trick: Vec<(PlayerId, Card)>,
+    pub dealer: PlayerId,
+    pub current_player: PlayerId,
     pub trump: Option<Suit>,
     pub dealer_needs_to_set_trump: bool,
     pub is_over: bool,
+    pub bidding_phase: bool,
+    pub current_bidder_index: usize,
 }
 
 impl Round {
-    pub fn new(round_number: usize, player_ids: &Vec<usize>) -> Self {
+    pub fn new(round_number: usize, player_ids: &Vec<PlayerId>) -> Self {
         if player_ids.is_empty() {
             panic!("Cannot create a round with no players");
         }
         let mut deck = vec![];
         for suit in Suit::iter() {
-            for symbol in Symbol::iter() {
-                deck.push(Card::new(suit, symbol));
+            deck.push(Card::new(suit, Value::Jester));
+            deck.push(Card::new(suit, Value::Wizard));
+            for num in 1..=13 {
+                deck.push(Card::new(suit, Value::Number(num)));
             }
         }
 
@@ -54,12 +58,14 @@ impl Round {
                 },
             );
         }
-        let dealer_position_in_player_ids = round_number % player_ids.len();
-        let dealer_id = player_ids[dealer_position_in_player_ids];
-        let current_player_position = (dealer_position_in_player_ids + 1) % player_ids.len();
+        
+        let dealer_position = round_number % player_ids.len();
+        let dealer_id = player_ids[dealer_position];
+        let current_player_position = (dealer_position + 1) % player_ids.len();
         let current_player_id = player_ids[current_player_position];
 
-        let mut order = vec![usize::MAX; player_ids.len()];
+        let mut order = vec![PlayerId::MAX; player_ids.len()];
+
         for i in 0..player_ids.len() {
             order[i] = player_ids[(current_player_position + i) % player_ids.len()];
         }
@@ -69,10 +75,10 @@ impl Round {
         let mut dealer_needs_to_set_trump = false;
         if !deck.is_empty() {
             let trump_card = draw_random_card(&mut deck);
-            if trump_card.symbol != Symbol::Jester && trump_card.symbol != Symbol::Wizard {
+            if trump_card.value != Value::Jester && trump_card.value != Value::Wizard {
                 trump = Some(trump_card.suit);
             }
-            dealer_needs_to_set_trump = trump_card.symbol == Symbol::Wizard;
+            dealer_needs_to_set_trump = trump_card.value == Value::Wizard;
         }
 
         Round {
@@ -85,10 +91,22 @@ impl Round {
             dealer_needs_to_set_trump,
             round_number,
             is_over: false,
+            bidding_phase: true,
+            current_bidder_index: 0,
         }
     }
 
-    pub fn set_called(&mut self, player_id: usize, value: usize) -> Result<(), Err> {
+    pub fn set_called(&mut self, player_id: PlayerId, value: usize) -> Result<(), &'static str> {
+        if !self.bidding_phase {
+            return Err("Bidding phase is over");
+        }
+        if self.dealer_needs_to_set_trump {
+            return Err("Dealer must set trump first");
+        }
+        let expected_bidder = self.order[self.current_bidder_index];
+        if player_id != expected_bidder {
+            return Err("Wrong player's turn to bid");
+        }
         let player = match self.players.get_mut(&player_id) {
             Some(p) => p,
             None => return Err("Invalid Player ID."),
@@ -96,11 +114,26 @@ impl Round {
         if player.called != usize::MAX {
             return Err("Player has already called");
         }
+
+        // Validate bid value (0 to number of cards in hand)
+        let max_bid = self.round_number + 1;
+        if value > max_bid {
+            return Err("Bid exceeds maximum allowed");
+        }
+
         player.called = value;
+
+        // No use of a % wrap-around because we wouldnt know bidding is over
+        self.current_bidder_index += 1;
+        if self.current_bidder_index >= self.order.len() {
+            self.bidding_phase = false;
+            self.current_bidder_index = 0;
+        }
+
         Ok(())
     }
 
-    pub fn set_trump(&mut self, player_id: usize, suit: Suit) -> Result<(), Err> {
+    pub fn set_trump(&mut self, player_id: PlayerId, suit: Suit) -> Result<(), &'static str> {
         if self.dealer != player_id {
             return Err("Only the dealer can set the trump");
         }
@@ -111,22 +144,48 @@ impl Round {
         self.dealer_needs_to_set_trump = false;
         Ok(())
     }
-    pub fn play_card(&mut self, player_id: usize, card: Card) -> Result<(), Err> {
-        let player = self.players.get_mut(&player_id).unwrap();
+
+    pub fn play_card(&mut self, player_id: PlayerId, card: Card) -> Result<(), &'static str> {
+        if self.bidding_phase {
+            return Err("Cannot play cards during bidding phase");
+        }
+        if self.dealer_needs_to_set_trump {
+            return Err("Dealer must set trump first");
+        }
         if self.current_player != player_id {
-            return Err("It's not this player's turn");
+            return Err("Wrong player's turn to play");
         }
-        // Check if the player has the card and remove it from their hand
-        let card_position_result = player.hand.iter().position(|x| *x == card);
-        match card_position_result {
-            Some(index) => {
-                player.hand.remove(index);
-                self.current_trick.push((player_id, card));
-            }
-            None => {
-                return Err("Player does not have this card in hand");
+
+        let player = self.players.get(&player_id).unwrap();
+
+        if !player.hand.contains(&card) {
+            return Err("Player does not have this card in hand");
+        }
+
+        if card.value != Value::Wizard
+            && card.value != Value::Jester
+            && !self.current_trick.is_empty()
+        {
+            let lead_suit = self
+                .current_trick
+                .iter()
+                .find(|(_, c)| c.value != Value::Jester && c.value != Value::Wizard)
+                .map(|(_, c)| c.suit);
+
+            if let Some(lead) = lead_suit {
+                let has_lead_suit = player.hand.iter().any(|c| {
+                    c.suit == lead && c.value != Value::Wizard && c.value != Value::Jester
+                });
+                if has_lead_suit && card.suit != lead {
+                    return Err("Must be playing a suit of the first card played");
+                }
             }
         }
+
+        let player = self.players.get_mut(&player_id).unwrap();
+        let card_position = player.hand.iter().position(|x| *x == card).unwrap();
+        player.hand.remove(card_position);
+        self.current_trick.push((player_id, card));
         let current_player_position = self.order.iter().position(|x| *x == player_id).unwrap();
         let next_player_position = (current_player_position + 1) % self.order.len();
         self.current_player = self.order[next_player_position];
@@ -138,22 +197,40 @@ impl Round {
 
     fn calc_trick_winner(&mut self) {
         if self.order.len() != self.current_trick.len() {
-            panic!("Cannot calculate trick winner before all players have played a card. This should never happen");
+            panic!("Cannot calculate trick winner before all players have played a card.");
         }
 
+        // Find the lead suit (first non-Jester, non-Wizard card)
+        let lead_suit = self
+            .current_trick
+            .iter()
+            .find(|(_, card)| card.value != Value::Jester && card.value != Value::Wizard)
+            .map(|(_, card)| card.suit);
+
         let mut winner = self.current_trick[0];
+
         for (id, card) in self.current_trick.clone() {
-            if card.symbol == Symbol::Wizard {
+            // First Wizard always wins
+            if card.value == Value::Wizard {
                 winner = (id, card);
                 break;
             }
-            if self.better_than_winner(&winner.1, &card) {
+            if self.better_than_winner(&winner.1, &card, lead_suit) {
                 winner = (id, card);
             }
         }
+
         self.players.get_mut(&winner.0).unwrap().tricks_won += 1;
 
-        if self.players[&0].hand.is_empty() {
+        self.current_player = winner.0;
+
+        let round_over = self
+            .players
+            .values()
+            .next()
+            .map(|p| p.hand.is_empty())
+            .unwrap_or(true);
+        if round_over {
             self.get_points();
             self.is_over = true;
         }
@@ -161,35 +238,45 @@ impl Round {
         self.current_trick.clear();
     }
 
-    fn better_than_winner(&self, winner: &Card, card: &Card) -> bool {
-        self.card_value(card) > self.card_value(winner)
+    fn better_than_winner(&self, winner: &Card, card: &Card, lead_suit: Option<Suit>) -> bool {
+        if card.value == Value::Jester {
+            return false;
+        }
+        if winner.value == Value::Jester {
+            return true;
+        }
+        if winner.value == Value::Wizard {
+            return false;
+        }
+
+        self.card_value(card, lead_suit) > self.card_value(winner, lead_suit)
     }
 
-    fn card_value(&self, card: &Card) -> usize {
-        let base: usize = match card.symbol {
-            Symbol::Jester => 1,
-            Symbol::Two => 2,
-            Symbol::Three => 3,
-            Symbol::Four => 4,
-            Symbol::Five => 5,
-            Symbol::Six => 6,
-            Symbol::Seven => 7,
-            Symbol::Eight => 8,
-            Symbol::Nine => 9,
-            Symbol::Ten => 10,
-            Symbol::Jack => 11,
-            Symbol::Queen => 12,
-            Symbol::King => 13,
-            Symbol::Ace => 14,
-            Symbol::Wizard => 15,
+    fn card_value(&self, card: &Card, lead_suit: Option<Suit>) -> usize {
+        let base: usize = match card.value {
+            Value::Jester => 0 as usize,
+            Value::Number(n) => n as usize,
+            Value::Wizard => 100, // Wizard always highest
         };
 
-        let suit_bonus: usize = match self.trump {
-            Some(trump_suit) if card.suit == trump_suit => 16,
-            _ => 0,
-        };
+        let is_trump = self.trump.map(|t| card.suit == t).unwrap_or(false);
+        let is_lead = lead_suit.map(|l| card.suit == l).unwrap_or(false);
+        
+        // just to be sure :)
+        if card.value == Value::Wizard {
+            return usize::MAX;
+        }
+        if card.value == Value::Jester {
+            return usize::MIN;
+        }
 
-        base + suit_bonus
+        if is_trump {
+            base + 32 // Trump cards beat everything except Wizard
+        } else if is_lead {
+            base + 16 // Lead suit beats off-suit
+        } else {
+            0
+        }
     }
 
     fn get_points(&mut self) {
@@ -203,32 +290,6 @@ impl Round {
                 -10 * (called - won).abs()
             };
             player.points += points;
-        }
-    }
-
-    pub fn to_state(&self) -> crate::gamelogic::game_state::RoundState {
-        crate::gamelogic::game_state::RoundState {
-            round_number: self.round_number,
-            player_states: self
-                .players
-                .iter()
-                .map(|(id, player)| {
-                    let player_state = crate::gamelogic::game_state::PlayerState {
-                        hand: player.hand.clone(),
-                        called: player.called,
-                        tricks_won: player.tricks_won,
-                        id: *id,
-                        points: player.points,
-                    };
-                    (*id, player_state)
-                })
-                .collect(),
-            dealer: self.dealer,
-            order: self.order.clone(),
-            current_trick: self.current_trick.clone(),
-            trump: self.trump,
-            current_player: self.current_player,
-            dealer_needs_to_set_trump: self.dealer_needs_to_set_trump,
         }
     }
 }

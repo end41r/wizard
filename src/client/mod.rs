@@ -2,8 +2,9 @@ mod update;
 mod views;
 mod ws;
 
-use crate::api::{Lobby, PlayerId};
+use crate::api::{Card, Lobby, PlayerId, Suit};
 use iced::{time, Subscription};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -70,6 +71,26 @@ pub struct App {
     pub chat_input: String,
     pub server_messages: Vec<String>,
     pub last_msg: String,
+
+    // Gameplay state
+    pub game_log: Vec<String>,
+    pub my_hand: Vec<Card>,
+    pub current_trick: Vec<(PlayerId, Card)>,
+    pub trump: Option<Suit>,
+    pub round_number: usize,
+    pub is_my_turn: bool,
+    pub is_bidding_phase: bool,
+    pub must_set_trump: bool,
+    pub current_player: Option<PlayerId>,
+    pub player_order: Vec<PlayerId>,
+    pub bids: HashMap<PlayerId, usize>,
+    pub tricks_won: HashMap<PlayerId, usize>,
+    pub scores: HashMap<PlayerId, i32>,
+    pub bid_input: String,
+    pub valid_cards: Vec<Card>,
+    pub dealer: Option<PlayerId>,
+    pub game_over: bool,
+    pub winner: Option<PlayerId>,
 }
 
 impl Default for App {
@@ -97,6 +118,26 @@ impl Default for App {
             server_messages: Vec::new(),
             ip: String::from("localhost"),
             last_msg: String::new(),
+
+            // Gameplay defaults
+            game_log: Vec::new(),
+            my_hand: Vec::new(),
+            current_trick: Vec::new(),
+            trump: None,
+            round_number: 0,
+            is_my_turn: false,
+            is_bidding_phase: false,
+            must_set_trump: false,
+            current_player: None,
+            player_order: Vec::new(),
+            bids: HashMap::new(),
+            tricks_won: HashMap::new(),
+            scores: HashMap::new(),
+            bid_input: String::new(),
+            valid_cards: Vec::new(),
+            dealer: None,
+            game_over: false,
+            winner: None,
         }
     }
 }
@@ -119,6 +160,12 @@ pub enum AppMessage {
     Connect,
     ToggleReady(u64),
     StartGame,
+
+    // Gameplay messages
+    BidInputChanged(String),
+    SubmitBid,
+    PlayCard(Card),
+    SetTrump(Suit),
 
     GameRules,
     BackToMenu,

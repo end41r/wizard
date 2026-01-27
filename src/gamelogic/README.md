@@ -11,7 +11,7 @@ let player_id = game.add_player()
 let game_state = game.start()
 
 // Check if the trump needs to be set.
-games_state.dealer_needs_to_set_Trump()
+games_state.dealer_needs_to_set_trump()
 
 // Player Actions.
 
@@ -23,3 +23,4 @@ game.set_called(player_id, value)
 
 // To play a card for player 1 and the first card of his hand.
 game.play_card(player_id, card)
+```

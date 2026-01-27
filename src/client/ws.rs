@@ -36,11 +36,14 @@ pub async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: S
             let recv_task = tokio::spawn(async move {
                 while let Some(Ok(WsMessage::Text(txt))) = read.next().await {
                     println!("Raw message received: {txt}");
-                    if let Ok(server_msg) = serde_json::from_str::<ServerMessage>(&txt) {
-                        println!("Parsed successfully: {server_msg:?}");
-                        let _ = srv_tx.send(server_msg);
-                    } else {
-                        println!("Failed to parse message");
+                    match serde_json::from_str::<ServerMessage>(&txt) {
+                        Ok(server_msg) => {
+                            println!("Parsed successfully: {server_msg:?}");
+                            let _ = srv_tx.send(server_msg);
+                        }
+                        Err(e) => {
+                            println!("Failed to parse message: {e}");
+                        }
                     }
                 }
                 println!("Receive loop ended");

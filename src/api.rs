@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use strum_macros::EnumIter;
 
 pub type PlayerId = u64;
 pub type SessionId = u64;
@@ -25,6 +25,7 @@ pub enum C {
     SetPlayerCount { count: usize },
 
     Bid { amount: usize },
+    SetTrump { suit: Suit },
 
     PlayCard { card: Card },
 
@@ -41,6 +42,7 @@ pub enum S {
 
     HandDealt { cards: Vec<Card> },
 
+    TrumpRequest,
     BidRequest { min: usize, max: usize },
     InvalidBid { reason: String },
 
@@ -71,7 +73,13 @@ pub enum B {
         cards_per_player: usize,
         trump: Option<Suit>,
     },
-
+    DealerMustSetTrump {
+        dealer: PlayerId,
+    },
+    TrumpSet {
+        suit: Suit,
+        by_dealer: PlayerId,
+    },
     BiddingStarted {
         starting_player: PlayerId,
         cards_per_player: usize,
@@ -84,7 +92,7 @@ pub enum B {
         amount: usize,
     },
     BiddingFinished {
-        bids: HashMap<PlayerId, usize>,
+        bids: Vec<(PlayerId, usize)>,
     },
 
     PoolStarted {
@@ -104,25 +112,31 @@ pub enum B {
     },
 
     RoundFinished {
-        scores: HashMap<PlayerId, usize>,
-        won_amounts: HashMap<PlayerId, usize>,
+        scores: Vec<(PlayerId, i32)>,
+        won_amounts: Vec<(PlayerId, usize)>,
     },
 
     GameFinished {
-        final_scores: HashMap<PlayerId, usize>,
+        final_scores: Vec<(PlayerId, i32)>,
         winner: PlayerId,
     },
     /// Server is shutting down (host stopped server)
     ServerShutdown,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Card {
     pub value: Value,
     pub suit: Suit,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+impl Card {
+    pub fn new(suit: Suit, value: Value) -> Self {
+        Self { suit, value }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, EnumIter)]
 pub enum Suit {
     Red,
     Yellow,
@@ -130,10 +144,10 @@ pub enum Suit {
     Blue,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, EnumIter)]
 pub enum Value {
-    Narre,
-    Number(u8),
+    Jester,
+    Number(u8), // 1-13
     Wizard,
 }
 

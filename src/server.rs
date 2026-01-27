@@ -1,4 +1,7 @@
 use crate::api::{Lobby, Player, ServerMessage, B, C, S};
+use crate::gamelogic::game::Game;
+use crate::gamelogic::GameEvent;
+
 use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
@@ -16,6 +19,7 @@ use uuid::Uuid;
 
 type Clients = Arc<RwLock<HashMap<u64, mpsc::UnboundedSender<ServerMessage>>>>;
 type PlayerList = Arc<RwLock<HashMap<u64, Player>>>;
+type SharedGame = Arc<RwLock<Game>>;
 
 const SVERSION: usize = 1;
 
@@ -23,6 +27,111 @@ const SVERSION: usize = 1;
 static MAX_PLAYER_COUNT: AtomicUsize = AtomicUsize::new(4);
 
 static SHUTDOWN_SENDER: Mutex<Option<tokio::sync::oneshot::Sender<()>>> = Mutex::new(None);
+static CLIENTS: Mutex<Option<Clients>> = Mutex::new(None);
+
+/// Game events -> Network messages
+async fn dispatch_events(events: Vec<GameEvent>, clients: &Clients, players: &PlayerList) {
+    for event in events {
+        use GameEvent::*;
+        match event {
+            GameStarted { players: p } => {
+                broadcast(clients, players, B::GameStarted { players: p }).await
+            }
+            GameFinished {
+                final_scores,
+                winner,
+            } => {
+                let final_scores: Vec<_> = final_scores.into_iter().collect();
+                broadcast(
+                    clients,
+                    players,
+                    B::GameFinished {
+                        final_scores,
+                        winner,
+                    },
+                )
+                .await;
+            }
+            RoundStarted {
+                round,
+                cards_per_player,
+                trump,
+            } => {
+                broadcast(
+                    clients,
+                    players,
+                    B::RoundStarted {
+                        round,
+                        cards_per_player,
+                        trump,
+                    },
+                )
+                .await
+            }
+            RoundFinished { scores, tricks_won } => {
+                let scores: Vec<_> = scores.into_iter().collect();
+                let won_amounts: Vec<_> = tricks_won.into_iter().collect();
+                broadcast(
+                    clients,
+                    players,
+                    B::RoundFinished {
+                        scores,
+                        won_amounts,
+                    },
+                )
+                .await;
+            }
+            HandDealt { player, cards } => send(clients, player, S::HandDealt { cards }).await,
+            DealerMustSetTrump { dealer } => {
+                broadcast(clients, players, B::DealerMustSetTrump { dealer }).await;
+                send(clients, dealer, S::TrumpRequest).await;
+            }
+            TrumpSet { suit, by_dealer } => {
+                broadcast(clients, players, B::TrumpSet { suit, by_dealer }).await
+            }
+            BiddingStarted {
+                starting_player,
+                cards_per_player,
+            } => {
+                broadcast(
+                    clients,
+                    players,
+                    B::BiddingStarted {
+                        starting_player,
+                        cards_per_player,
+                    },
+                )
+                .await
+            }
+            BidRequest { player, min, max } => {
+                broadcast(clients, players, B::BidTurn { player }).await;
+                send(clients, player, S::BidRequest { min, max }).await;
+            }
+            BidMade { player, amount } => {
+                broadcast(clients, players, B::BidMade { player, amount }).await
+            }
+            BiddingFinished { bids } => {
+                let bids: Vec<_> = bids.into_iter().collect();
+                broadcast(clients, players, B::BiddingFinished { bids }).await
+            }
+            TrickStarted { leader } => broadcast(clients, players, B::PoolStarted { leader }).await,
+            TurnRequest {
+                player,
+                valid_cards,
+            } => {
+                broadcast(clients, players, B::TurnChanged { player }).await;
+                send(clients, player, S::YourTurn { valid_cards }).await;
+            }
+            CardPlayed { player, card } => {
+                broadcast(clients, players, B::CardPlayed { player, card }).await
+            }
+            TrickFinished { winner, cards } => {
+                broadcast(clients, players, B::PoolFinished { winner, cards }).await
+            }
+        }
+    }
+}
+
 pub fn local_ip() -> String {
     use std::net::UdpSocket;
     UdpSocket::bind("0.0.0.0:0")
@@ -39,6 +148,12 @@ pub fn start_server() {
     // create the shared state up-front so we can expose it to `stop_server()`
     let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
     let players: PlayerList = Arc::new(RwLock::new(HashMap::new()));
+    let game: SharedGame = Arc::new(RwLock::new(Game::new()));
+
+    // store clients globally so send() can access them
+    if let Ok(mut guard) = CLIENTS.lock() {
+        *guard = Some(clients.clone());
+    }
 
     // store globals for `stop_server` to use
     // create a oneshot channel that will be used to trigger graceful shutdown
@@ -51,7 +166,7 @@ pub fn start_server() {
     std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async move {
-            run_server(clients, players, rx).await;
+            run_server(clients, players, game, rx).await;
         });
     });
 }
@@ -59,6 +174,7 @@ pub fn start_server() {
 async fn run_server(
     clients: Clients,
     players: PlayerList,
+    game: SharedGame,
     shutdown_rx: tokio::sync::oneshot::Receiver<()>,
 ) {
     let app = Router::new().route(
@@ -66,7 +182,8 @@ async fn run_server(
         get({
             let clients = clients.clone();
             let players = players.clone();
-            move |ws| ws_handler(ws, clients.clone(), players.clone())
+            let game = game.clone();
+            move |ws| ws_handler(ws, clients.clone(), players.clone(), game.clone())
         }),
     );
 
@@ -91,8 +208,9 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     clients: Clients,
     players: PlayerList,
+    game: SharedGame,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, clients, players))
+    ws.on_upgrade(move |socket| handle_socket(socket, clients, players, game))
 }
 
 /// Stops the server by sending a shutdown signal.
@@ -105,19 +223,20 @@ pub fn stop_server() {
     }
 }
 
-async fn broadcast_to_all(clients: &Clients, _players: &PlayerList, broadcast: B) {
-    let wrapped = ServerMessage::Broadcast(broadcast);
-    let message_text = serde_json::to_string(&wrapped).unwrap();
-    println!("Broadcasting: {message_text}");
-    let clients_map = clients.read().await;
-    for (client_id, tx) in clients_map.iter() {
-        if tx.send(wrapped.clone()).is_err() {
-            println!("Failed to send to client {client_id}");
-        }
+async fn broadcast(clients: &Clients, _players: &PlayerList, msg: B) {
+    let wrapped = ServerMessage::Broadcast(msg);
+    for tx in clients.read().await.values() {
+        let _ = tx.send(wrapped.clone());
     }
 }
 
-async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList) {
+async fn send(clients: &Clients, player_id: u64, msg: S) {
+    if let Some(tx) = clients.read().await.get(&player_id) {
+        let _ = tx.send(ServerMessage::Server(msg));
+    }
+}
+
+async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList, game: SharedGame) {
     let id = Uuid::new_v4().as_u128() as u64;
     println!("New connection: player {id}");
 
@@ -148,6 +267,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
     // Runs the main receive loop.
     let clients_clone = clients.clone();
     let players_clone = players.clone();
+    let game_clone = game.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
             if let Message::Text(text) = msg {
@@ -201,7 +321,18 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
 
                         let players_list: Vec<Player> =
                             players_clone.read().await.values().cloned().collect();
-                        broadcast_to_all(
+
+                        let res = game_clone.write().await.add_player(id);
+                        if res.is_err() {
+                            let error = ServerMessage::Server(S::Error {
+                                reason: res.err().unwrap().to_string(),
+                            });
+                            if let Err(e) = tx.send(error) {
+                                println!("Failed to send error: {e:?}");
+                            }
+                        }
+
+                        broadcast(
                             &clients_clone,
                             &players_clone,
                             B::LobbyState {
@@ -212,7 +343,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                             },
                         )
                         .await;
-                        broadcast_to_all(
+                        broadcast(
                             &clients_clone,
                             &players_clone,
                             B::PlayerCountChanged {
@@ -228,7 +359,19 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
 
                         let players_list: Vec<Player> =
                             players_clone.read().await.values().cloned().collect();
-                        broadcast_to_all(
+
+                        let res = game_clone.write().await.remove_player(id);
+                        if res.is_err() {
+                            let error = ServerMessage::Server(S::Error {
+                                reason: res.err().unwrap().to_string(),
+                            });
+                            if let Err(e) = tx.send(error) {
+                                println!("Failed to send error: {e:?}");
+                            }
+                            return;
+                        }
+
+                        broadcast(
                             &clients_clone,
                             &players_clone,
                             B::LobbyState {
@@ -243,7 +386,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     Ok(C::ChatMessage { sender, message }) => {
                         println!("Player {sender} sent chat message: {message}");
 
-                        broadcast_to_all(
+                        broadcast(
                             &clients_clone,
                             &players_clone,
                             B::ChatMessage {
@@ -267,7 +410,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
 
                         let players_list: Vec<Player> =
                             players_clone.read().await.values().cloned().collect();
-                        broadcast_to_all(
+                        broadcast(
                             &clients_clone,
                             &players_clone,
                             B::LobbyState {
@@ -281,48 +424,61 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     }
                     Ok(C::Bid { amount }) => {
                         println!("Player {id} bid: {amount}");
-
-                        broadcast_to_all(
-                            &clients_clone,
-                            &players_clone,
-                            B::BidMade { player: id, amount },
-                        )
-                        .await;
-                        // TODO: Validates the bid and checks if the bidding is complete.
+                        match game_clone.write().await.bid(id, amount) {
+                            Err(e) => {
+                                let _ = tx.send(ServerMessage::Server(S::Error {
+                                    reason: e.to_string(),
+                                }));
+                            }
+                            Ok(events) => {
+                                dispatch_events(events, &clients_clone, &players_clone).await
+                            }
+                        }
                     }
                     Ok(C::PlayCard { card }) => {
                         println!("Player {id} played card: {card:?}");
-
-                        broadcast_to_all(
-                            &clients_clone,
-                            &players_clone,
-                            B::CardPlayed {
-                                player: id,
-                                card: card.clone(),
-                            },
-                        )
-                        .await;
-                        // TODO: Validates the play and checks if the pool is complete.
+                        match game_clone.write().await.play_card(id, card) {
+                            Err(e) => {
+                                let _ = tx.send(ServerMessage::Server(S::Error {
+                                    reason: e.to_string(),
+                                }));
+                            }
+                            Ok(events) => {
+                                dispatch_events(events, &clients_clone, &players_clone).await
+                            }
+                        }
                     }
                     Ok(C::StartGame) => {
                         println!("Player {id} requested to start game");
-                        let players_list: Vec<Player> =
-                            players_clone.read().await.values().cloned().collect();
-
-                        broadcast_to_all(
-                            &clients_clone,
-                            &players_clone,
-                            B::GameStarted {
-                                players: players_list.iter().map(|p| p.id).collect(),
-                            },
-                        )
-                        .await;
+                        match game_clone.write().await.start() {
+                            Err(e) => {
+                                let _ = tx.send(ServerMessage::Server(S::Error {
+                                    reason: e.to_string(),
+                                }));
+                            }
+                            Ok(events) => {
+                                dispatch_events(events, &clients_clone, &players_clone).await
+                            }
+                        }
+                    }
+                    Ok(C::SetTrump { suit }) => {
+                        println!("Player {id} setting trump to {suit:?}");
+                        match game_clone.write().await.set_trump(id, suit) {
+                            Err(e) => {
+                                let _ = tx.send(ServerMessage::Server(S::Error {
+                                    reason: e.to_string(),
+                                }));
+                            }
+                            Ok(events) => {
+                                dispatch_events(events, &clients_clone, &players_clone).await
+                            }
+                        }
                     }
                     Ok(C::SetPlayerCount { count }) => {
                         println!("Player {id} set player count to {count}");
                         MAX_PLAYER_COUNT.store(count, Ordering::Relaxed);
 
-                        broadcast_to_all(
+                        broadcast(
                             &clients_clone,
                             &players_clone,
                             B::PlayerCountChanged { count },
@@ -331,7 +487,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList)
                     }
                     Ok(C::RequestShutdown) => {
                         println!("Player {id} requested server shutdown");
-                        broadcast_to_all(&clients_clone, &players_clone, B::ServerShutdown).await;
+                        broadcast(&clients_clone, &players_clone, B::ServerShutdown).await;
                         tokio::time::sleep(Duration::from_millis(200)).await;
                         stop_server();
                     }
