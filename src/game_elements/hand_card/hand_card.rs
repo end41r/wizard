@@ -1,5 +1,6 @@
+use std::ops::Not;
 use iced::{ContentFit::Fill, Point, Size, mouse::Interaction, widget::{Container, MouseArea, container, image, pin, stack}};
-use super::super::{GameElement, AnimationCore, ReversableAnimation, RepeatingAnimation, BasicAnimation};
+use super::super::{GameElement, AnimationCore, ReversableAnimation, AutoReversingAnimation, RepeatingAutoReversingAnimation, RepeatingBasicAnimation, BasicAnimation};
 use crate::game_elements::hand::{Hand, HandMessage};
 use crate::client::AppMessage;
 use super::{animation_draw::DrawAnimation,
@@ -7,32 +8,26 @@ use super::{animation_draw::DrawAnimation,
             animation_hover_focus::HoverFocusAnimation,
             animtion_hide::HideAnimation,
             animation_play::PlayAnimation,
+            animation_playable::PlayableAnimation,
+            animation_false_played::FalsePlayedAnimation,
             {f32_min_2, f32_min_3}
            };
+
+static FRAME_PLAYABLE_PATH:&'static str = "assets/cards/frame_green.png";     
+static FRAME_PLAYABLE_FOCUSED_PATH:&'static str = "assets/cards/frame_yellow.png";
+static FALSE_PLAYED_PATH:&'static str = "assets/cards/false_played.png";
 
 #[derive(Debug, Clone)]
 pub enum CardMessage {
     Played(usize),
+    FalsePlayed(usize),
     Hovered(usize),
     NotHovered(usize),
     Hide(usize),
     Show(usize),
     Draw(usize),
-    CursorMoved(usize, Point)
-}
-
-impl CardMessage {
-    pub fn get_id(&self) -> usize {
-        match self {
-            CardMessage::Hovered(id) => *id,
-            CardMessage::NotHovered(id) => *id,
-            CardMessage::Played(id) => *id,
-            CardMessage::Hide(id) => *id,
-            CardMessage::Show(id) => *id,
-            CardMessage::Draw(id) => *id,
-            CardMessage::CursorMoved(id, _) => *id
-        }
-    }
+    CursorMoved(usize, Point),
+    ShowPlayableStatus(usize, bool)
 }
 
 #[derive(Debug, Clone)]
@@ -40,28 +35,38 @@ pub struct Card {
     pub id: usize,
     img_path: &'static str,
     pub size: Size,
+    pub playable: bool,
+    pub show_playable_status: bool,
     pub rotation: f32,
     pub draw_animation: DrawAnimation,
     pub hover_animation: HoverAnimation,
     pub play_animation: PlayAnimation,
+    pub playable_animation: PlayableAnimation,
+    pub false_played_animation: FalsePlayedAnimation,
     pub focus_animation: HoverFocusAnimation,
     pub hide_animation: HideAnimation
 }
 
 impl Card {
 
-    pub fn new(id: usize, img_path: &'static str, size: Size) -> Self {
-        Self {
+    pub fn new(id: usize, img_path: &'static str, size: Size, playable: bool) -> Self {
+        let mut card: Card = Self {
             id: id,
             img_path: img_path,
             size: size,
+            playable: playable,
+            show_playable_status: false,
             rotation: 0.0,
             draw_animation: DrawAnimation::new(),
             hover_animation: HoverAnimation::new(size),
             play_animation: PlayAnimation::new(),
+            playable_animation: PlayableAnimation::new(),
+            false_played_animation: FalsePlayedAnimation::new(),
             focus_animation: HoverFocusAnimation::new(),
             hide_animation: HideAnimation::new()
-        }
+        };
+        card.playable_animation.start();
+        card
     }
 }
 
@@ -74,34 +79,56 @@ impl GameElement for Card {
     }
 
     fn update_with_msg(&mut self, msg: CardMessage) {
-        if self.id == msg.get_id() {
-            match msg {
-                CardMessage::Hovered(_) => {
+        match msg {
+            CardMessage::Hovered(id) => {
+                if id == self.id {
                     self.hover_animation.start();
                     self.focus_animation.start();
                 }
-                CardMessage::Played(_) => {
+            }
+            CardMessage::Played(id) => {
+                if id == self.id {
                     self.play_animation.start();
                 }
-                CardMessage::NotHovered(_) => {
+            }
+            CardMessage::NotHovered(id) => {
+                if id == self.id {
                     self.hover_animation.reverse();
                     self.focus_animation.reset();
                     self.rotation = 0.0;
                 }
-                CardMessage::Hide(_) => {
+            }
+            CardMessage::Hide(id) => {
+                if id == self.id {
                     self.hide_animation.start();
                 }
-                CardMessage::Show(_) => {
+            }
+            CardMessage::Show(id) => {
+                if id == self.id {
                     self.hide_animation.start_from_reverse();
                 }
-                CardMessage::Draw(_) => {
+            }
+            CardMessage::Draw(id) => {
+                if id == self.id {
                     self.draw_animation.start();
                 }
-                CardMessage::CursorMoved(_, point) => {
+            }
+            CardMessage::CursorMoved(id, point) => {
+                if id == self.id {
                     let halve_card_width: f32 = self.size.width * (1.0/2.0);
                     let factor_width: f32 = (point.x - halve_card_width) / halve_card_width;
 
                     self.rotation = 0.05 * factor_width;
+                }
+            }
+            CardMessage::FalsePlayed(id) => {
+                if id == self.id {
+                    self.false_played_animation.start();
+                }
+            }
+            CardMessage::ShowPlayableStatus(id, do_show) => {
+                if id == self.id {
+                    self.show_playable_status = do_show;
                 }
             }
         }
@@ -111,6 +138,8 @@ impl GameElement for Card {
         self.draw_animation.next_frame();
         self.hover_animation.next_frame();
         self.play_animation.next_frame();
+        self.playable_animation.next_frame();
+        self.false_played_animation.next_frame();
         self.focus_animation.next_frame();
         self.hide_animation.next_frame();
     }
@@ -126,8 +155,14 @@ impl GameElement for Card {
                                          self.hide_animation.get_opacity(),
                                          self.draw_animation.get_opacity());
 
-        let hover_effect_opacity = f32_min_2(img_opacity,
+        let hover_effect_opacity: f32 = f32_min_2(img_opacity,
                                                   self.focus_animation.get_opacity());
+
+        let playable_opacity: f32 = f32_min_2(img_opacity,
+                                              self.playable_animation.get_opacity());
+
+        let false_played_opacity: f32 = f32_min_2(img_opacity,
+                                               self.false_played_animation.get_opacity());
 
         let width: f32 = self.size.width *
                          self.hover_animation.get_expansion() *
@@ -145,30 +180,63 @@ impl GameElement for Card {
 
         let mut card = stack!();
         let img = image(self.img_path)
-                    .content_fit(Fill)
-                    .width(width)
-                    .height(height)
-                    .rotation(rotation)
-                    .scale(scale)
-                    .opacity(img_opacity);
+                .content_fit(Fill)
+                .width(width)
+                .height(height)
+                .rotation(rotation)
+                .scale(scale)
+                .opacity(img_opacity);
         card = card.push(img);
-        let hover_effect = image(self.focus_animation.img_path)
+        if self.playable {
+            if self.show_playable_status {
+                let playable_effect = image(FRAME_PLAYABLE_PATH)
                     .content_fit(Fill)
                     .width(width)
                     .height(height)
                     .rotation(rotation)
                     .scale(scale)
-                    .opacity(hover_effect_opacity);
-        card = card.push(hover_effect);
+                    .opacity(playable_opacity);
+                card = card.push(playable_effect);
+            }
+            let hover_effect = image(FRAME_PLAYABLE_FOCUSED_PATH)
+                .content_fit(Fill)
+                .width(width)
+                .height(height)
+                .rotation(rotation)
+                .scale(scale)
+                .opacity(hover_effect_opacity);
+            card = card.push(hover_effect);
+        } else {
+            let not_playable_eefect = image(FALSE_PLAYED_PATH)
+                .content_fit(Fill)
+                .width(width)
+                .height(height)
+                .rotation(rotation)
+                .scale(scale)
+                .opacity(false_played_opacity);
+            card = card.push(not_playable_eefect)
+        }
 
         let card_id = self.id.clone();
-        container(MouseArea::new(card)
-            .on_double_click(Card::convert_to_app_message(CardMessage::Played(self.id)))
+        let mut mouse_area = 
+            MouseArea::new(card)
             .on_enter(Card::convert_to_app_message(CardMessage::Hovered(self.id)))
             .on_exit(Card::convert_to_app_message(CardMessage::NotHovered(self.id)))
+            .on_right_press(Hand::convert_to_app_message(HandMessage::ShowPlayableStatus(self.show_playable_status.not())))
             .on_move(move |position| Card::convert_to_app_message(CardMessage::CursorMoved(card_id, position)))
-            .interaction(Interaction::Pointer)
-        )
+            .interaction(Interaction::Pointer);
+        if self.playable {
+            mouse_area =
+                mouse_area.on_double_click(
+                    Card::convert_to_app_message(CardMessage::Played(self.id))
+                )
+        } else {
+            mouse_area =
+                mouse_area.on_double_click(
+                    Card::convert_to_app_message(CardMessage::FalsePlayed(self.id))
+                )
+        }
+        container(mouse_area)
     }
 
     fn view_and_move<'a>(&self, x: f32, y: f32) -> Container<'a, AppMessage> {

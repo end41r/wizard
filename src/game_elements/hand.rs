@@ -21,7 +21,8 @@ pub enum HandMessage {
     CardMessage(CardMessage),
     DrawCards(Vec<Card>),
     HideCards,
-    ShowCards
+    ShowCards,
+    ShowPlayableStatus(bool)
 }
 
 #[derive(Debug)]
@@ -115,23 +116,23 @@ impl Hand {
 
     pub fn build_test_cards() -> Vec<Card> {
         vec![
-            Card::new(0, CARD1_PATH, Size::new(154.0, 225.0)),
-            Card::new(1, CARD3_PATH, Size::new(154.0, 225.0)),
-            Card::new(2, CARD2_PATH, Size::new(154.0, 225.0)),
-            Card::new(3, CARD1_PATH, Size::new(154.0, 225.0)),
-            Card::new(4, CARD4_PATH, Size::new(154.0, 225.0)),
-            Card::new(5, CARD2_PATH, Size::new(154.0, 225.0)),
-            Card::new(6, CARD1_PATH, Size::new(154.0, 225.0)),
-            Card::new(7, CARD3_PATH, Size::new(154.0, 225.0)),
-            Card::new(8, CARD2_PATH, Size::new(154.0, 225.0)),
-            Card::new(9, CARD1_PATH, Size::new(154.0, 225.0)),
-            Card::new(10, CARD4_PATH, Size::new(154.0, 225.0)),
-            Card::new(11, CARD2_PATH, Size::new(154.0, 225.0)),
-            Card::new(12, CARD1_PATH, Size::new(154.0, 225.0)),
-            Card::new(13, CARD4_PATH, Size::new(154.0, 225.0)),
-            Card::new( 14, CARD2_PATH, Size::new(154.0, 225.0)),
-            Card::new(15, CARD1_PATH, Size::new(154.0, 225.0)),
-            Card::new(16, CARD3_PATH, Size::new(154.0, 225.0)),
+            Card::new(0, CARD1_PATH, Size::new(154.0, 225.0), false),
+            Card::new(1, CARD3_PATH, Size::new(154.0, 225.0), true),
+            Card::new(2, CARD2_PATH, Size::new(154.0, 225.0), false),
+            Card::new(3, CARD1_PATH, Size::new(154.0, 225.0), true),
+            Card::new(4, CARD4_PATH, Size::new(154.0, 225.0), true),
+            Card::new(5, CARD2_PATH, Size::new(154.0, 225.0), true),
+            Card::new(6, CARD1_PATH, Size::new(154.0, 225.0), true),
+            Card::new(7, CARD3_PATH, Size::new(154.0, 225.0), false),
+            Card::new(8, CARD2_PATH, Size::new(154.0, 225.0), false),
+            Card::new(9, CARD1_PATH, Size::new(154.0, 225.0), true),
+            Card::new(10, CARD4_PATH, Size::new(154.0, 225.0), true),
+            Card::new(11, CARD2_PATH, Size::new(154.0, 225.0), true),
+            Card::new(12, CARD1_PATH, Size::new(154.0, 225.0), false),
+            Card::new(13, CARD4_PATH, Size::new(154.0, 225.0), true),
+            Card::new( 14, CARD2_PATH, Size::new(154.0, 225.0), true),
+            Card::new(15, CARD1_PATH, Size::new(154.0, 225.0), true),
+            Card::new(16, CARD3_PATH, Size::new(154.0, 225.0), true),
             ]
     }
 
@@ -232,6 +233,11 @@ impl GameElement for Hand {
                     self.top_card_id_upper = 1000;  // Impossible to reach
                     self.update_size(self.window_size);
                     self.draw_animation_ticker.start(None, self.cards.len());
+                }
+            }
+            HandMessage::ShowPlayableStatus(do_show) => {
+                for (id, card) in self.cards.iter_mut() {
+                    card.update_with_msg(CardMessage::ShowPlayableStatus(*id, do_show));
                 }
             }
         }

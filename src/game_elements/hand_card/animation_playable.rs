@@ -1,13 +1,13 @@
-use super::super::{AnimationCore, RepeatingBasicAnimation, AnimationState};
+use super::super::{AnimationCore, RepeatingAutoReversingAnimation, AnimationState};
 
 #[derive(Debug, Clone)]
-pub struct HoverFocusAnimation {
+pub struct PlayableAnimation {
     pub max_frame_number: usize,
     pub current_frame_number: usize,
     pub animation_state: AnimationState,
 }
 
-impl HoverFocusAnimation {
+impl PlayableAnimation {
     pub fn new() -> Self {
         Self {
             max_frame_number: 150,
@@ -18,12 +18,12 @@ impl HoverFocusAnimation {
 
     pub fn get_opacity(&self) -> f32 {
         let mfn: f32 = self.max_frame_number as f32;
-        let cfn: f32 = self.current_frame_number as f32;
-        1.0 - (0.5 - (mfn - cfn) / mfn).abs() * 2.0
+        let cfn = self.current_frame_number as f32;
+        (cfn / mfn) * 0.3 + 0.7
     }
 }
 
-impl AnimationCore for HoverFocusAnimation {
+impl AnimationCore for PlayableAnimation {
     fn _mut_max_frame_number(&mut self) -> &mut usize {
         &mut self.max_frame_number
     }
@@ -35,4 +35,4 @@ impl AnimationCore for HoverFocusAnimation {
     }
 }
 
-impl RepeatingBasicAnimation for HoverFocusAnimation {}
+impl RepeatingAutoReversingAnimation for PlayableAnimation {}

@@ -54,7 +54,9 @@ pub enum AnimationState {
 pub trait BasicAnimation: AnimationCore {
 
     fn start(&mut self) {
-       *self._mut_animation_state() = AnimationState::MovingForward;
+       if *self._mut_animation_state() == AnimationState::NotMoving {
+            *self._mut_animation_state() = AnimationState::MovingForward;
+        }
     }
 
     fn next_frame(&mut self) {
@@ -81,7 +83,9 @@ pub trait BasicAnimation: AnimationCore {
 pub trait ReversableAnimation: AnimationCore {
 
     fn start(&mut self) {
-       *self._mut_animation_state() = AnimationState::MovingForward;
+       if *self._mut_animation_state() == AnimationState::NotMoving {
+            *self._mut_animation_state() = AnimationState::MovingForward;
+        }
     }
 
     fn reverse(&mut self) {
@@ -106,7 +110,7 @@ pub trait ReversableAnimation: AnimationCore {
                 if *self._mut_current_frame_number() > 0 {
                     *self._mut_current_frame_number() -= 1;
                 } else {
-                    *self._mut_animation_state() = AnimationState::NotMoving;
+                    self.reset();
                 }
             }
             _ => {}
@@ -114,7 +118,34 @@ pub trait ReversableAnimation: AnimationCore {
     }
 }
 
-pub trait RepeatingAnimation: AnimationCore {
+pub trait AutoReversingAnimation: AnimationCore {
+    fn start(&mut self) {
+        if *self._mut_animation_state() == AnimationState::NotMoving {
+            *self._mut_animation_state() = AnimationState::MovingForward;
+        }
+    }
+    fn next_frame(&mut self) {
+        match self._mut_animation_state() {
+            AnimationState::MovingForward => {
+                if *self._mut_current_frame_number() < *self._mut_max_frame_number() {
+                    *self._mut_current_frame_number() += 1;
+                } else {
+                    *self._mut_animation_state() = AnimationState::Reversing;
+                }
+            }
+            AnimationState::Reversing => {
+                if *self._mut_current_frame_number() > 0 {
+                    *self._mut_current_frame_number() -= 1;
+                } else {
+                    self.reset();
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+pub trait RepeatingBasicAnimation: AnimationCore {
 
     fn start(&mut self) {
        *self._mut_animation_state() = AnimationState::MovingForward;
@@ -125,6 +156,33 @@ pub trait RepeatingAnimation: AnimationCore {
             AnimationState::MovingForward => {
                 *self._mut_current_frame_number()
                     = (*self._mut_current_frame_number() + 1) % *self._mut_max_frame_number();
+            }
+            _ => {}
+        }
+    }
+}
+
+pub trait RepeatingAutoReversingAnimation: AnimationCore {
+    fn start(&mut self) {
+        if *self._mut_animation_state() == AnimationState::NotMoving {
+            *self._mut_animation_state() = AnimationState::MovingForward;
+        }
+    }
+    fn next_frame(&mut self) {
+        match self._mut_animation_state() {
+            AnimationState::MovingForward => {
+                if *self._mut_current_frame_number() < *self._mut_max_frame_number() {
+                    *self._mut_current_frame_number() += 1;
+                } else {
+                    *self._mut_animation_state() = AnimationState::Reversing;
+                }
+            }
+            AnimationState::Reversing => {
+                if *self._mut_current_frame_number() > 0 {
+                    *self._mut_current_frame_number() -= 1;
+                } else {
+                    *self._mut_animation_state() = AnimationState::MovingForward;
+                }
             }
             _ => {}
         }
