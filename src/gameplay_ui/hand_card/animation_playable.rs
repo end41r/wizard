@@ -1,36 +1,29 @@
-use super::super::{AnimationCore, BasicAnimation, AnimationState};
-use super::f32_min_2;
+use crate::animation::animation::{AnimationCore, RepeatingAutoReversingAnimation, AnimationState};
 
 #[derive(Debug, Clone)]
-pub struct DrawAnimation {
+pub struct PlayableAnimation {
     pub max_frame_number: usize,
     pub current_frame_number: usize,
     pub animation_state: AnimationState,
 }
 
-impl DrawAnimation {
+impl PlayableAnimation {
     pub fn new() -> Self {
         Self {
-            max_frame_number: 10,
+            max_frame_number: 150,
             current_frame_number: 0,
             animation_state: AnimationState::NotMoving,
         }
     }
 
     pub fn get_opacity(&self) -> f32 {
-        self.current_frame_number as f32 * self.max_frame_number as f32
-    }
-
-    pub fn get_contraction(&self) -> f32 {
-        self.current_frame_number as f32 / self.max_frame_number as f32
-    }
-
-    pub fn get_scale(&self) -> f32 {
-        f32_min_2(self.current_frame_number as f32 / self.max_frame_number as f32 + 0.5, 1.0)
+        let mfn: f32 = self.max_frame_number as f32;
+        let cfn = self.current_frame_number as f32;
+        (cfn / mfn) * 0.3 + 0.7
     }
 }
 
-impl AnimationCore for DrawAnimation {
+impl AnimationCore for PlayableAnimation {
     fn _mut_max_frame_number(&mut self) -> &mut usize {
         &mut self.max_frame_number
     }
@@ -42,4 +35,4 @@ impl AnimationCore for DrawAnimation {
     }
 }
 
-impl BasicAnimation for DrawAnimation {}
+impl RepeatingAutoReversingAnimation for PlayableAnimation {}

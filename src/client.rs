@@ -11,8 +11,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 
-use crate::{api::{C, ServerMessage}, game_elements::GameElement};
-use crate::game_elements::hand::{Hand, HandMessage};
+use crate::{api::{C, ServerMessage}};
+use crate::gameplay_ui::hand::{Hand, HandMessage};
+use crate::ui_element_traits::*;
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
 type ServerMsgReceiver = Arc<Mutex<Option<std::sync::mpsc::Receiver<ServerMessage>>>>;

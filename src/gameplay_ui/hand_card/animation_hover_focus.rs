@@ -1,4 +1,4 @@
-use super::super::{AnimationCore, RepeatingBasicAnimation, AnimationState};
+use crate::animation::animation::{AnimationCore, RepeatingBasicAnimation, AnimationState};
 
 #[derive(Debug, Clone)]
 pub struct HoverFocusAnimation {

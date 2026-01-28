@@ -1,7 +1,6 @@
 use std::ops::Not;
-use iced::{ContentFit::Fill, Point, Size, mouse::Interaction, widget::{Container, MouseArea, container, image, pin, stack}};
-use super::super::{GameElement, AnimationCore, ReversableAnimation, AutoReversingAnimation, RepeatingAutoReversingAnimation, RepeatingBasicAnimation, BasicAnimation};
-use crate::game_elements::hand::{Hand, HandMessage};
+use iced::{ContentFit::Fill, Point, Size, mouse::Interaction,
+           widget::{Container, MouseArea, container, image, pin, stack}};
 use crate::client::AppMessage;
 use super::{animation_draw::DrawAnimation,
             animation_hover::HoverAnimation,
@@ -12,6 +11,9 @@ use super::{animation_draw::DrawAnimation,
             animation_false_played::FalsePlayedAnimation,
             {f32_min_2, f32_min_3}
            };
+use super::super::hand::{Hand, HandMessage};
+use crate::ui_element_traits::*;
+use crate::animation::animation::*;
 
 static FRAME_PLAYABLE_PATH:&'static str = "assets/cards/frame_green.png";     
 static FRAME_PLAYABLE_FOCUSED_PATH:&'static str = "assets/cards/frame_yellow.png";
@@ -70,7 +72,7 @@ impl Card {
     }
 }
 
-impl GameElement for Card {
+impl Message for Card {
 
     type OwnMessage = CardMessage;
 
@@ -133,7 +135,9 @@ impl GameElement for Card {
             }
         }
     }
+}
 
+impl Animated for Card {
     fn update_animations(&mut self) {
         self.draw_animation.next_frame();
         self.hover_animation.next_frame();
@@ -143,11 +147,16 @@ impl GameElement for Card {
         self.focus_animation.next_frame();
         self.hide_animation.next_frame();
     }
+}
 
+impl Resizable for Card {
     fn update_size(&mut self, window_size: Size) {
         self.size = window_size;
         self.hover_animation.update_target_max_offset(self.size);
     }
+}
+
+impl Viewable for Card {
 
     fn view<'a>(&self) -> Container<'a, AppMessage> {
 
@@ -207,14 +216,14 @@ impl GameElement for Card {
                 .opacity(hover_effect_opacity);
             card = card.push(hover_effect);
         } else {
-            let not_playable_eefect = image(FALSE_PLAYED_PATH)
+            let not_playable_effect = image(FALSE_PLAYED_PATH)
                 .content_fit(Fill)
                 .width(width)
                 .height(height)
                 .rotation(rotation)
                 .scale(scale)
                 .opacity(false_played_opacity);
-            card = card.push(not_playable_eefect)
+            card = card.push(not_playable_effect)
         }
 
         let card_id = self.id.clone();
@@ -255,3 +264,4 @@ impl GameElement for Card {
         )
     }
 }
+

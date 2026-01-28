@@ -1,8 +1,9 @@
-use super::GameElement;
+use crate::animation::animation::{AnimationCore, ReversableAnimation};
+use crate::ui_element_traits::*;
+use crate::animation::{animation_end_sensor::AnimationEndSensor,
+                       animation_starter::AnimationStarter};
 use crate::client::AppMessage;
-use crate::game_elements::{AnimationCore, AnimationState};
-use crate::game_elements::hand_card::hand_card::{Card, CardMessage};
-use super::{AnimationEndSensor, AnimationStarter};
+use crate::gameplay_ui::hand_card::hand_card::{Card, CardMessage};
 
 use std::num::NonZero;
 use iced::{Point, Size, widget::{Container, Stack, container, pin, stack}};
@@ -176,7 +177,7 @@ impl Hand {
     }
 }
 
-impl GameElement for Hand {
+impl Message for Hand {
 
     type OwnMessage = HandMessage;
 
@@ -214,7 +215,7 @@ impl GameElement for Hand {
             }
             HandMessage::HideCards => {
                 for (id, card) in self.cards.iter_mut() {
-                    if !card.play_animation.active() {
+                    if !card.play_animation.moving_forward() {
                         card.update_with_msg(CardMessage::Hide(*id));
                     }
                 }
@@ -242,16 +243,9 @@ impl GameElement for Hand {
             }
         }
     }
+}
 
-    fn update_size(&mut self, window_size: Size) {
-        self.window_size = window_size;
-        self.card_base_size = Size::new(self.get_card_width(),
-                                        self.get_card_height());
-        for (_, card) in self.cards.iter_mut2() {
-            card.update_size(self.card_base_size);
-        };
-    }
-    
+impl Animated for Hand {
     fn update_animations(&mut self) {
         for (id, card) in self.cards.iter_mut2() {
             card.update_animations();
@@ -262,7 +256,7 @@ impl GameElement for Hand {
             // and instead sends the msg itself.
             if *id != self.hovered_card_id &&
                     card.hover_animation.get_offset() != 0.0 &&
-                    card.hover_animation.animation_state != AnimationState::Reversing {
+                    card.hover_animation.reversing() {
                 card.update_with_msg(CardMessage::NotHovered(*id));
             }
         };
@@ -277,6 +271,20 @@ impl GameElement for Hand {
             self.cards[d.cycle()].update_with_msg(CardMessage::Draw(id));
         });
     }
+}
+
+impl Resizable for Hand {
+    fn update_size(&mut self, window_size: Size) {
+        self.window_size = window_size;
+        self.card_base_size = Size::new(self.get_card_width(),
+                                        self.get_card_height());
+        for (_, card) in self.cards.iter_mut2() {
+            card.update_size(self.card_base_size);
+        };
+    }
+}
+
+impl Viewable for Hand {
 
     fn view<'a>(&self) -> Container<'a, AppMessage> {
 

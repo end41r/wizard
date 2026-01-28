@@ -1,4 +1,4 @@
-use super::super::{AnimationCore, ReversableAnimation, AnimationState};
+use crate::animation::animation::{AnimationCore, ReversableAnimation, AnimationState};
 
 #[derive(Debug, Clone)]
 pub struct HideAnimation {
