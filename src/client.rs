@@ -12,7 +12,7 @@ use std::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 
 use crate::{api::{C, ServerMessage}};
-use crate::gameplay_ui::hand::{Hand, HandMessage};
+use crate::gameplay_ui::hand::{ViewableHand, HandMessage};
 use crate::ui_element_traits::*;
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
@@ -27,7 +27,7 @@ struct App {
     ip: String,
 
     window_size: Size,
-    hand: Hand
+    hand: ViewableHand
 }
 
 impl Default for App {
@@ -41,7 +41,7 @@ impl Default for App {
             ip: String::new(),
 
             window_size: Size::new(300.0, 300.0),
-            hand: Hand::default()
+            hand: ViewableHand::new(Size::new(300.0, 300.0))
         }
     }
 }
@@ -189,7 +189,9 @@ fn view(state: &'_ App) -> Element<'_, AppMessage> {
         column![state.hand.view(),
                 button("Draw Cards")
                 .on_press(
-                    Hand::convert_to_app_message(HandMessage::DrawCards(Hand::build_test_cards()))
+                    ViewableHand::convert_to_app_message(
+                        HandMessage::DrawCards(ViewableHand::build_test_cards(state.window_size))
+                    )
                 )
                ].into()
     }

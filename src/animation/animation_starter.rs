@@ -6,8 +6,6 @@ enum AnimationStarterState {
     Inactive,
 }
 
-/// An AnimationStarter is used for starting multiple animations with a delay.
-/// It allows you to execute a code block when the last animation has started (NOT ended).
 #[derive(Debug)]
 pub struct AnimationStarter<C> {
     animation_delay: NonZero<usize>,
@@ -18,42 +16,35 @@ pub struct AnimationStarter<C> {
 }
 
 impl<C> AnimationStarter<C> {
-    pub fn new(delay: NonZero<usize>) -> Self {
+    pub fn new(animation_delay: NonZero<usize>) -> Self {
         Self {
-            animation_delay: delay,
+            animation_delay,
             tick: 0,
-            times: 0,  // Will be set in fn start() where it first matters
+            times: 1,  // This Will be set in the start function first before it matters.
             state: AnimationStarterState::Inactive,
+            // You may need some additional information for the check function
+            // you only know when you call the start function.
             content: None
         }
     }
-    pub fn content(&self) -> Option<&C> {
-        self.content.as_ref()
-    }
-    pub fn active(&self) -> bool {
-        match self.state {
-            AnimationStarterState::Active => true,
-            AnimationStarterState::Inactive => false
-        }
-    }
-    pub fn last_tick_reached(& self) -> bool {
-        self.tick == self.times * self.animation_delay.get()
-    }
-    pub fn start(&mut self, content: Option<C>, times: usize) {
+    // You may need some additional information for the check function
+    // you only know when you call the start function.
+    // Pass the information as content here to use it later on.
+    // But make sure that the content and its context still represent what it should by then.
+    pub fn start(&mut self, content: Option<C>, times: NonZero<usize>) {
         if self.state == AnimationStarterState::Inactive {
             self.state = AnimationStarterState::Active
         }
-        self.times = if times == 0 {times} else {times - 1};
+        // It will be easier to calculate later on starting with 0 and not 1.
+        // Sow while times is non zero for the user it actually starts with 0 internally.
+        self.times = times.get() - 1;
         self.content = content;
     }
-    pub fn reset(&mut self) {
-        self.state = AnimationStarterState::Inactive;
-        self.tick = 0;
-    }
-    /// Use this every time update_animations from the GameElement trait is called.
+    /// Use this every time update_animations from the Animated trait is called.
     /// 
     /// This function executes the action used for starting an animation
-    /// everytime the delay period has passed.
+    /// everytime the delay period has passed except for the first animation which is started
+    /// immediately.
     /// 
     /// This function returns true when the last tick is reached
     /// and all animations are started (NOT ended).
@@ -72,7 +63,24 @@ impl<C> AnimationStarter<C> {
         };
         false
     }
+    pub fn content(&self) -> Option<&C> {
+        self.content.as_ref()
+    }
+    pub fn active(&self) -> bool {
+        match self.state {
+            AnimationStarterState::Active => true,
+            AnimationStarterState::Inactive => false
+        }
+    }
+    pub fn reset(&mut self) {
+        self.state = AnimationStarterState::Inactive;
+        self.tick = 0;
+    }
+    /// The number of the last started animation starting from 0.
     pub fn cycle(&self) -> usize {
         (self.tick - (self.tick % self.animation_delay)) / self.animation_delay
+    }
+    fn last_tick_reached(& self) -> bool {
+        self.tick == self.times * self.animation_delay.get()
     }
 }

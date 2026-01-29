@@ -6,48 +6,37 @@ enum AnimationEndSensorState {
     Inactive,
 }
 
-/// An AnimationEndSensor executes a caode block when an animation ends.
-/// Start the sensor with fn start and execute the code with fn check.
+/// An AnimationEndSensor executes a code block when an animation ends.
+/// Start the sensor with the start function in an ui element impl Animated in update_with_msg
+/// and execute the code with the check function in update animations.
 #[derive(Debug)]
 pub struct AnimationEndSensor<C> {
     animation_length: NonZero<usize>,
     tick: usize,
     state: AnimationEndSensorState,
-    content: Option<C>
+    content: Option<C>,
 }
 
 impl<C> AnimationEndSensor<C> {
-    pub fn new(duration: NonZero<usize>) -> Self {
+    pub fn new(animation_length: NonZero<usize>) -> Self {
         Self {
-            animation_length: duration,
+            animation_length,
             tick: 0,
             state: AnimationEndSensorState::Inactive,
-            content: None
+            content: None,
         }
     }
-    pub fn content(&self) -> Option<&C> {
-        self.content.as_ref()
-    }
-    pub fn active(&self) -> bool {
-        match self.state {
-            AnimationEndSensorState::Active => true,
-            AnimationEndSensorState::Inactive => false
-        }
-    }
-    pub fn last_tick_reached(&self) -> bool {
-        self.tick == self.animation_length.get()
-    }
+    // You may need some additional information for the check function
+    // you only know when you call the start function.
+    // Pass the information as content here to use it later on.
+    // But make sure that the content and its context still represent what it should by then.
     pub fn start(&mut self, content: Option<C>) {
         if self.state == AnimationEndSensorState::Inactive {
             self.state = AnimationEndSensorState::Active
         }
         self.content = content;
     }
-    pub fn reset(&mut self) {
-        self.state = AnimationEndSensorState::Inactive;
-        self.tick = 0;
-    }
-    /// Use this every time update_animations from the GameElement trait is called.
+    /// Use this every time update_animations from the Animated trait is called.
     /// 
     /// This function executes the action when the last tick is reached.
     /// 
@@ -64,5 +53,21 @@ impl<C> AnimationEndSensor<C> {
             };
         }
         false
+    }
+    pub fn content(&self) -> Option<&C> {
+        self.content.as_ref()
+    }
+    pub fn active(&self) -> bool {
+        match self.state {
+            AnimationEndSensorState::Active => true,
+            AnimationEndSensorState::Inactive => false
+        }
+    }
+    pub fn reset(&mut self) {
+        self.state = AnimationEndSensorState::Inactive;
+        self.tick = 0;
+    }
+    fn last_tick_reached(&self) -> bool {
+        self.tick == self.animation_length.get()
     }
 }

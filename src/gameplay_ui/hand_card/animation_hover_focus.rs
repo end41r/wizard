@@ -1,8 +1,9 @@
-use crate::animation::animation::{AnimationCore, RepeatingBasicAnimation, AnimationState};
+use crate::animation::animation::{AnimationCore, AnimationState, CircularAutoReversingAnimation};
+use std::num::NonZero;
 
 #[derive(Debug, Clone)]
 pub struct HoverFocusAnimation {
-    pub max_frame_number: usize,
+    pub max_frame_number: NonZero<usize>,
     pub current_frame_number: usize,
     pub animation_state: AnimationState,
 }
@@ -10,29 +11,27 @@ pub struct HoverFocusAnimation {
 impl HoverFocusAnimation {
     pub fn new() -> Self {
         Self {
-            max_frame_number: 150,
+            max_frame_number: NonZero::new(70).unwrap(),
             current_frame_number: 0,
             animation_state: AnimationState::NotMoving,
         }
     }
 
     pub fn get_opacity(&self) -> f32 {
-        let mfn: f32 = self.max_frame_number as f32;
-        let cfn: f32 = self.current_frame_number as f32;
-        1.0 - (0.5 - (mfn - cfn) / mfn).abs() * 2.0
+        self.current_frame_number as f32 / self.max_frame_number.get() as f32
     }
 }
 
 impl AnimationCore for HoverFocusAnimation {
-    fn _mut_max_frame_number(&mut self) -> &mut usize {
+    fn max_frame_number(&mut self) -> &mut NonZero<usize> {
         &mut self.max_frame_number
     }
-    fn _mut_current_frame_number(&mut self) -> &mut usize {
+    fn current_frame_number(&mut self) -> &mut usize {
         &mut self.current_frame_number
     }
-    fn _mut_animation_state(&mut self) -> &mut AnimationState {
+    fn animation_state(&mut self) -> &mut AnimationState {
         &mut self.animation_state
     }
 }
 
-impl RepeatingBasicAnimation for HoverFocusAnimation {}
+impl CircularAutoReversingAnimation for HoverFocusAnimation {}

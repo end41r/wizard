@@ -1,9 +1,10 @@
 use crate::animation::animation::{AnimationCore, BasicAnimation, AnimationState};
 use super::f32_min_2;
+use std::num::NonZero;
 
 #[derive(Debug, Clone)]
 pub struct DrawAnimation {
-    pub max_frame_number: usize,
+    pub max_frame_number: NonZero<usize>,
     pub current_frame_number: usize,
     pub animation_state: AnimationState,
 }
@@ -11,33 +12,30 @@ pub struct DrawAnimation {
 impl DrawAnimation {
     pub fn new() -> Self {
         Self {
-            max_frame_number: 10,
+            max_frame_number: NonZero::new(10).unwrap(),
             current_frame_number: 0,
             animation_state: AnimationState::NotMoving,
         }
     }
 
-    pub fn get_opacity(&self) -> f32 {
-        self.current_frame_number as f32 * self.max_frame_number as f32
-    }
-
     pub fn get_contraction(&self) -> f32 {
-        self.current_frame_number as f32 / self.max_frame_number as f32
+        self.current_frame_number as f32 / self.max_frame_number.get() as f32
     }
 
     pub fn get_scale(&self) -> f32 {
-        f32_min_2(self.current_frame_number as f32 / self.max_frame_number as f32 + 0.5, 1.0)
+        f32_min_2(self.current_frame_number as f32 / self.max_frame_number.get() as f32 + 0.5,
+                  1.0)
     }
 }
 
 impl AnimationCore for DrawAnimation {
-    fn _mut_max_frame_number(&mut self) -> &mut usize {
+    fn max_frame_number(&mut self) -> &mut NonZero<usize> {
         &mut self.max_frame_number
     }
-    fn _mut_current_frame_number(&mut self) -> &mut usize {
+    fn current_frame_number(&mut self) -> &mut usize {
         &mut self.current_frame_number
     }
-    fn _mut_animation_state(&mut self) -> &mut AnimationState {
+    fn animation_state(&mut self) -> &mut AnimationState {
         &mut self.animation_state
     }
 }

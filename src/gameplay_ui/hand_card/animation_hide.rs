@@ -1,17 +1,17 @@
-use crate::animation::animation::{AnimationCore, BasicAnimation, AnimationState};
+use crate::animation::animation::{AnimationCore, ReversableBasicAnimation, AnimationState};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]
-pub struct PlayAnimation {
+pub struct HideAnimation {
     pub max_frame_number: NonZero<usize>,
     pub current_frame_number: usize,
     pub animation_state: AnimationState,
 }
 
-impl PlayAnimation {
+impl HideAnimation {
     pub fn new() -> Self {
         Self {
-            // Needs to be as high as the max_frame_number of the HideAnimation.
+            // Needs to be as high as the max_frame_number of the PlayAnimation.
             max_frame_number: NonZero::new(12).unwrap(),
             current_frame_number: 0,
             animation_state: AnimationState::NotMoving,
@@ -25,9 +25,13 @@ impl PlayAnimation {
     pub fn get_contraction(&self) -> f32 {
         1.0 - self.current_frame_number as f32 / self.max_frame_number.get() as f32
     }
+
+    pub fn get_scale(&self) -> f32 {
+        1.0 - self.current_frame_number as f32 / self.max_frame_number.get() as f32
+    }
 }
 
-impl AnimationCore for PlayAnimation {
+impl AnimationCore for HideAnimation {
     fn max_frame_number(&mut self) -> &mut NonZero<usize> {
         &mut self.max_frame_number
     }
@@ -39,4 +43,4 @@ impl AnimationCore for PlayAnimation {
     }
 }
 
-impl BasicAnimation for PlayAnimation {}
+impl ReversableBasicAnimation for HideAnimation {}
