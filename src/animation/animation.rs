@@ -45,6 +45,7 @@ pub trait AnimationCore {
     }
 }
 
+// AI-Usage: Claude.ai for learning how to make a trait require another trait.
 pub trait BasicAnimation: AnimationCore {
     fn next_frame(&mut self) {
         match self.animation_state() {

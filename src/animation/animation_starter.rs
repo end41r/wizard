@@ -40,6 +40,9 @@ impl<C> AnimationStarter<C> {
         self.times = times.get() - 1;
         self.content = content;
     }
+    /// AI-Usage: Claude.ai for the implementation of passing a closure to a function
+    ///           to execute it in the function.
+    /// 
     /// Use this every time update_animations from the Animated trait is called.
     /// 
     /// This function executes the action used for starting an animation

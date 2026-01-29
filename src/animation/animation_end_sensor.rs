@@ -36,6 +36,9 @@ impl<C> AnimationEndSensor<C> {
         }
         self.content = content;
     }
+    /// AI-Usage: Claude.ai for the implementation of passing a closure to a function
+    ///           to execute it in the function.
+    /// 
     /// Use this every time update_animations from the Animated trait is called.
     /// 
     /// This function executes the action when the last tick is reached.

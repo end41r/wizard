@@ -43,6 +43,8 @@ pub struct ViewableHand {
     top_card_id_upper: Option<usize>,
     top_card_id_lower: Option<usize>,
     hide_animation_end_sensor: AnimationEndSensor<usize>,
+    // AI-Usage: Claude.ai for the idea of passing a union type for a generic
+    //           where the type doesn't matter.
     draw_animation_starter: AnimationStarter<()>
 }
 
@@ -250,6 +252,8 @@ impl Message for ViewableHand {
                             self.update_cards_with_msg(card_msg);
                             self.hovered_card_id = Some(id);
                             if self.upper_row_exists() &&
+                               // AI-Usage: Claude.ai for learning how to see if value is in a vec
+                               //           without the last few elements.
                                self.card_ids()[..self.upper_row_card_count()].contains(&id) {
                                 self.hovered_card_row_low = false;
                                 self.top_card_id_upper = Some(id);
