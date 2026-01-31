@@ -1,14 +1,15 @@
-use crate::animation::animation::{BasicAnimation, new_basic};
+use crate::animation::animation::BasicAnimation;
 use crate::animation::Easing;
-use std::num::NonZero;
 use derive_more::{Deref, DerefMut};
+use std::num::NonZero;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct DrawAnimation(BasicAnimation);
 
-new_basic!(DrawAnimation);
-
 impl DrawAnimation {
+    pub fn new(duration: NonZero<usize>) -> Self {
+        Self(BasicAnimation::new(duration))
+    }
     pub fn get_contraction(&self) -> f32 {
         self.progress(Easing::Linear)
     }

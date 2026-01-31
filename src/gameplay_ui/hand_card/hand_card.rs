@@ -1,11 +1,10 @@
 use super::super::hand::{HandMessage, ViewableHand};
 use super::{
     animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
-    animation_hide::HideAnimation, animation_hover::HoverAnimation,
-    animation_focus::FocusAnimation, animation_play::PlayAnimation,
+    animation_focus::FocusAnimation, animation_hide::HideAnimation,
+    animation_hover::HoverAnimation, animation_play::PlayAnimation,
     animation_playable::PlayableAnimation, f32_min_2,
 };
-use std::num::NonZero;
 use crate::client::AppMessage;
 use crate::ui_element_traits::*;
 use iced::{
@@ -14,6 +13,7 @@ use iced::{
     ContentFit::Fill,
     Point, Size,
 };
+use std::num::NonZero;
 use std::ops::Not;
 
 static FRAME_PLAYABLE_PATH: &'static str = "assets/cards/frame_green.png";

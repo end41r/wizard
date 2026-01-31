@@ -2,9 +2,9 @@ pub mod hand_card;
 
 pub mod animation_draw;
 pub mod animation_false_played;
+pub mod animation_focus;
 pub mod animation_hide;
 pub mod animation_hover;
-pub mod animation_focus;
 pub mod animation_play;
 pub mod animation_playable;
 

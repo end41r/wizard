@@ -18,13 +18,13 @@ use std::num::NonZero;
 use super::{ease_in_cubic, ease_in_out_cubic, ease_out_cubic, AnimationState, Easing};
 
 // AI-Usage: Claude.ai for learning how to make a trait require another trait.
-//           (Now this is not the case here anymore but it used to be)
+//           (Now this is not the case here anymore but it used to be).
 
 #[derive(Debug, Clone)]
 pub struct Animation {
     max_frame_number: NonZero<usize>,
     current_frame_number: usize,
-    animation_state: AnimationState
+    animation_state: AnimationState,
 }
 
 impl Animation {
@@ -32,7 +32,7 @@ impl Animation {
         Self {
             max_frame_number: duration,
             current_frame_number: 0,
-            animation_state: AnimationState::NotMoving
+            animation_state: AnimationState::NotMoving,
         }
     }
     pub fn start(&mut self) {
@@ -50,8 +50,7 @@ impl Animation {
     /// This function represents the progress of the animation ranging from 0.0 to 1.0.
     /// Choose an easing type to manipulate the look of the animation to your liking.
     pub fn progress(&self, curve: Easing) -> f32 {
-        let progress: f32 =
-            self.current_frame_number as f32 / self.max_frame_number.get() as f32;
+        let progress: f32 = self.current_frame_number as f32 / self.max_frame_number.get() as f32;
         match curve {
             Easing::Linear => progress,
             Easing::InCubic => ease_in_cubic(progress),
@@ -72,7 +71,6 @@ impl Animation {
     }
 }
 
-
 // AI-Usage: Claude.ai to learn how to use a macro and partially generate the code regarding
 //           the macro.
 macro_rules! new_core {
@@ -86,72 +84,11 @@ macro_rules! new_core {
     };
 }
 
-
 new_core!(BasicAnimation);
 new_core!(CircularAnimation);
 new_core!(ReversableBasicAnimation);
 new_core!(AutoReversingAnimation);
 new_core!(CircularAutoReversingAnimation);
-
-macro_rules! new_basic {
-    ($name:ident) => {
-        impl $name {
-            // This is marked as not used because CircularAnimation is as of now not used.
-            pub fn new(duration: NonZero<usize>) -> Self {
-                Self(BasicAnimation::new(duration))
-            }
-        }
-    };
-}
-pub (crate) use new_basic;
-
-macro_rules! new_circular {
-    ($name:ident) => {
-        impl $name {
-            // This is marked as not used because CircularAnimation is as of now not used.
-            pub fn new(duration: NonZero<usize>) -> Self {
-                Self(CircularAnimation::new(duration))
-            }
-        }
-    };
-}
-pub (crate) use new_circular;
-
-macro_rules! new_reversable_basic {
-    ($name:ident) => {
-        impl $name {
-            // This is marked as not used because CircularAnimation is as of now not used.
-            pub fn new(duration: NonZero<usize>) -> Self {
-                Self(ReversableBasicAnimation::new(duration))
-            }
-        }
-    };
-}
-pub (crate) use new_reversable_basic;
-
-macro_rules! new_auto_reversing {
-    ($name:ident) => {
-        impl $name {
-            // This is marked as not used because CircularAnimation is as of now not used.
-            pub fn new(duration: NonZero<usize>) -> Self {
-                Self(AutoReversingAnimation::new(duration))
-            }
-        }
-    };
-}
-pub (crate) use new_auto_reversing;
-
-macro_rules! new_circular_auto_reversing {
-    ($name:ident) => {
-        impl $name {
-            // This is marked as not used because CircularAnimation is as of now not used.
-            pub fn new(duration: NonZero<usize>) -> Self {
-                Self(CircularAutoReversingAnimation::new(duration))
-            }
-        }
-    };
-}
-pub (crate) use new_circular_auto_reversing;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct BasicAnimation(Animation);
@@ -175,7 +112,7 @@ impl BasicAnimation {
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct CircularAnimation(Animation);
-impl CircularAnimation{
+impl CircularAnimation {
     pub fn next_frame(&mut self) {
         match self.animation_state {
             AnimationState::MovingForward => {
@@ -190,7 +127,7 @@ impl CircularAnimation{
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct ReversableBasicAnimation(Animation);
-impl ReversableBasicAnimation{
+impl ReversableBasicAnimation {
     pub fn reverse(&mut self) {
         self.animation_state = AnimationState::Reversing;
     }
@@ -251,7 +188,7 @@ impl AutoReversingAnimation {
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct CircularAutoReversingAnimation(Animation);
-impl CircularAutoReversingAnimation{
+impl CircularAutoReversingAnimation {
     pub fn next_frame(&mut self) {
         match self.animation_state {
             AnimationState::MovingForward => {

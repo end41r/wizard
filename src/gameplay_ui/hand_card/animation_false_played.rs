@@ -1,7 +1,7 @@
-use crate::animation::animation::{AutoReversingAnimation};
+use crate::animation::animation::AutoReversingAnimation;
 use crate::animation::Easing;
-use std::num::NonZero;
 use derive_more::{Deref, DerefMut};
+use std::num::NonZero;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct FalsePlayedAnimation(AutoReversingAnimation);
