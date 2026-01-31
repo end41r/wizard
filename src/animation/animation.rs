@@ -19,27 +19,30 @@ pub enum AnimationState {
 }
 
 pub trait AnimationCore {
-    fn max_frame_number(&mut self) -> &mut NonZero<usize>;
-    fn current_frame_number(&mut self) -> &mut usize;
-    fn animation_state(&mut self) -> &mut AnimationState;
+    fn max_frame_number(&self) -> NonZero<usize>;
+    fn current_frame_number(&self) -> usize;
+    fn animation_state(&self) -> AnimationState;
+    fn _mut_max_frame_number(&mut self) -> &mut NonZero<usize>;
+    fn _mut_current_frame_number(&mut self) -> &mut usize;
+    fn _mut_animation_state(&mut self) -> &mut AnimationState;
 
     fn start(&mut self) {
-        if self.not_moving() || *self.animation_state() == AnimationState::Ended {
-            *self.animation_state() = AnimationState::MovingForward;
+        if self.not_moving() || self.animation_state() == AnimationState::Ended {
+            *self._mut_animation_state() = AnimationState::MovingForward;
         }
     }
     fn interrupt(&mut self) {
-        *self.animation_state() = AnimationState::NotMoving;
+        *self._mut_animation_state() = AnimationState::NotMoving;
     }
     fn reset(&mut self) {
-        *self.current_frame_number() = 0;
-        *self.animation_state() = AnimationState::NotMoving;
+        *self._mut_current_frame_number() = 0;
+        *self._mut_animation_state() = AnimationState::NotMoving;
     }
-    fn not_moving(&mut self) -> bool {
-        *self.animation_state() == AnimationState::NotMoving
+    fn not_moving(&self) -> bool {
+        self.animation_state() == AnimationState::NotMoving
     }
-    fn moving_forward(&mut self) -> bool {
-        *self.animation_state() == AnimationState::MovingForward
+    fn moving_forward(&self) -> bool {
+        self.animation_state() == AnimationState::MovingForward
     }
 }
 
@@ -48,17 +51,17 @@ pub trait BasicAnimation: AnimationCore {
     fn next_frame(&mut self) {
         match self.animation_state() {
             AnimationState::MovingForward => {
-                if *self.current_frame_number() < self.max_frame_number().get() {
-                    *self.current_frame_number() += 1;
+                if self.current_frame_number() < self.max_frame_number().get() {
+                    *self._mut_current_frame_number() += 1;
                 } else {
-                    *self.animation_state() = AnimationState::Ended;
+                    *self._mut_animation_state() = AnimationState::Ended;
                 }
             }
             _ => {}
         }
     }
-    fn ended(&mut self) -> bool {
-        *self.animation_state() == AnimationState::Ended
+    fn ended(&self) -> bool {
+        self.animation_state() == AnimationState::Ended
     }
 }
 
@@ -66,8 +69,9 @@ pub trait CircularAnimation: AnimationCore {
     fn next_frame(&mut self) {
         match self.animation_state() {
             AnimationState::MovingForward => {
-                *self.current_frame_number() =
-                    (*self.current_frame_number() + 1) % *self.max_frame_number();
+                *self._mut_current_frame_number() =
+                // The 1 is there for going to the next frame number.
+                    (self.current_frame_number() + 1) % self.max_frame_number().get();
             }
             _ => {}
         }
@@ -76,33 +80,33 @@ pub trait CircularAnimation: AnimationCore {
 
 pub trait ReversableBasicAnimation: AnimationCore {
     fn reverse(&mut self) {
-        *self.animation_state() = AnimationState::Reversing;
+        *self._mut_animation_state() = AnimationState::Reversing;
     }
     fn start_from_reverse(&mut self) {
-        *self.animation_state() = AnimationState::Reversing;
-        *self.current_frame_number() = self.max_frame_number().get()
+        *self._mut_animation_state() = AnimationState::Reversing;
+        *self._mut_current_frame_number() = self.max_frame_number().get()
     }
     fn next_frame(&mut self) {
         match self.animation_state() {
             AnimationState::MovingForward => {
-                if *self.current_frame_number() < self.max_frame_number().get() {
-                    *self.current_frame_number() += 1;
+                if self.current_frame_number() < self.max_frame_number().get() {
+                    *self._mut_current_frame_number() += 1;
                 } else {
-                    *self.animation_state() = AnimationState::NotMoving;
+                    *self._mut_animation_state() = AnimationState::NotMoving;
                 }
             }
             AnimationState::Reversing => {
-                if *self.current_frame_number() > 0 {
-                    *self.current_frame_number() -= 1;
+                if self.current_frame_number() > 0 {
+                    *self._mut_current_frame_number() -= 1;
                 } else {
-                    *self.animation_state() = AnimationState::Ended;
+                    *self._mut_animation_state() = AnimationState::Ended;
                 }
             }
             _ => {}
         }
     }
-    fn reversing(&mut self) -> bool {
-        *self.animation_state() == AnimationState::Reversing
+    fn reversing(&self) -> bool {
+        self.animation_state() == AnimationState::Reversing
     }
 }
 
@@ -110,15 +114,15 @@ pub trait AutoReversingAnimation: AnimationCore {
     fn next_frame(&mut self) {
         match self.animation_state() {
             AnimationState::MovingForward => {
-                if *self.current_frame_number() < self.max_frame_number().get() {
-                    *self.current_frame_number() += 1;
+                if self.current_frame_number() < self.max_frame_number().get() {
+                    *self._mut_current_frame_number() += 1;
                 } else {
-                    *self.animation_state() = AnimationState::Reversing;
+                    *self._mut_animation_state() = AnimationState::Reversing;
                 }
             }
             AnimationState::Reversing => {
-                if *self.current_frame_number() > 0 {
-                    *self.current_frame_number() -= 1;
+                if self.current_frame_number() > 0 {
+                    *self._mut_current_frame_number() -= 1;
                 } else {
                     self.reset();
                 }
@@ -126,8 +130,8 @@ pub trait AutoReversingAnimation: AnimationCore {
             _ => {}
         }
     }
-    fn reversing(&mut self) -> bool {
-        *self.animation_state() == AnimationState::Reversing
+    fn reversing(&self) -> bool {
+        self.animation_state() == AnimationState::Reversing
     }
 }
 
@@ -135,23 +139,23 @@ pub trait CircularAutoReversingAnimation: AnimationCore {
     fn next_frame(&mut self) {
         match self.animation_state() {
             AnimationState::MovingForward => {
-                if *self.current_frame_number() < self.max_frame_number().get() {
-                    *self.current_frame_number() += 1;
+                if self.current_frame_number() < self.max_frame_number().get() {
+                    *self._mut_current_frame_number() += 1;
                 } else {
-                    *self.animation_state() = AnimationState::Reversing;
+                    *self._mut_animation_state() = AnimationState::Reversing;
                 }
             }
             AnimationState::Reversing => {
-                if *self.current_frame_number() > 0 {
-                    *self.current_frame_number() -= 1;
+                if self.current_frame_number() > 0 {
+                    *self._mut_current_frame_number() -= 1;
                 } else {
-                    *self.animation_state() = AnimationState::MovingForward;
+                    *self._mut_animation_state() = AnimationState::MovingForward;
                 }
             }
             _ => {}
         }
     }
-    fn reversing(&mut self) -> bool {
-        *self.animation_state() == AnimationState::Reversing
+    fn reversing(&self) -> bool {
+        self.animation_state() == AnimationState::Reversing
     }
 }
