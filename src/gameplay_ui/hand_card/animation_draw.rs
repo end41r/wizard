@@ -1,52 +1,19 @@
-use crate::animation::animation::{AnimationCore, BasicAnimation};
-use crate::animation::{AnimationState, Easing};
+use crate::animation::animation::{BasicAnimation, new_basic};
+use crate::animation::Easing;
 use std::num::NonZero;
+use derive_more::{Deref, DerefMut};
 
-#[derive(Debug, Clone)]
-pub struct DrawAnimation {
-    pub max_frame_number: NonZero<usize>,
-    pub current_frame_number: usize,
-    pub animation_state: AnimationState,
-}
+#[derive(Debug, Clone, Deref, DerefMut)]
+pub struct DrawAnimation(BasicAnimation);
+
+new_basic!(DrawAnimation);
 
 impl DrawAnimation {
-    pub fn new() -> Self {
-        Self {
-            max_frame_number: NonZero::new(10).unwrap(),
-            current_frame_number: 0,
-            animation_state: AnimationState::NotMoving,
-        }
-    }
-
     pub fn get_contraction(&self) -> f32 {
         self.progress(Easing::Linear)
     }
-
     pub fn get_scale(&self) -> f32 {
         // This animates only the last 50% of the scale.
         0.5 + self.progress(Easing::OutCubic) * 0.5
     }
 }
-
-impl AnimationCore for DrawAnimation {
-    fn max_frame_number(&self) -> NonZero<usize> {
-        self.max_frame_number
-    }
-    fn current_frame_number(&self) -> usize {
-        self.current_frame_number
-    }
-    fn animation_state(&self) -> AnimationState {
-        self.animation_state
-    }
-    fn _mut_max_frame_number(&mut self) -> &mut NonZero<usize> {
-        &mut self.max_frame_number
-    }
-    fn _mut_current_frame_number(&mut self) -> &mut usize {
-        &mut self.current_frame_number
-    }
-    fn _mut_animation_state(&mut self) -> &mut AnimationState {
-        &mut self.animation_state
-    }
-}
-
-impl BasicAnimation for DrawAnimation {}

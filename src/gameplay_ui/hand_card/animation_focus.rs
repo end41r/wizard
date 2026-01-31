@@ -1,17 +1,15 @@
-use crate::animation::animation::CircularAutoReversingAnimation;
+use crate::animation::animation::{CircularAutoReversingAnimation};
 use crate::animation::Easing;
 use std::num::NonZero;
 use derive_more::{Deref, DerefMut};
 
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct PlayableAnimation(CircularAutoReversingAnimation);
-
-impl PlayableAnimation {
+pub struct FocusAnimation(CircularAutoReversingAnimation);
+impl FocusAnimation {
     pub fn new(duration: NonZero<usize>) -> Self {
         Self(CircularAutoReversingAnimation::new(duration))
     }
     pub fn get_opacity(&self) -> f32 {
-        // This only affects the last 15% of the opacity.
-        self.progress(Easing::InOutCubic) * 0.15 + 0.85
+        self.progress(Easing::InOutCubic)
     }
 }

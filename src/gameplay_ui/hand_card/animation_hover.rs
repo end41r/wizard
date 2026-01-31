@@ -1,57 +1,23 @@
-use crate::animation::animation::{AnimationCore, ReversableBasicAnimation};
-use crate::animation::{AnimationState, Easing};
+use crate::animation::animation::ReversableBasicAnimation;
+use crate::animation::Easing;
+use crate::gameplay_ui::hand_card::hand_card::ViewableCard;
+use crate::ui_element_traits::SizeFromOutside;
+use iced::Size;
 use std::num::NonZero;
+use derive_more::{Deref, DerefMut};
 
-#[derive(Debug, Clone)]
-pub struct HoverAnimation {
-    pub max_frame_number: NonZero<usize>,
-    pub current_frame_number: usize,
-    pub animation_state: AnimationState,
-
-    pub max_offset: f32,
-}
+#[derive(Debug, Clone, Deref, DerefMut)]
+pub struct HoverAnimation(ReversableBasicAnimation);
 
 impl HoverAnimation {
-    pub fn new(card_height: f32) -> Self {
-        Self {
-            max_frame_number: NonZero::new(5).unwrap(),
-            current_frame_number: 0,
-            animation_state: AnimationState::NotMoving,
-            max_offset: card_height * 0.15,
-        }
+    pub fn new(duration: NonZero<usize>) -> Self {
+        Self(ReversableBasicAnimation::new(duration))
     }
-    pub fn update_max_offset(&mut self, card_height: f32) {
-        // The factor 0.15 determines the height of the hand.
-        self.max_offset = card_height * 0.15;
-    }
-    pub fn get_offset(&self) -> f32 {
-        self.max_offset * self.progress(Easing::Linear)
+    pub fn get_offset(&self, window_size: Size) -> f32 {
+        ViewableCard::height_for(window_size) * 0.15 * self.progress(Easing::Linear)
     }
     // The factor 0.1 partially determines the hand width in hand::Hand::width_overflow_one_side.
     pub fn get_expansion(&self) -> f32 {
         1.0 + self.progress(Easing::Linear) * 0.1
     }
 }
-
-impl AnimationCore for HoverAnimation {
-    fn max_frame_number(&self) -> NonZero<usize> {
-        self.max_frame_number
-    }
-    fn current_frame_number(&self) -> usize {
-        self.current_frame_number
-    }
-    fn animation_state(&self) -> AnimationState {
-        self.animation_state
-    }
-    fn _mut_max_frame_number(&mut self) -> &mut NonZero<usize> {
-        &mut self.max_frame_number
-    }
-    fn _mut_current_frame_number(&mut self) -> &mut usize {
-        &mut self.current_frame_number
-    }
-    fn _mut_animation_state(&mut self) -> &mut AnimationState {
-        &mut self.animation_state
-    }
-}
-
-impl ReversableBasicAnimation for HoverAnimation {}

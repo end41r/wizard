@@ -1,4 +1,3 @@
-use crate::animation::animation::AnimationCore;
 use crate::animation::{
     animation_end_sensor::AnimationEndSensor, animation_starter::AnimationStarter,
 };
@@ -325,7 +324,7 @@ impl Animated for ViewableHand {
             // and instead sends the msg itself.
             if self.hovered_card_id.is_some()
                 && *id != self.hovered_card_id.unwrap()
-                && card.hover_animation.get_offset() != 0.0
+                && card.hover_animation.get_offset(self.window_size) != 0.0
                 && card.hover_animation.not_moving()
             {
                 card.update_with_msg(CardMessage::NotHovered(*id));

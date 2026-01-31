@@ -2,10 +2,10 @@ use super::super::hand::{HandMessage, ViewableHand};
 use super::{
     animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
     animation_hide::HideAnimation, animation_hover::HoverAnimation,
-    animation_hover_focus::HoverFocusAnimation, animation_play::PlayAnimation,
+    animation_focus::FocusAnimation, animation_play::PlayAnimation,
     animation_playable::PlayableAnimation, f32_min_2,
 };
-use crate::animation::animation::*;
+use std::num::NonZero;
 use crate::client::AppMessage;
 use crate::ui_element_traits::*;
 use iced::{
@@ -51,12 +51,13 @@ pub struct ViewableCard {
     pub play_animation: PlayAnimation,
     pub playable_animation: PlayableAnimation,
     pub false_played_animation: FalsePlayedAnimation,
-    pub focus_animation: HoverFocusAnimation,
+    pub focus_animation: FocusAnimation,
     pub hide_animation: HideAnimation,
 }
 
 impl ViewableCard {
     pub fn new(id: usize, img_path: &'static str, window_size: Size, playable: bool) -> Self {
+        let play_duration: NonZero<usize> = NonZero::new(12).unwrap();
         let mut card: ViewableCard = Self {
             id: id,
             img_path: img_path,
@@ -64,13 +65,13 @@ impl ViewableCard {
             playable: playable,
             show_playable_status: false,
             rotation: 0.0,
-            draw_animation: DrawAnimation::new(),
-            hover_animation: HoverAnimation::new(ViewableCard::height_for(window_size)),
-            play_animation: PlayAnimation::new(),
-            playable_animation: PlayableAnimation::new(),
-            false_played_animation: FalsePlayedAnimation::new(),
-            focus_animation: HoverFocusAnimation::new(),
-            hide_animation: HideAnimation::new(),
+            draw_animation: DrawAnimation::new(NonZero::new(10).unwrap()),
+            hover_animation: HoverAnimation::new(NonZero::new(5).unwrap()),
+            play_animation: PlayAnimation::new(play_duration),
+            playable_animation: PlayableAnimation::new(NonZero::new(100).unwrap()),
+            false_played_animation: FalsePlayedAnimation::new(NonZero::new(25).unwrap()),
+            focus_animation: FocusAnimation::new(NonZero::new(70).unwrap()),
+            hide_animation: HideAnimation::new(play_duration),
         };
         card.playable_animation.start();
         card
@@ -156,8 +157,6 @@ impl Animated for ViewableCard {
 impl Resizable for ViewableCard {
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size;
-        self.hover_animation
-            .update_max_offset(ViewableCard::height_for(self.window_size));
     }
     fn width(&self) -> f32 {
         self.window_size.width * CARD_WIDTH_MULT_WITH_WINDOW_WIDTH
@@ -288,7 +287,7 @@ impl Viewable for ViewableCard {
             * self.hover_animation.get_expansion()
             + (self.width() - self.width() * self.hover_animation.get_expansion()) / 2.0;
         // y: realize the card moving up animation.
-        let y_offset: f32 = -self.hover_animation.get_offset();
+        let y_offset: f32 = -self.hover_animation.get_offset(self.window_size);
         let corrected_position: Point = Point::new(x + x_offset, y + y_offset);
 
         container(pin(self.view()).position(corrected_position))
