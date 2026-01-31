@@ -69,6 +69,7 @@ impl<C> AnimationStarter<C> {
         };
         false
     }
+    #[allow(dead_code)]
     pub fn content(&self) -> Option<&C> {
         self.content.as_ref()
     }

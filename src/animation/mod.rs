@@ -19,9 +19,12 @@ pub enum Easing {
     OutCubic,
     InOutCubic,
     InSine,
+    #[allow(dead_code)]
     OutSine,
     InOutSine,
+    #[allow(dead_code)]
     OutElastic,
+    #[allow(dead_code)]
     OutBounce,
 }
 

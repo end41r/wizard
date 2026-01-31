@@ -51,6 +51,7 @@ pub enum MenuState {
     Rules,
     Lobby,
     Playing,
+    #[allow(dead_code)]
     PlayingTest,
 }
 

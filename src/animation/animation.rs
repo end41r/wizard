@@ -40,6 +40,7 @@ impl Animation {
             self.animation_state = AnimationState::MovingForward;
         }
     }
+    #[allow(dead_code)]
     pub fn interrupt(&mut self) {
         self.animation_state = AnimationState::NotMoving;
     }
@@ -77,6 +78,7 @@ macro_rules! new_core {
     ($name:ident) => {
         impl $name {
             // This is marked as not used because CircularAnimation is as of now not used.
+            #[allow(dead_code)]
             pub fn new(duration: NonZero<usize>) -> Self {
                 Self(Animation::new_core(duration))
             }
@@ -105,14 +107,17 @@ impl BasicAnimation {
             _ => {}
         }
     }
+    #[allow(dead_code)]
     pub fn ended(&self) -> bool {
         self.animation_state == AnimationState::Ended
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct CircularAnimation(Animation);
 impl CircularAnimation {
+    #[allow(dead_code)]
     pub fn next_frame(&mut self) {
         match self.animation_state {
             AnimationState::MovingForward => {
@@ -154,6 +159,7 @@ impl ReversableBasicAnimation {
             _ => {}
         }
     }
+    #[allow(dead_code)]
     pub fn reversing(&self) -> bool {
         self.animation_state == AnimationState::Reversing
     }
@@ -181,6 +187,7 @@ impl AutoReversingAnimation {
             _ => {}
         }
     }
+    #[allow(dead_code)]
     pub fn reversing(&self) -> bool {
         self.animation_state == AnimationState::Reversing
     }
@@ -208,6 +215,7 @@ impl CircularAutoReversingAnimation {
             _ => {}
         }
     }
+    #[allow(dead_code)]
     pub fn reversing(&self) -> bool {
         self.animation_state == AnimationState::Reversing
     }
