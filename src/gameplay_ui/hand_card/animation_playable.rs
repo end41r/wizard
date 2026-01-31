@@ -18,10 +18,8 @@ impl PlayableAnimation {
     }
 
     pub fn get_opacity(&self) -> f32 {
-        let mfn: f32 = self.max_frame_number.get() as f32;
-        let cfn = self.current_frame_number as f32;
         // This only affects the last 30% of the opacity.
-        (cfn / mfn) * 0.3 + 0.7
+        self.progress() * 0.3 + 0.7
     }
 }
 

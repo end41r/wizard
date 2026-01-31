@@ -19,14 +19,11 @@ impl DrawAnimation {
     }
 
     pub fn get_contraction(&self) -> f32 {
-        self.current_frame_number as f32 / self.max_frame_number.get() as f32
+        self.progress()
     }
 
     pub fn get_scale(&self) -> f32 {
-        f32_min_2(
-            self.current_frame_number as f32 / self.max_frame_number.get() as f32 + 0.5,
-            1.0,
-        )
+        f32_min_2(self.progress() + 0.5, 1.0)
     }
 }
 

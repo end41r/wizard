@@ -20,14 +20,15 @@ impl HoverAnimation {
         }
     }
     pub fn update_max_offset(&mut self, card_height: f32) {
+        // The factor 0.15 determines the height of the hand.
         self.max_offset = card_height * 0.15;
     }
     pub fn get_offset(&self) -> f32 {
-        self.max_offset * self.current_frame_number as f32 / self.max_frame_number.get() as f32
+        self.max_offset * self.progress()
     }
-    // The factor 0.02 partially determines the hand width in hand::Hand::width_overflow_one_side.
+    // The factor 0.1 partially determines the hand width in hand::Hand::width_overflow_one_side.
     pub fn get_expansion(&self) -> f32 {
-        1.0 + self.current_frame_number as f32 * 0.02
+        1.0 + self.progress() * 0.1
     }
 }
 

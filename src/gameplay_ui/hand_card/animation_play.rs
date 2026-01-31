@@ -19,11 +19,11 @@ impl PlayAnimation {
     }
 
     pub fn get_opacity(&self) -> f32 {
-        1.0 - self.current_frame_number as f32 / self.max_frame_number.get() as f32
+        1.0 - self.progress()
     }
 
     pub fn get_contraction(&self) -> f32 {
-        1.0 - self.current_frame_number as f32 / self.max_frame_number.get() as f32
+        1.0 - self.progress()
     }
 }
 

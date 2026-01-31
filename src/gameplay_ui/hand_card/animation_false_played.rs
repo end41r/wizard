@@ -18,7 +18,7 @@ impl FalsePlayedAnimation {
     }
 
     pub fn get_opacity(&self) -> f32 {
-        self.current_frame_number as f32 / self.max_frame_number.get() as f32
+        self.progress()
     }
 }
 

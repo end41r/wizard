@@ -5,9 +5,10 @@
 /// Then you implement AnimationCore with its 3 getters.
 /// Then implement your fitting animation type (e.g. impl BasicAnimation for MyAnimation{})
 /// Add a new(...) -> Self function to impl MyAnimation{}
-/// Now add functions that calculate what you want to animate using the relation of
-/// the current and max frame number, e.g.:
-/// get_offset(&self) -> f32 {self.current_frame_number as f32 /self.max_frame_number.get() as f32}
+/// Now add functions that calculate what you want using the progress function
+/// which gives you the relation between the current and the max frame number
+/// (ranging from 0.0 tp 1.0), e.g.:
+/// get_opacity(&self) -> f32 {self.progress}
 use std::num::NonZero;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -37,6 +38,10 @@ pub trait AnimationCore {
     fn reset(&mut self) {
         *self._mut_current_frame_number() = 0;
         *self._mut_animation_state() = AnimationState::NotMoving;
+    }
+    /// This represents the progress of the animation ranging from 0.0 to 1.0.
+    fn progress(&self) -> f32 {
+        self.current_frame_number() as f32 / self.max_frame_number().get() as f32
     }
     fn not_moving(&self) -> bool {
         self.animation_state() == AnimationState::NotMoving
