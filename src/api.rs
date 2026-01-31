@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use strum_macros::EnumIter;
 
 pub type PlayerId = u64;
 pub type SessionId = u64;
@@ -15,26 +15,34 @@ pub enum ServerMessage {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum C {
-    // Sent by client
+    // Messages sent by the client.
+    Handshake { version: usize },
     JoinLobby { name: String },
     LeaveLobby,
-
+    ChatMessage { sender: String, message: String },
     SetReady { ready: bool },
+    StartGame,
+    SetPlayerCount { count: usize },
 
     Bid { amount: usize },
+    SetTrump { suit: Suit },
 
     PlayCard { card: Card },
+
+    RequestShutdown,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum S {
-    // Sent by server
-    JoinConfirmation { ok: bool },
+    // Messages sent by the server.
+    HandshakeConfirmation { version: usize, supported: bool },
+    JoinConfirmation { ok: bool, id: PlayerId },
     Error { reason: String },
 
     HandDealt { cards: Vec<Card> },
 
+    TrumpRequest,
     BidRequest { min: usize, max: usize },
     InvalidBid { reason: String },
 
@@ -45,9 +53,16 @@ pub enum S {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum B {
-    // Broadcasted by server
+    // Messages broadcasted by the server.
     LobbyState {
-        players: Vec<Player>,
+        lobby: Option<Lobby>,
+    },
+    ChatMessage {
+        sender: String,
+        message: String,
+    },
+    PlayerCountChanged {
+        count: usize,
     },
 
     GameStarted {
@@ -58,7 +73,13 @@ pub enum B {
         cards_per_player: usize,
         trump: Option<Suit>,
     },
-
+    DealerMustSetTrump {
+        dealer: PlayerId,
+    },
+    TrumpSet {
+        suit: Suit,
+        by_dealer: PlayerId,
+    },
     BiddingStarted {
         starting_player: PlayerId,
         cards_per_player: usize,
@@ -71,7 +92,7 @@ pub enum B {
         amount: usize,
     },
     BiddingFinished {
-        bids: HashMap<PlayerId, usize>,
+        bids: Vec<(PlayerId, usize)>,
     },
 
     PoolStarted {
@@ -91,23 +112,31 @@ pub enum B {
     },
 
     RoundFinished {
-        scores: HashMap<PlayerId, usize>,
-        won_amounts: HashMap<PlayerId, usize>,
+        scores: Vec<(PlayerId, i32)>,
+        won_amounts: Vec<(PlayerId, usize)>,
     },
 
     GameFinished {
-        final_scores: HashMap<PlayerId, usize>,
+        final_scores: Vec<(PlayerId, i32)>,
         winner: PlayerId,
     },
+    /// Server is shutting down (host stopped server)
+    ServerShutdown,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Card {
     pub value: Value,
     pub suit: Suit,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+impl Card {
+    pub fn new(suit: Suit, value: Value) -> Self {
+        Self { suit, value }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, EnumIter)]
 pub enum Suit {
     Red,
     Yellow,
@@ -115,17 +144,24 @@ pub enum Suit {
     Blue,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, EnumIter)]
 pub enum Value {
-    Narre,
-    Number(u8),
+    Jester,
+    Number(u8), // 1-13
     Wizard,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub struct Player {
-    id: PlayerId,
-    name: String,
-    ready: bool,
+    pub id: PlayerId,
+    pub name: String,
+    pub ready: bool,
+    pub is_host: bool,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Lobby {
+    pub players: Vec<Player>,
+    /// Contains tuples of (sender, message).
+    pub chat: Vec<(String, String)>,
 }
