@@ -3,16 +3,16 @@
 
 use futures::{SinkExt, StreamExt};
 use iced::{
-    Element, Size, Subscription, Task, time,
+    time,
     widget::{button, column, row, text, text_input},
-    window
+    window, Element, Size, Subscription, Task,
 };
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
 
-use crate::{api::{C, ServerMessage}};
-use crate::gameplay_ui::hand::{ViewableHand, HandMessage};
+use crate::api::{ServerMessage, C};
+use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
 use crate::ui_element_traits::*;
 
 type WsConnection = Arc<Mutex<Option<tokio::sync::mpsc::UnboundedSender<C>>>>;
@@ -27,11 +27,10 @@ struct App {
     ip: String,
 
     window_size: Size,
-    hand: ViewableHand
+    hand: ViewableHand,
 }
 
 impl Default for App {
-
     fn default() -> Self {
         Self {
             connected: false,
@@ -41,7 +40,7 @@ impl Default for App {
             ip: String::new(),
 
             window_size: Size::new(300.0, 300.0),
-            hand: ViewableHand::new(Size::new(300.0, 300.0))
+            hand: ViewableHand::new(Size::new(300.0, 300.0)),
         }
     }
 }
@@ -55,7 +54,7 @@ pub enum AppMessage {
 
     WindowResized(Size),
     AnimationTick,
-    HandMessage(HandMessage)
+    HandMessage(HandMessage),
 }
 
 fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
@@ -186,23 +185,20 @@ fn view(state: &'_ App) -> Element<'_, AppMessage> {
         .padding(20)
         .into()
     } else {
-        column![state.hand.view(),
-                button("Draw Cards")
-                .on_press(
-                    ViewableHand::convert_to_app_message(
-                        HandMessage::DrawCards(ViewableHand::build_test_cards(state.window_size))
-                    )
-                )
-               ].into()
+        column![
+            state.hand.view(),
+            button("Draw Cards").on_press(ViewableHand::convert_to_app_message(
+                HandMessage::DrawCards(ViewableHand::build_test_cards(state.window_size))
+            ))
+        ]
+        .into()
     }
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
-    let mut subscriptions: Vec<Subscription<AppMessage>> = vec!();
-    subscriptions.push(window::resize_events()
-                       .map(|(_, size)| AppMessage::WindowResized(size)));
-    subscriptions.push(time::every(Duration::from_millis(16))
-                       .map(|_| AppMessage::AnimationTick));
+    let mut subscriptions: Vec<Subscription<AppMessage>> = vec![];
+    subscriptions.push(window::resize_events().map(|(_, size)| AppMessage::WindowResized(size)));
+    subscriptions.push(time::every(Duration::from_millis(16)).map(|_| AppMessage::AnimationTick));
     if state.connected {
         subscriptions.push(time::every(Duration::from_millis(100)).map(|_| AppMessage::Tick));
     };
@@ -211,8 +207,8 @@ fn subscription(state: &App) -> Subscription<AppMessage> {
 
 pub fn main() -> iced::Result {
     iced::application(App::default, update, view)
-    .title("Wizard")
-    .subscription(subscription)
-    .window_size(Size::new(300.0, 300.0))
-    .run()
+        .title("Wizard")
+        .subscription(subscription)
+        .window_size(Size::new(300.0, 300.0))
+        .run()
 }

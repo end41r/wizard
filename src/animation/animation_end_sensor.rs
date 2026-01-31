@@ -38,14 +38,17 @@ impl<C> AnimationEndSensor<C> {
     }
     /// AI-Usage: Claude.ai for the implementation of passing a closure to a function
     ///           to execute it in the function.
-    /// 
+    ///
     /// Use this every time update_animations from the Animated trait is called.
-    /// 
+    ///
     /// This function executes the action when the last tick is reached.
-    /// 
+    ///
     /// This function returns true when the last tick is reached.
     /// This property is useful when facing borrowing issues within the action.
-    pub fn check<A>(&mut self, action: A) -> bool where A: FnOnce(&mut Self) {
+    pub fn check<A>(&mut self, action: A) -> bool
+    where
+        A: FnOnce(&mut Self),
+    {
         if self.state == AnimationEndSensorState::Active {
             if self.last_tick_reached() {
                 action(self);
@@ -63,7 +66,7 @@ impl<C> AnimationEndSensor<C> {
     pub fn active(&self) -> bool {
         match self.state {
             AnimationEndSensorState::Active => true,
-            AnimationEndSensorState::Inactive => false
+            AnimationEndSensorState::Inactive => false,
         }
     }
     pub fn reset(&mut self) {

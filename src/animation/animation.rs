@@ -8,7 +8,6 @@
 /// Now add functions that calculate what you want to animate using the relation of
 /// the current and max frame number, e.g.:
 /// get_offset(&self) -> f32 {self.current_frame_number as f32 /self.max_frame_number.get() as f32}
-
 use std::num::NonZero;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -16,11 +15,10 @@ pub enum AnimationState {
     NotMoving,
     MovingForward,
     Reversing,
-    Ended
+    Ended,
 }
 
 pub trait AnimationCore {
-
     fn max_frame_number(&mut self) -> &mut NonZero<usize>;
     fn current_frame_number(&mut self) -> &mut usize;
     fn animation_state(&mut self) -> &mut AnimationState;
@@ -68,8 +66,8 @@ pub trait CircularAnimation: AnimationCore {
     fn next_frame(&mut self) {
         match self.animation_state() {
             AnimationState::MovingForward => {
-                *self.current_frame_number()
-                    = (*self.current_frame_number() + 1) % *self.max_frame_number();
+                *self.current_frame_number() =
+                    (*self.current_frame_number() + 1) % *self.max_frame_number();
             }
             _ => {}
         }

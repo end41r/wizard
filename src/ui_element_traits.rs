@@ -1,5 +1,8 @@
 use crate::client::AppMessage;
-use iced::{Point, Size, widget::{Container, pin}};
+use iced::{
+    widget::{pin, Container},
+    Point, Size,
+};
 
 pub trait Message {
     type OwnMessage;
@@ -18,12 +21,12 @@ pub trait Animated: Message {
     /// Call this every AnimationTick.
     /// This function can handle 4 things. ALWAYS handle them in this order
     /// (only 2 and 3 can be switched):
-    /// 
+    ///
     /// 1: AnimationStarter check functions ->
     /// 2: update_animations functions of other ui elements of lesser hierarchy ->
     /// 3: next_frame functions of animations ->
     /// 4: AnimationEndSensor check functions
-    /// 
+    ///
     /// Note: Ensure that 1 and 4 are actually called at 1 and 4 respectively or otherwise there
     ///       will be off by one bugs!
     fn update_animations(&mut self);

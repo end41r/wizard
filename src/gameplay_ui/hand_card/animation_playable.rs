@@ -1,4 +1,4 @@
-use crate::animation::animation::{AnimationCore, CircularAutoReversingAnimation, AnimationState};
+use crate::animation::animation::{AnimationCore, AnimationState, CircularAutoReversingAnimation};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]

@@ -1,23 +1,24 @@
-use std::ops::Not;
-use iced::{ContentFit::Fill, Point, Size, mouse::Interaction,
-           widget::{Container, MouseArea, container, image, pin, stack}};
-use crate::client::AppMessage;
-use super::{animation_draw::DrawAnimation,
-            animation_hover::HoverAnimation,
-            animation_hover_focus::HoverFocusAnimation,
-            animation_hide::HideAnimation,
-            animation_play::PlayAnimation,
-            animation_playable::PlayableAnimation,
-            animation_false_played::FalsePlayedAnimation,
-            f32_min_2
-           };
-use super::super::hand::{ViewableHand, HandMessage};
-use crate::ui_element_traits::*;
+use super::super::hand::{HandMessage, ViewableHand};
+use super::{
+    animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
+    animation_hide::HideAnimation, animation_hover::HoverAnimation,
+    animation_hover_focus::HoverFocusAnimation, animation_play::PlayAnimation,
+    animation_playable::PlayableAnimation, f32_min_2,
+};
 use crate::animation::animation::*;
+use crate::client::AppMessage;
+use crate::ui_element_traits::*;
+use iced::{
+    mouse::Interaction,
+    widget::{container, image, pin, stack, Container, MouseArea},
+    ContentFit::Fill,
+    Point, Size,
+};
+use std::ops::Not;
 
-static FRAME_PLAYABLE_PATH:&'static str = "assets/cards/frame_green.png";     
-static FRAME_PLAYABLE_FOCUSED_PATH:&'static str = "assets/cards/frame_yellow.png";
-static FALSE_PLAYED_PATH:&'static str = "assets/cards/false_played.png";
+static FRAME_PLAYABLE_PATH: &'static str = "assets/cards/frame_green.png";
+static FRAME_PLAYABLE_FOCUSED_PATH: &'static str = "assets/cards/frame_yellow.png";
+static FALSE_PLAYED_PATH: &'static str = "assets/cards/false_played.png";
 
 // The hand size is depending on the window size with the factor 0.1.
 static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
@@ -34,7 +35,7 @@ pub enum CardMessage {
     Show(usize),
     Draw(usize),
     CursorMoved(usize, Point),
-    ShowPlayableStatus(usize, bool)
+    ShowPlayableStatus(usize, bool),
 }
 
 #[derive(Debug, Clone)]
@@ -51,11 +52,10 @@ pub struct ViewableCard {
     pub playable_animation: PlayableAnimation,
     pub false_played_animation: FalsePlayedAnimation,
     pub focus_animation: HoverFocusAnimation,
-    pub hide_animation: HideAnimation
+    pub hide_animation: HideAnimation,
 }
 
 impl ViewableCard {
-
     pub fn new(id: usize, img_path: &'static str, window_size: Size, playable: bool) -> Self {
         let mut card: ViewableCard = Self {
             id: id,
@@ -70,7 +70,7 @@ impl ViewableCard {
             playable_animation: PlayableAnimation::new(),
             false_played_animation: FalsePlayedAnimation::new(),
             focus_animation: HoverFocusAnimation::new(),
-            hide_animation: HideAnimation::new()
+            hide_animation: HideAnimation::new(),
         };
         card.playable_animation.start();
         card
@@ -78,7 +78,6 @@ impl ViewableCard {
 }
 
 impl Message for ViewableCard {
-
     type OwnMessage = CardMessage;
 
     fn convert_to_app_message(msg: CardMessage) -> AppMessage {
@@ -157,7 +156,8 @@ impl Animated for ViewableCard {
 impl Resizable for ViewableCard {
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size;
-        self.hover_animation.update_max_offset(ViewableCard::height_for(self.window_size));
+        self.hover_animation
+            .update_max_offset(ViewableCard::height_for(self.window_size));
     }
     fn width(&self) -> f32 {
         self.window_size.width * CARD_WIDTH_MULT_WITH_WINDOW_WIDTH
@@ -177,50 +177,46 @@ impl SizeFromOutside for ViewableCard {
 }
 
 impl Viewable for ViewableCard {
-
     /// DON'T USE THIS!!!
-    /// 
+    ///
     /// Instead use view_and_move for a card with x & y at 0.0,
     /// because view alone does not calculate the correct offset.
     /// This calculation is moved to view_and_move, because otherwise
     /// some effects of the card won't render for an unknown reason.
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        
-        let img_opacity: f32 = f32_min_2(self.play_animation.get_opacity(),
-                                         self.hide_animation.get_opacity());
+        let img_opacity: f32 = f32_min_2(
+            self.play_animation.get_opacity(),
+            self.hide_animation.get_opacity(),
+        );
 
-        let hover_effect_opacity: f32 = f32_min_2(img_opacity,
-                                                  self.focus_animation.get_opacity());
+        let hover_effect_opacity: f32 = f32_min_2(img_opacity, self.focus_animation.get_opacity());
 
-        let playable_opacity: f32 = f32_min_2(img_opacity,
-                                              self.playable_animation.get_opacity());
+        let playable_opacity: f32 = f32_min_2(img_opacity, self.playable_animation.get_opacity());
 
-        let false_played_opacity: f32 = f32_min_2(img_opacity,
-                                               self.false_played_animation.get_opacity());
+        let false_played_opacity: f32 =
+            f32_min_2(img_opacity, self.false_played_animation.get_opacity());
 
-        let width: f32 = self.width() *
-                         self.hover_animation.get_expansion() *
-                         self.play_animation.get_contraction() *
-                         self.hide_animation.get_contraction() *
-                         self.draw_animation.get_contraction();
+        let width: f32 = self.width()
+            * self.hover_animation.get_expansion()
+            * self.play_animation.get_contraction()
+            * self.hide_animation.get_contraction()
+            * self.draw_animation.get_contraction();
 
-        let height: f32 = self.height() *
-                          self.hover_animation.get_expansion();
+        let height: f32 = self.height() * self.hover_animation.get_expansion();
 
         let rotation: f32 = self.rotation;
 
         // The factor 0.92 is chosen so the card will not get clipped when rotated.
         let scale: f32 = 0.92 * self.hide_animation.get_scale() * self.draw_animation.get_scale();
 
-
         let mut card = stack!();
         let img = image(self.img_path)
-                .content_fit(Fill)
-                .width(width)
-                .height(height)
-                .rotation(rotation)
-                .scale(scale)
-                .opacity(img_opacity);
+            .content_fit(Fill)
+            .width(width)
+            .height(height)
+            .rotation(rotation)
+            .scale(scale)
+            .opacity(img_opacity);
         card = card.push(img);
         if self.playable {
             if self.show_playable_status {
@@ -255,23 +251,19 @@ impl Viewable for ViewableCard {
         let msg_hovered: AppMessage =
             ViewableCard::convert_to_app_message(CardMessage::Hovered(self.id));
         let msg_not_hoverd: AppMessage =
-            ViewableCard::convert_to_app_message(CardMessage::NotHovered(self.id)
-        );
-        let msg_show_playable_status  =ViewableHand::convert_to_app_message(
-            HandMessage::ShowPlayableStatus(self.show_playable_status.not())
+            ViewableCard::convert_to_app_message(CardMessage::NotHovered(self.id));
+        let msg_show_playable_status = ViewableHand::convert_to_app_message(
+            HandMessage::ShowPlayableStatus(self.show_playable_status.not()),
         );
         let card_id: usize = self.id.clone();
-        let msg_cursor_moved = move |position: Point|
-            ViewableCard::convert_to_app_message(CardMessage::CursorMoved(card_id, position)
-        );
-        let msg_played =
-            ViewableCard::convert_to_app_message(CardMessage::Played(self.id));
+        let msg_cursor_moved = move |position: Point| {
+            ViewableCard::convert_to_app_message(CardMessage::CursorMoved(card_id, position))
+        };
+        let msg_played = ViewableCard::convert_to_app_message(CardMessage::Played(self.id));
         let msg_false_played =
-            ViewableCard::convert_to_app_message(CardMessage::FalsePlayed(self.id)
-        );
+            ViewableCard::convert_to_app_message(CardMessage::FalsePlayed(self.id));
 
-        let mut mouse_area = 
-            MouseArea::new(card)
+        let mut mouse_area = MouseArea::new(card)
             .on_enter(msg_hovered)
             .on_exit(msg_not_hoverd)
             .on_right_press(msg_show_playable_status)
@@ -287,18 +279,18 @@ impl Viewable for ViewableCard {
     }
 
     fn view_and_move<'a>(&self, x: f32, y: f32) -> Container<'a, AppMessage> {
-
         // Construct the offset of the card before moving it.
         // x: repositioning the card back to the middle after beeing moved around by animations.
         // Note: This can be ingored on the y-axis (because the card moving up with the
         //       hover animation cancels the offset out).
-        let x_offset: f32 = ((1.0 - self.play_animation.get_contraction()) / 2.0) *
-                self.width() * self.hover_animation.get_expansion() +
-                (self.width() - self.width() * self.hover_animation.get_expansion()) / 2.0;
+        let x_offset: f32 = ((1.0 - self.play_animation.get_contraction()) / 2.0)
+            * self.width()
+            * self.hover_animation.get_expansion()
+            + (self.width() - self.width() * self.hover_animation.get_expansion()) / 2.0;
         // y: realize the card moving up animation.
-        let y_offset: f32 = - self.hover_animation.get_offset();
+        let y_offset: f32 = -self.hover_animation.get_offset();
         let corrected_position: Point = Point::new(x + x_offset, y + y_offset);
-        
+
         container(pin(self.view()).position(corrected_position))
     }
 }

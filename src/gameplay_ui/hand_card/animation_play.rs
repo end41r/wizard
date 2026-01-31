@@ -1,4 +1,4 @@
-use crate::animation::animation::{AnimationCore, BasicAnimation, AnimationState};
+use crate::animation::animation::{AnimationCore, AnimationState, BasicAnimation};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]

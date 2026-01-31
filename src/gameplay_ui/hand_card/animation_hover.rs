@@ -1,4 +1,4 @@
-use crate::animation::animation::{AnimationCore, ReversableBasicAnimation, AnimationState};
+use crate::animation::animation::{AnimationCore, AnimationState, ReversableBasicAnimation};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]
@@ -7,7 +7,7 @@ pub struct HoverAnimation {
     pub current_frame_number: usize,
     pub animation_state: AnimationState,
 
-    pub max_offset: f32
+    pub max_offset: f32,
 }
 
 impl HoverAnimation {
@@ -41,6 +41,6 @@ impl AnimationCore for HoverAnimation {
     fn animation_state(&mut self) -> &mut AnimationState {
         &mut self.animation_state
     }
-} 
+}
 
 impl ReversableBasicAnimation for HoverAnimation {}
