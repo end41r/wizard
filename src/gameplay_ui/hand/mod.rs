@@ -1,8 +1,10 @@
+mod hand_card;
+
 use crate::animation::{
     animation_end_sensor::AnimationEndSensor, animation_starter::AnimationStarter,
 };
 use crate::client::AppMessage;
-use crate::gameplay_ui::hand_card::hand_card::{CardMessage, ViewableCard};
+use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableCard};
 use crate::ui_element_traits::*;
 
 use iced::{
@@ -12,12 +14,12 @@ use iced::{
 use indexmap::{map::MutableKeys, IndexMap};
 use std::num::NonZero;
 
-use crate::gameplay_ui::hand_card::hand_card::CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH;
+use crate::gameplay_ui::hand::hand_card::CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH;
 
-static CARD1_PATH: &'static str = "assets/cards/back.png";
-static CARD2_PATH: &'static str = "assets/cards/diamond.png";
-static CARD3_PATH: &'static str = "assets/cards/heart.png";
-static CARD4_PATH: &'static str = "assets/cards/spade.png";
+static CARD1_PATH: &str = "assets/cards/back.png";
+static CARD2_PATH: &str = "assets/cards/diamond.png";
+static CARD3_PATH: &str = "assets/cards/heart.png";
+static CARD4_PATH: &str = "assets/cards/spade.png";
 
 // Adjust this arbitrary value to manipulate the width of the hand relative to its size,
 // but be careful that the cards don't go out of screen.
@@ -54,7 +56,7 @@ pub struct ViewableHand {
 impl ViewableHand {
     pub fn new(window_size: Size) -> Self {
         Self {
-            window_size: window_size,
+            window_size,
             cards: IndexMap::from([]),
             hovered_card_row_low: true,
             hovered_card_id: None,
@@ -180,7 +182,7 @@ impl ViewableHand {
 
         let cards_in_row: usize = std::cmp::min(self.cards.len(), 10);
         let mut row_len: f32 = 0.0;
-        if self.cards.len() != 0 {
+        if !self.cards.is_empty() {
             // All cards are only shown within the range of the card step except one focused card.
             row_len = ((cards_in_row as f32) - 1.0) * self.lower_row_card_step()
                 + ViewableCard::width_for(self.window_size);
@@ -400,12 +402,10 @@ impl Viewable for ViewableHand {
                 } else {
                     lower_card_row = lower_card_row.push(viewable_card)
                 }
+            } else if push_lower {
+                upper_card_row = upper_card_row.push_under(viewable_card)
             } else {
-                if push_lower {
-                    upper_card_row = upper_card_row.push_under(viewable_card)
-                } else {
-                    upper_card_row = upper_card_row.push(viewable_card)
-                }
+                upper_card_row = upper_card_row.push(viewable_card)
             }
 
             // The top card of the current row is reached.
@@ -417,7 +417,7 @@ impl Viewable for ViewableHand {
                 push_lower = true;
             }
 
-            x_pos = x_pos + x_pos_step;
+            x_pos += x_pos_step;
 
             // Switch to the second row.
             let added_cards: usize = i + 1;

@@ -1,6 +1,6 @@
 use crate::animation::animation::ReversableBasicAnimation;
 use crate::animation::Easing;
-use crate::gameplay_ui::hand_card::hand_card::ViewableCard;
+use crate::gameplay_ui::hand::hand_card::ViewableCard;
 use crate::ui_element_traits::SizeFromOutside;
 use derive_more::{Deref, DerefMut};
 use iced::Size;

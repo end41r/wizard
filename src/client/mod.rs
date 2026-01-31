@@ -106,7 +106,7 @@ impl Default for App {
         // Keep this value ins sync with the window size of the main function.
         let window_size: Size = Size::new(640.0, 480.0);
         Self {
-            window_size: window_size,
+            window_size,
 
             connected: false,
             connecting: false,

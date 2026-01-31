@@ -1,11 +1,26 @@
-use super::super::hand::{HandMessage, ViewableHand};
-use super::{
+mod animation_draw;
+mod animation_false_played;
+mod animation_focus;
+mod animation_hide;
+mod animation_hover;
+mod animation_play;
+mod animation_playable;
+
+pub fn f32_min_2(v1: f32, v2: f32) -> f32 {
+    if v1 < v2 {
+        return v1;
+    }
+    v2
+}
+
+use crate::client::AppMessage;
+use crate::gameplay_ui::hand::hand_card::{
     animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
     animation_focus::FocusAnimation, animation_hide::HideAnimation,
     animation_hover::HoverAnimation, animation_play::PlayAnimation,
-    animation_playable::PlayableAnimation, f32_min_2,
+    animation_playable::PlayableAnimation,
 };
-use crate::client::AppMessage;
+use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
 use crate::ui_element_traits::*;
 use iced::{
     mouse::Interaction,
@@ -16,9 +31,9 @@ use iced::{
 use std::num::NonZero;
 use std::ops::Not;
 
-static FRAME_PLAYABLE_PATH: &'static str = "assets/cards/frame_green.png";
-static FRAME_PLAYABLE_FOCUSED_PATH: &'static str = "assets/cards/frame_yellow.png";
-static FALSE_PLAYED_PATH: &'static str = "assets/cards/false_played.png";
+static FRAME_PLAYABLE_PATH: &str = "assets/cards/frame_green.png";
+static FRAME_PLAYABLE_FOCUSED_PATH: &str = "assets/cards/frame_yellow.png";
+static FALSE_PLAYED_PATH: &str = "assets/cards/false_played.png";
 
 // The hand size is depending on the window size with the factor 0.1.
 static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
@@ -59,10 +74,10 @@ impl ViewableCard {
     pub fn new(id: usize, img_path: &'static str, window_size: Size, playable: bool) -> Self {
         let play_duration: NonZero<usize> = NonZero::new(12).unwrap();
         let mut card: ViewableCard = Self {
-            id: id,
-            img_path: img_path,
-            window_size: window_size,
-            playable: playable,
+            id,
+            img_path,
+            window_size,
+            playable,
             show_playable_status: false,
             rotation: 0.0,
             draw_animation: DrawAnimation::new(NonZero::new(10).unwrap()),
@@ -254,7 +269,7 @@ impl Viewable for ViewableCard {
         let msg_show_playable_status = ViewableHand::convert_to_app_message(
             HandMessage::ShowPlayableStatus(self.show_playable_status.not()),
         );
-        let card_id: usize = self.id.clone();
+        let card_id: usize = self.id;
         let msg_cursor_moved = move |position: Point| {
             ViewableCard::convert_to_app_message(CardMessage::CursorMoved(card_id, position))
         };

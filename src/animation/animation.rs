@@ -96,15 +96,12 @@ new_core!(CircularAutoReversingAnimation);
 pub struct BasicAnimation(Animation);
 impl BasicAnimation {
     pub fn next_frame(&mut self) {
-        match self.animation_state {
-            AnimationState::MovingForward => {
-                if self.current_frame_number < self.max_frame_number.get() {
-                    self.current_frame_number += 1;
-                } else {
-                    self.animation_state = AnimationState::Ended;
-                }
+        if self.animation_state == AnimationState::MovingForward {
+            if self.current_frame_number < self.max_frame_number.get() {
+                self.current_frame_number += 1;
+            } else {
+                self.animation_state = AnimationState::Ended;
             }
-            _ => {}
         }
     }
     #[allow(dead_code)]
@@ -119,13 +116,10 @@ pub struct CircularAnimation(Animation);
 impl CircularAnimation {
     #[allow(dead_code)]
     pub fn next_frame(&mut self) {
-        match self.animation_state {
-            AnimationState::MovingForward => {
-                self.current_frame_number =
-                // The 1 is there for going to the next frame number.
-                    (self.current_frame_number + 1) % self.max_frame_number.get();
-            }
-            _ => {}
+        if self.animation_state == AnimationState::MovingForward {
+            self.current_frame_number =
+            // The 1 is there for going to the next frame number.
+                (self.current_frame_number + 1) % self.max_frame_number.get();
         }
     }
 }
