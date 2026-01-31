@@ -1,5 +1,4 @@
-use crate::animation::animation::ReversableBasicAnimation;
-use crate::animation::Easing;
+use crate::animation::{Easing, ReversableBasicAnimation};
 use derive_more::{Deref, DerefMut};
 use std::num::NonZero;
 
