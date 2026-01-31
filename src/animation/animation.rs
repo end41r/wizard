@@ -1,3 +1,6 @@
+use crate::animation::{
+    ease_in_out_sine, ease_in_sine, ease_out_bounce, ease_out_elastic, ease_out_sine,
+};
 /// For animations you first need to create a struct (e.g. MyAnimation) with 3 things:
 ///     - max_frame_number: NonZero<usize>
 ///     - current_frame_number: usize
@@ -8,16 +11,10 @@
 /// Now add functions that calculate what you want using the progress function
 /// which gives you the relation between the current and the max frame number
 /// (ranging from 0.0 tp 1.0), e.g.:
-/// get_opacity(&self) -> f32 {self.progress}
+/// get_opacity(&self) -> f32 {self.progress(Easing::EaseInCubic)}
 use std::num::NonZero;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum AnimationState {
-    NotMoving,
-    MovingForward,
-    Reversing,
-    Ended,
-}
+use super::{ease_in_cubic, ease_in_out_cubic, ease_out_cubic, AnimationState, Easing};
 
 pub trait AnimationCore {
     fn max_frame_number(&self) -> NonZero<usize>;
@@ -39,9 +36,22 @@ pub trait AnimationCore {
         *self._mut_current_frame_number() = 0;
         *self._mut_animation_state() = AnimationState::NotMoving;
     }
-    /// This represents the progress of the animation ranging from 0.0 to 1.0.
-    fn progress(&self) -> f32 {
-        self.current_frame_number() as f32 / self.max_frame_number().get() as f32
+    /// This function represents the progress of the animation ranging from 0.0 to 1.0.
+    /// Choose an easing type to manipulate the look of the animation to your liking.
+    fn progress(&self, curve: Easing) -> f32 {
+        let progress: f32 =
+            self.current_frame_number() as f32 / self.max_frame_number().get() as f32;
+        match curve {
+            Easing::Linear => progress,
+            Easing::InCubic => ease_in_cubic(progress),
+            Easing::OutCubic => ease_out_cubic(progress),
+            Easing::InOutCubic => ease_in_out_cubic(progress),
+            Easing::InSine => ease_in_sine(progress),
+            Easing::OutSine => ease_out_sine(progress),
+            Easing::InOutSine => ease_in_out_sine(progress),
+            Easing::OutElastic => ease_out_elastic(progress),
+            Easing::OutBounce => ease_out_bounce(progress),
+        }
     }
     fn not_moving(&self) -> bool {
         self.animation_state() == AnimationState::NotMoving

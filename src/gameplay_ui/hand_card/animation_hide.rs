@@ -1,4 +1,5 @@
-use crate::animation::animation::{AnimationCore, AnimationState, ReversableBasicAnimation};
+use crate::animation::animation::{AnimationCore, ReversableBasicAnimation};
+use crate::animation::{AnimationState, Easing};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]
@@ -19,15 +20,15 @@ impl HideAnimation {
     }
 
     pub fn get_opacity(&self) -> f32 {
-        1.0 - self.progress()
+        1.0 - self.progress(Easing::Linear)
     }
 
     pub fn get_contraction(&self) -> f32 {
-        1.0 - self.progress()
+        1.0 - self.progress(Easing::Linear)
     }
 
     pub fn get_scale(&self) -> f32 {
-        1.0 - self.progress()
+        1.0 - self.progress(Easing::Linear)
     }
 }
 

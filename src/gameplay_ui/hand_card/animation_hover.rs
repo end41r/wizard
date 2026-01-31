@@ -1,4 +1,5 @@
-use crate::animation::animation::{AnimationCore, AnimationState, ReversableBasicAnimation};
+use crate::animation::animation::{AnimationCore, ReversableBasicAnimation};
+use crate::animation::{AnimationState, Easing};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]
@@ -24,11 +25,11 @@ impl HoverAnimation {
         self.max_offset = card_height * 0.15;
     }
     pub fn get_offset(&self) -> f32 {
-        self.max_offset * self.progress()
+        self.max_offset * self.progress(Easing::Linear)
     }
     // The factor 0.1 partially determines the hand width in hand::Hand::width_overflow_one_side.
     pub fn get_expansion(&self) -> f32 {
-        1.0 + self.progress() * 0.1
+        1.0 + self.progress(Easing::Linear) * 0.1
     }
 }
 

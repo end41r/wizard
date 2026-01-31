@@ -1,5 +1,5 @@
-use super::f32_min_2;
-use crate::animation::animation::{AnimationCore, AnimationState, BasicAnimation};
+use crate::animation::animation::{AnimationCore, BasicAnimation};
+use crate::animation::{AnimationState, Easing};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]
@@ -19,11 +19,12 @@ impl DrawAnimation {
     }
 
     pub fn get_contraction(&self) -> f32 {
-        self.progress()
+        self.progress(Easing::Linear)
     }
 
     pub fn get_scale(&self) -> f32 {
-        f32_min_2(self.progress() + 0.5, 1.0)
+        // This animates only the last 50% of the scale.
+        0.5 + self.progress(Easing::OutCubic) * 0.5
     }
 }
 

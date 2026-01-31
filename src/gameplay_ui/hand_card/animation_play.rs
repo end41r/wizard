@@ -1,4 +1,5 @@
-use crate::animation::animation::{AnimationCore, AnimationState, BasicAnimation};
+use crate::animation::animation::{AnimationCore, BasicAnimation};
+use crate::animation::{AnimationState, Easing};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]
@@ -19,11 +20,11 @@ impl PlayAnimation {
     }
 
     pub fn get_opacity(&self) -> f32 {
-        1.0 - self.progress()
+        1.0 - self.progress(Easing::InCubic)
     }
 
     pub fn get_contraction(&self) -> f32 {
-        1.0 - self.progress()
+        1.0 - self.progress(Easing::InSine)
     }
 }
 

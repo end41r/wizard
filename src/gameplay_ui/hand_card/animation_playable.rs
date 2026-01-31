@@ -1,4 +1,5 @@
-use crate::animation::animation::{AnimationCore, AnimationState, CircularAutoReversingAnimation};
+use crate::animation::animation::{AnimationCore, CircularAutoReversingAnimation};
+use crate::animation::{AnimationState, Easing};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]
@@ -11,15 +12,15 @@ pub struct PlayableAnimation {
 impl PlayableAnimation {
     pub fn new() -> Self {
         Self {
-            max_frame_number: NonZero::new(150).unwrap(),
+            max_frame_number: NonZero::new(100).unwrap(),
             current_frame_number: 0,
             animation_state: AnimationState::NotMoving,
         }
     }
 
     pub fn get_opacity(&self) -> f32 {
-        // This only affects the last 30% of the opacity.
-        self.progress() * 0.3 + 0.7
+        // This only affects the last 15% of the opacity.
+        self.progress(Easing::InOutCubic) * 0.15 + 0.85
     }
 }
 

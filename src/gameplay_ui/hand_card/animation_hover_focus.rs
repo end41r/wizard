@@ -1,4 +1,5 @@
-use crate::animation::animation::{AnimationCore, AnimationState, CircularAutoReversingAnimation};
+use crate::animation::animation::{AnimationCore, CircularAutoReversingAnimation};
+use crate::animation::{AnimationState, Easing};
 use std::num::NonZero;
 
 #[derive(Debug, Clone)]
@@ -18,7 +19,7 @@ impl HoverFocusAnimation {
     }
 
     pub fn get_opacity(&self) -> f32 {
-        self.progress()
+        self.progress(Easing::InOutCubic)
     }
 }
 
