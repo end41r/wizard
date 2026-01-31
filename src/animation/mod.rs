@@ -1,3 +1,26 @@
+/// For animations you first need to create a struct (e.g. MyAnimation) with your fitting
+/// Animation type (e.g. BasicAnimation, AutoReversingAnimation)
+/// and derive Debug, Clone, Deref and DerefMut.
+/// It should e.g. look like this:
+///
+/// use derive_more::{Deref, DerefMut};
+/// #[derive(Debug, Clone, Deref, DerefMut)]
+/// pub struct MyAnimation(BasicAnimation);
+///
+/// Now add the new function and functions that calculate what you want using the progress function
+/// which gives you the relation between the current and the max frame number.
+/// The progress function also takes an easing parameter as enum.
+/// Use it to adjust the flow of your animation.
+/// It should e.g. look like this:
+///
+/// use std::num::NonZero;
+/// impl MyAnimation {
+///     pub fn new(duration: NonZero<usize>) -> Self {
+///         Self(BasicAnimation::new(duration))
+///     }
+///     pub fn get_opacity(&self) -> f32 {
+///         self.progress(Easing::EaseInCubic)
+///     }
 pub mod animation_end_sensor;
 pub mod animation_starter;
 
@@ -93,18 +116,6 @@ pub fn ease_out_bounce(v: f32) -> f32 {
         N * v * v + 0.984375
     }
 }
-
-/// For animations you first need to create a struct (e.g. MyAnimation) with 3 things:
-///     - max_frame_number: NonZero<usize>
-///     - current_frame_number: usize
-///     - animation_state: AnimationState
-/// Then you implement AnimationCore with its 3 getters.
-/// Then implement your fitting animation type (e.g. impl BasicAnimation for MyAnimation{})
-/// Add a new(...) -> Self function to impl MyAnimation{}
-/// Now add functions that calculate what you want using the progress function
-/// which gives you the relation between the current and the max frame number
-/// (ranging from 0.0 tp 1.0), e.g.:
-/// get_opacity(&self) -> f32 {self.progress(Easing::EaseInCubic)}
 
 // AI-Usage: Claude.ai for learning how to make a trait require another trait.
 //           (Now this is not the case here anymore but it used to be).
