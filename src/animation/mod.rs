@@ -171,6 +171,10 @@ impl AnimationCore {
             Easing::OutBounce => ease_out_bounce(progress),
         }
     }
+    #[allow(dead_code)]
+    pub fn current_frame_number(&self) -> usize {
+        self.current_frame_number
+    }
     pub fn not_moving(&self) -> bool {
         self.animation_state == AnimationState::NotMoving
     }
