@@ -6,6 +6,11 @@ enum AnimationStarterState {
     Inactive,
 }
 
+/// An AnimationStarter starts animations with a delay greater zero.
+/// If you want to start multiple animations on the same time it is easier to do it manually.
+/// Start it with the start function in an ui element impl Animated in update_with_msg
+/// and start an animation with the check function in update animations.
+/// Make sure that your AnimationStarters are at the beginning in update animations.
 #[derive(Debug)]
 pub struct AnimationStarter<C> {
     animation_delay: NonZero<usize>,

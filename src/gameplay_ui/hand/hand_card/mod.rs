@@ -6,13 +6,6 @@ mod animation_hover;
 mod animation_play;
 mod animation_playable;
 
-pub fn f32_min_2(v1: f32, v2: f32) -> f32 {
-    if v1 < v2 {
-        return v1;
-    }
-    v2
-}
-
 use crate::client::AppMessage;
 use crate::gameplay_ui::hand::hand_card::{
     animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
@@ -28,7 +21,6 @@ use iced::{
     ContentFit::Fill,
     Point, Size,
 };
-use std::num::NonZero;
 use std::ops::Not;
 
 static FRAME_PLAYABLE_PATH: &str = "assets/cards/frame_green.png";
@@ -39,6 +31,13 @@ static FALSE_PLAYED_PATH: &str = "assets/cards/false_played.png";
 static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
 // 1.54 is around 1245 / 806 (height to width ratio of a card image).
 pub static CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH: f32 = CARD_WIDTH_MULT_WITH_WINDOW_WIDTH * 1.54;
+
+pub fn f32_min_2(v1: f32, v2: f32) -> f32 {
+    if v1 < v2 {
+        return v1;
+    }
+    v2
+}
 
 #[derive(Debug, Clone)]
 pub enum CardMessage {
@@ -72,7 +71,7 @@ pub struct ViewableCard {
 
 impl ViewableCard {
     pub fn new(id: usize, img_path: &'static str, window_size: Size, playable: bool) -> Self {
-        let play_duration: NonZero<usize> = NonZero::new(12).unwrap();
+        let play_duration: usize = 12;
         let mut card: ViewableCard = Self {
             id,
             img_path,
@@ -80,12 +79,12 @@ impl ViewableCard {
             playable,
             show_playable_status: false,
             rotation: 0.0,
-            draw_animation: DrawAnimation::new(NonZero::new(10).unwrap()),
-            hover_animation: HoverAnimation::new(NonZero::new(5).unwrap()),
+            draw_animation: DrawAnimation::new(10),
+            hover_animation: HoverAnimation::new(5),
             play_animation: PlayAnimation::new(play_duration),
-            playable_animation: PlayableAnimation::new(NonZero::new(100).unwrap()),
-            false_played_animation: FalsePlayedAnimation::new(NonZero::new(25).unwrap()),
-            focus_animation: FocusAnimation::new(NonZero::new(70).unwrap()),
+            playable_animation: PlayableAnimation::new(100),
+            false_played_animation: FalsePlayedAnimation::new(25),
+            focus_animation: FocusAnimation::new(70),
             hide_animation: HideAnimation::new(play_duration),
         };
         card.playable_animation.start();

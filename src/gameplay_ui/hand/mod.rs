@@ -63,7 +63,7 @@ impl ViewableHand {
             top_card_id_upper: None,
             top_card_id_lower: None,
             // 12 is the duration of the hide animation.
-            hide_animation_end_sensor: AnimationEndSensor::new(NonZero::new(12).unwrap()),
+            hide_animation_end_sensor: AnimationEndSensor::new(12),
             // 3 is the delay for the animation start.
             draw_animation_starter: AnimationStarter::new(NonZero::new(3).unwrap()),
         }

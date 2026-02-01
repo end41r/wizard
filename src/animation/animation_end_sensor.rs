@@ -1,5 +1,3 @@
-use std::num::NonZero;
-
 #[derive(PartialEq, Debug)]
 enum AnimationEndSensorState {
     Active,
@@ -9,18 +7,19 @@ enum AnimationEndSensorState {
 /// An AnimationEndSensor executes a code block when an animation ends.
 /// Start the sensor with the start function in an ui element impl Animated in update_with_msg
 /// and execute the code with the check function in update animations.
+/// Make sure that your AnimationEndSensors are at the end in update animations.
 #[derive(Debug)]
 pub struct AnimationEndSensor<C> {
-    animation_length: NonZero<usize>,
+    animation_duration: usize,
     tick: usize,
     state: AnimationEndSensorState,
     content: Option<C>,
 }
 
 impl<C> AnimationEndSensor<C> {
-    pub fn new(animation_length: NonZero<usize>) -> Self {
+    pub fn new(animation_duration: usize) -> Self {
         Self {
-            animation_length,
+            animation_duration,
             tick: 0,
             state: AnimationEndSensorState::Inactive,
             content: None,
@@ -74,6 +73,6 @@ impl<C> AnimationEndSensor<C> {
         self.tick = 0;
     }
     fn last_tick_reached(&self) -> bool {
-        self.tick == self.animation_length.get()
+        self.tick == self.animation_duration
     }
 }

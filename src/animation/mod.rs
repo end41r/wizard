@@ -13,20 +13,23 @@
 /// Use it to adjust the flow of your animation.
 /// It should e.g. look like this:
 ///
-/// use std::num::NonZero;
 /// impl MyAnimation {
-///     pub fn new(duration: NonZero<usize>) -> Self {
+///     pub fn new(duration: usize) -> Self {
 ///         Self(BasicAnimation::new(duration))
 ///     }
 ///     pub fn get_opacity(&self) -> f32 {
 ///         self.progress(Easing::EaseInCubic)
 ///     }
+///
+/// Now you can put the animation in your struct you want to animate by creating a new instance
+/// via the new function.
+/// Keep in mind that if you choose 0 for the animation duration the animation will always
+/// count as finished (the progress function returns 1.0).
 pub mod animation_end_sensor;
 pub mod animation_starter;
 
 use derive_more::{Deref, DerefMut};
 use std::f32::consts::PI;
-use std::num::NonZero;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum AnimationState {
@@ -121,14 +124,14 @@ pub fn ease_out_bounce(v: f32) -> f32 {
 //           (Now this is not the case here anymore but it used to be).
 
 #[derive(Debug, Clone)]
-pub struct Animation {
-    max_frame_number: NonZero<usize>,
+pub struct AnimationCore {
+    max_frame_number: usize,
     current_frame_number: usize,
     animation_state: AnimationState,
 }
 
-impl Animation {
-    pub fn new_core(duration: NonZero<usize>) -> Self {
+impl AnimationCore {
+    fn new(duration: usize) -> Self {
         Self {
             max_frame_number: duration,
             current_frame_number: 0,
@@ -151,7 +154,11 @@ impl Animation {
     /// This function represents the progress of the animation ranging from 0.0 to 1.0.
     /// Choose an easing type to manipulate the look of the animation to your liking.
     pub fn progress(&self, curve: Easing) -> f32 {
-        let progress: f32 = self.current_frame_number as f32 / self.max_frame_number.get() as f32;
+        let progress: f32 = if self.max_frame_number == 0 {
+            1.0
+        } else {
+            self.current_frame_number as f32 / self.max_frame_number as f32
+        };
         match curve {
             Easing::Linear => progress,
             Easing::InCubic => ease_in_cubic(progress),
@@ -179,8 +186,8 @@ macro_rules! new_core {
         impl $name {
             // This is marked as not used because CircularAnimation is as of now not used.
             #[allow(dead_code)]
-            pub fn new(duration: NonZero<usize>) -> Self {
-                Self(Animation::new_core(duration))
+            pub fn new(duration: usize) -> Self {
+                Self(AnimationCore::new(duration))
             }
         }
     };
@@ -193,11 +200,11 @@ new_core!(AutoReversingAnimation);
 new_core!(CircularAutoReversingAnimation);
 
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct BasicAnimation(Animation);
+pub struct BasicAnimation(AnimationCore);
 impl BasicAnimation {
     pub fn next_frame(&mut self) {
         if self.animation_state == AnimationState::MovingForward {
-            if self.current_frame_number < self.max_frame_number.get() {
+            if self.current_frame_number < self.max_frame_number {
                 self.current_frame_number += 1;
             } else {
                 self.animation_state = AnimationState::Ended;
@@ -212,32 +219,32 @@ impl BasicAnimation {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct CircularAnimation(Animation);
+pub struct CircularAnimation(AnimationCore);
 impl CircularAnimation {
     #[allow(dead_code)]
     pub fn next_frame(&mut self) {
-        if self.animation_state == AnimationState::MovingForward {
+        if self.animation_state == AnimationState::MovingForward && self.max_frame_number != 0 {
             self.current_frame_number =
             // The 1 is there for going to the next frame number.
-                (self.current_frame_number + 1) % self.max_frame_number.get();
+                (self.current_frame_number + 1) % self.max_frame_number;
         }
     }
 }
 
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct ReversableBasicAnimation(Animation);
+pub struct ReversableBasicAnimation(AnimationCore);
 impl ReversableBasicAnimation {
     pub fn reverse(&mut self) {
         self.animation_state = AnimationState::Reversing;
     }
     pub fn start_from_reverse(&mut self) {
         self.animation_state = AnimationState::Reversing;
-        self.current_frame_number = self.max_frame_number.get()
+        self.current_frame_number = self.max_frame_number
     }
     pub fn next_frame(&mut self) {
         match self.animation_state {
             AnimationState::MovingForward => {
-                if self.current_frame_number < self.max_frame_number.get() {
+                if self.current_frame_number < self.max_frame_number {
                     self.current_frame_number += 1;
                 } else {
                     self.animation_state = AnimationState::NotMoving;
@@ -260,12 +267,12 @@ impl ReversableBasicAnimation {
 }
 
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct AutoReversingAnimation(Animation);
+pub struct AutoReversingAnimation(AnimationCore);
 impl AutoReversingAnimation {
     pub fn next_frame(&mut self) {
         match self.animation_state {
             AnimationState::MovingForward => {
-                if self.current_frame_number < self.max_frame_number.get() {
+                if self.current_frame_number < self.max_frame_number {
                     self.current_frame_number += 1;
                 } else {
                     self.animation_state = AnimationState::Reversing;
@@ -288,12 +295,12 @@ impl AutoReversingAnimation {
 }
 
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct CircularAutoReversingAnimation(Animation);
+pub struct CircularAutoReversingAnimation(AnimationCore);
 impl CircularAutoReversingAnimation {
     pub fn next_frame(&mut self) {
         match self.animation_state {
             AnimationState::MovingForward => {
-                if self.current_frame_number < self.max_frame_number.get() {
+                if self.current_frame_number < self.max_frame_number {
                     self.current_frame_number += 1;
                 } else {
                     self.animation_state = AnimationState::Reversing;
