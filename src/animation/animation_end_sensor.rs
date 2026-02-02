@@ -7,7 +7,7 @@ pub struct AnimationEndSensor<C> {
     animation_duration: usize,
     tick: usize,
     /// `Active` -> `true`
-    /// 
+    ///
     /// `Inactive` -> `false`
     state: bool,
     content: Option<C>,

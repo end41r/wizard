@@ -10,7 +10,7 @@ pub struct AnimationStarter<C> {
     tick: usize,
     times: usize,
     /// `Active` -> `true`
-    /// 
+    ///
     /// `Inactive` -> `false`
     state: bool,
     content: Option<C>,
