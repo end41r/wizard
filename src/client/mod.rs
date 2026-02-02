@@ -50,8 +50,8 @@ pub enum MenuState {
     Join,
     Rules,
     Lobby,
-    Playing,
     #[allow(dead_code)]
+    Playing,
     PlayingTest,
 }
 

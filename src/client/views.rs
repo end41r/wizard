@@ -334,18 +334,42 @@ fn view_test_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     // Bidding section
     let bidding_section: Element<'a, AppMessage> =
         if state.is_bidding_phase && state.is_my_turn && !state.must_set_trump {
+            let cards_per_player = state.round_number + 1;
+            let sum_of_bids: usize = state.bids.values().sum();
+            let is_last_bidder = state.bids.len() == state.player_order.len() - 1;
+            let forbidden_bid: Option<usize> = if is_last_bidder {
+                let diff = cards_per_player.saturating_sub(sum_of_bids);
+                if diff <= cards_per_player { Some(diff) } else { None }
+            } else {
+                None
+            };
+
+            let can_submit = if state.bid_input.is_empty() || state.bid_input == "" {
+                false
+            } else if let Ok(bid) = state.bid_input.parse::<usize>() {
+                bid <= cards_per_player && forbidden_bid != Some(bid)
+            } else {
+                false
+            };
+
+            let hint_text = if let Some(fb) = forbidden_bid {
+                format!("(0 to {}, but NOT {} - would equal card count)", cards_per_player, fb)
+            } else {
+                format!("(0 to {})", cards_per_player)
+            };
+
             column![
                 text("YOUR BID:").size(16),
                 row![
                     text_input("Enter bid", &state.bid_input)
                         .on_input(AppMessage::BidInputChanged)
                         .width(80),
-                    button("Submit Bid")
-                        .on_press(AppMessage::SubmitBid)
-                        .padding(8),
+                    button("Submit Bid").on_press_maybe(
+                        if can_submit { Some(AppMessage::SubmitBid) } else { None }
+                    ).padding(8),
                 ]
                 .spacing(5),
-                text(format!("(0 to {})", state.round_number + 1)).size(12),
+                text(hint_text).size(12),
             ]
             .spacing(5)
             .into()

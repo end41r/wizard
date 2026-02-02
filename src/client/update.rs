@@ -106,6 +106,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             }
 
             println!("Creating lobby...");
+            // maybe we can make it a better logic in the future
             std::thread::sleep(std::time::Duration::from_millis(2000));
 
             if let Ok(guard) = state.ws_tx.lock() {
@@ -116,8 +117,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     let _ = tx.send(C::JoinLobby {
                         name: state.host_name.clone(),
                     });
-                    state.last_msg = "Creating lobby...".to_string();
                 }
+            } else {
+                println!("Failed to acquire ws_tx lock");
             }
             state.menu = MenuState::Lobby;
             Task::none()
@@ -245,7 +247,13 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
 
         // Gameplay message handlers
         AppMessage::BidInputChanged(input) => {
-            state.bid_input = input;
+            if input.chars().all(char::is_numeric) || input.is_empty() {
+                state.last_msg.clear();
+                state.bid_input = input;
+            } else {
+                state.last_msg = "Bid must be a number".to_string();
+                state.bid_input = "".to_string();
+            }
             Task::none()
         }
         AppMessage::SubmitBid => {
@@ -456,7 +464,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.menu = MenuState::Playing;
+                state.menu = MenuState::PlayingTest;
                 state.scores.clear();
                 state.bids.clear();
                 state.tricks_won.clear();
