@@ -1,9 +1,15 @@
 use iced::{
     widget::{
-        button, column, container, pick_list, row, scrollable, text, text_input, Column, Row,
+        button, column, container, pick_list, row, scrollable, text, text_input, Column, Row, stack, image::Image, image::Handle,
     },
     Element,
+    Font,
+    
 };
+
+
+
+const TITLE_FONT: Font = Font::with_name("Magic School One");
 
 use super::{App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Suit, Value};
@@ -26,7 +32,7 @@ fn format_card(card: &Card) -> String {
 
 pub fn view(state: &App) -> Element<'_, AppMessage> {
     match state.menu {
-        MenuState::Main => view_main_menu(state),
+        MenuState::Main => view_main_menu(),
         MenuState::Host => view_host_menu(state),
         MenuState::Join => view_join_menu(state),
         MenuState::Rules => view_rules_menu(),
@@ -36,30 +42,57 @@ pub fn view(state: &App) -> Element<'_, AppMessage> {
     }
 }
 
-fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
-    let content = column![
-        text("Wizard - Main Menu").size(40),
-        button("Host").on_press(AppMessage::Host).padding(10),
+fn view_main_menu<'a>() -> Element<'a, AppMessage> {
+    let title = 
+    text("Wizard").
+    size(130).
+    font(TITLE_FONT).
+    align_x(iced::alignment::Horizontal::Center)
+    .align_y(iced::alignment::Vertical::Top);
+
+    let menu_left: Column<'a, AppMessage> = column![
+        button("Host")
+            .on_press(AppMessage::Host)
+            .padding(10),
         button("Join")
             .on_press(AppMessage::Navigate(MenuState::Join))
             .padding(10),
+    ]
+    .spacing(100)
+    .align_x(iced::alignment::Horizontal::Left);
+
+    let menu_right: Column<'a, AppMessage> = column![
         button("Gamerules")
             .on_press(AppMessage::GameRules)
             .padding(10),
         button("Exit Game")
             .on_press(AppMessage::CloseGame)
             .padding(10),
-        text(state.last_msg.clone()),
     ]
-    .spacing(20)
-    .align_x(iced::alignment::Horizontal::Center);
+    .spacing(100)
+    .align_x(iced::alignment::Horizontal::Right);
 
-    container(content)
-        .width(iced::Length::Fill)
-        .height(iced::Length::Fill)
-        .center_x(iced::Fill)
-        .center_y(iced::Fill)
-        .into()
+    stack![
+        Image::new("assets/wizard_main_menu.png").width(iced::Length::Fill).height(iced::Length::Fill),
+        
+        container(title)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .center_x(iced::Fill),
+        row![
+            container(menu_left)
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .center_x(iced::Fill)
+                .center_y(iced::Fill),
+
+            container(menu_right)
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .center_x(iced::Fill)
+                .center_y(iced::Fill),
+            ].align_y(iced::alignment::Vertical::Center)
+    ].into()
 }
 
 fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
@@ -116,7 +149,6 @@ fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
             None
         }),
         text("Progress:"),
-        text(&state.last_msg),
         button("Back").on_press(AppMessage::BackToMenu),
     ]
     .spacing(10)

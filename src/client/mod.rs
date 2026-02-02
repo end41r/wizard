@@ -21,6 +21,8 @@ pub enum PlayerCount {
     P6,
 }
 
+const TITLE_FONT: &[u8] = include_bytes!("../../assets/MagicSchoolOne.ttf");
+
 impl PlayerCount {
     pub fn to_usize(self) -> usize {
         match self {
@@ -115,7 +117,6 @@ impl Default for App {
             msg: String::new(),
 
             menu: MenuState::Main,
-
             host_name: "".to_string(),
             host_player_count: PlayerCount::P4,
             join_name: "".to_string(),
@@ -205,10 +206,15 @@ fn subscription(state: &App) -> Subscription<AppMessage> {
 }
 
 pub fn main() -> iced::Result {
+    use std::borrow::Cow;
     iced::application(App::default, update, view)
         .title("Wizard")
         .subscription(subscription)
         // Keep this value in sync with the App::default function.
         .window_size(Size::new(640.0, 480.0))
+        .settings(iced::Settings {
+            fonts: vec![Cow::Borrowed(TITLE_FONT)],
+            ..Default::default()
+        })
         .run()
 }
