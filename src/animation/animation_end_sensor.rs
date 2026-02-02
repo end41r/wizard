@@ -1,9 +1,3 @@
-#[derive(PartialEq, Debug)]
-enum AnimationEndSensorState {
-    Active,
-    Inactive,
-}
-
 /// An AnimationEndSensor executes a code block when an animation ends.
 /// Start the sensor with the start function in an ui element impl Animated in update_with_msg
 /// and execute the code with the check function in update animations.
@@ -12,7 +6,10 @@ enum AnimationEndSensorState {
 pub struct AnimationEndSensor<C> {
     animation_duration: usize,
     tick: usize,
-    state: AnimationEndSensorState,
+    /// `Active` -> `true`
+    /// 
+    /// `Inactive` -> `false`
+    state: bool,
     content: Option<C>,
 }
 
@@ -21,7 +18,7 @@ impl<C> AnimationEndSensor<C> {
         Self {
             animation_duration,
             tick: 0,
-            state: AnimationEndSensorState::Inactive,
+            state: false,
             content: None,
         }
     }
@@ -30,8 +27,8 @@ impl<C> AnimationEndSensor<C> {
     // Pass the information as content here to use it later on.
     // But make sure that the content and its context still represent what it should by then.
     pub fn start(&mut self, content: Option<C>) {
-        if self.state == AnimationEndSensorState::Inactive {
-            self.state = AnimationEndSensorState::Active
+        if !self.state {
+            self.state = true;
         }
         self.content = content;
     }
@@ -48,7 +45,7 @@ impl<C> AnimationEndSensor<C> {
     where
         A: FnOnce(&mut Self),
     {
-        if self.state == AnimationEndSensorState::Active {
+        if self.state {
             if self.last_tick_reached() {
                 action(self);
                 self.reset();
@@ -63,13 +60,10 @@ impl<C> AnimationEndSensor<C> {
         self.content.as_ref()
     }
     pub fn active(&self) -> bool {
-        match self.state {
-            AnimationEndSensorState::Active => true,
-            AnimationEndSensorState::Inactive => false,
-        }
+        self.state
     }
     pub fn reset(&mut self) {
-        self.state = AnimationEndSensorState::Inactive;
+        self.state = false;
         self.tick = 0;
     }
     fn last_tick_reached(&self) -> bool {

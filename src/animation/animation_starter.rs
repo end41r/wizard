@@ -1,11 +1,4 @@
 use std::num::NonZero;
-
-#[derive(PartialEq, Debug)]
-enum AnimationStarterState {
-    Active,
-    Inactive,
-}
-
 /// An AnimationStarter starts animations with a delay greater zero.
 /// If you want to start multiple animations on the same time it is easier to do it manually.
 /// Start it with the start function in an ui element impl Animated in update_with_msg
@@ -16,7 +9,10 @@ pub struct AnimationStarter<C> {
     animation_delay: NonZero<usize>,
     tick: usize,
     times: usize,
-    state: AnimationStarterState,
+    /// `Active` -> `true`
+    /// 
+    /// `Inactive` -> `false`
+    state: bool,
     content: Option<C>,
 }
 
@@ -26,7 +22,7 @@ impl<C> AnimationStarter<C> {
             animation_delay,
             tick: 0,
             times: 1, // This Will be set in the start function first before it matters.
-            state: AnimationStarterState::Inactive,
+            state: false,
             // You may need some additional information for the check function
             // you only know when you call the start function.
             content: None,
@@ -37,8 +33,8 @@ impl<C> AnimationStarter<C> {
     // Pass the information as content here to use it later on.
     // But make sure that the content and its context still represent what it should by then.
     pub fn start(&mut self, content: Option<C>, times: NonZero<usize>) {
-        if self.state == AnimationStarterState::Inactive {
-            self.state = AnimationStarterState::Active
+        if !self.state {
+            self.state = true;
         }
         // It will be easier to calculate later on starting with 0 and not 1.
         // Sow while times is non zero for the user it actually starts with 0 internally.
@@ -61,7 +57,7 @@ impl<C> AnimationStarter<C> {
     where
         A: FnOnce(&mut Self),
     {
-        if self.state == AnimationStarterState::Active {
+        if self.state {
             if self.tick % self.animation_delay == 0 {
                 action(self);
             }
@@ -79,13 +75,10 @@ impl<C> AnimationStarter<C> {
         self.content.as_ref()
     }
     pub fn active(&self) -> bool {
-        match self.state {
-            AnimationStarterState::Active => true,
-            AnimationStarterState::Inactive => false,
-        }
+        self.state
     }
     pub fn reset(&mut self) {
-        self.state = AnimationStarterState::Inactive;
+        self.state = false;
         self.tick = 0;
     }
     /// The number of the last started animation starting from 0.
