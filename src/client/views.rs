@@ -1,9 +1,7 @@
 use iced::{
-    widget::{
-        button, column, container, pick_list, row, scrollable, text, text_input, Column, Row, stack, image::Image,
-    },
-    Element,
-    Font,
+    Element, Font, widget::{
+        Column, Row, button, column, container, image::Image, pick_list, row, scrollable, stack, text, text_input
+    }
 };
 
 
@@ -237,6 +235,80 @@ fn format_card(card: &Card) -> String {
     }
 }
 
+/// Read PNG image dimensions from the file header
+fn png_dimensions(path: &str) -> Option<(u32, u32)> {
+    use std::fs::File;
+    use std::io::Read;
+
+    let mut f = File::open(path).ok()?;
+    let mut buf = [0u8; 24];
+    f.read_exact(&mut buf).ok()?;
+    if &buf[0..8] != b"\x89PNG\r\n\x1a\n" {
+        return None;
+    }
+
+    let width = u32::from_be_bytes([buf[16], buf[17], buf[18], buf[19]]);
+    let height = u32::from_be_bytes([buf[20], buf[21], buf[22], buf[23]]);
+    Some((width, height))
+}
+
+fn menu_panel<'a>(
+    state: &'a App,
+    title: &'a str,
+    body: Element<'a, AppMessage>,
+    footer: Option<Element<'a, AppMessage>>) -> Element<'a, AppMessage> {
+    let (intr_w, intr_h) = png_dimensions("assets/menu_container.png").unwrap_or((560, 440));
+    let max_w = (state.window_size.width * 0.9) as u32;
+    let max_h = (state.window_size.height * 0.9) as u32;
+    let scale = ((max_w as f32) / (intr_w as f32)).min((max_h as f32) / (intr_h as f32)).min(1.0);
+    let menu_w: u32 = (intr_w as f32 * scale).round() as u32;
+    let menu_h: u32 = (intr_h as f32 * scale).round() as u32;
+
+    let title_top_offset: u32 = std::cmp::max(((menu_h as f32) * 0.11).round() as u32, 12u32);
+
+    let vertical_pad: u32 = 12;
+    let side_padding: f32 = 36.0;
+
+    let top_extra: u32 = ((menu_h as f32) * 0.22).round() as u32;
+
+    let inner_w: u32 = (menu_w * 85 / 100).max(100);
+
+    let inner = column![
+        container(Column::new()).height(top_extra),
+        body,
+        footer.unwrap_or_else(|| container(Column::new()).into()),
+    ]
+    .spacing(10)
+    .padding([vertical_pad as f32, side_padding])
+    .width(inner_w)
+    .height(menu_h);
+
+    stack![
+        container(Image::new("assets/menu_container.png").width(menu_w).height(menu_h))
+            .center_x(iced::Fill)
+            .center_y(iced::Fill),
+        container(
+            Column::new()
+                .width(menu_w)
+                .height(menu_h)
+                .push(container(Column::new()).height(title_top_offset))
+                .push(
+                    container(
+                        text(title)
+                            .size(38)
+                            .font(TITLE_FONT)
+                            .color(iced::Color::from_rgb(0.0, 0.0, 0.0)),
+                    )
+                    .height(48u32)
+                    .center_x(iced::Fill),
+                ),
+        )
+        .center_x(iced::Fill),
+        container(inner).center_x(iced::Fill).center_y(iced::Fill)
+    ]
+    .into()
+}
+
 pub fn view(state: &App) -> Element<'_, AppMessage> {
     match state.menu {
         MenuState::Main => view_main_menu(state),
@@ -304,11 +376,6 @@ fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let can_join = !state.host_name.is_empty();
     let content = column![
         text("Host").size(30),
-        row![
-            text(&state.ip),
-            button("copy").on_press(AppMessage::CopyToClipboard(state.ip.clone())),
-        ]
-        .spacing(10),
         text("Name:"),
         text_input("Your Name", &state.host_name).on_input(AppMessage::HostNameChanged),
         text("Player Count:"),
@@ -317,25 +384,28 @@ fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
             Some(state.host_player_count),
             AppMessage::HostPlayerCountChanged
         ),
-        // Create Lobby: action only runs when create_lobby button click ends
         if can_join {
             state.btn_create_lobby.view().padding(0)
         } else {
             state.btn_create_lobby.view_disabled().padding(0)
         },
-        state.btn_back.view().padding(0),
     ]
     .spacing(10)
     .padding(20)
     .width(400)
     .align_x(iced::alignment::Horizontal::Left);
-    stack![
+
+    let footer = Some(container(row![state.btn_back.view().padding(6)])
+        .height(56u32)
+        .width(iced::Length::Fill)
+        .align_x(iced::alignment::Horizontal::Left)
+        .into());
+
+
+    return stack![
         Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
 
-        container(content)
-            .center_x(iced::Fill)
-            .center_y(iced::Fill),
-    
+        menu_panel(state, "Spiel hosten:", content.into(), footer)
     ].into()
 }
 
@@ -348,46 +418,97 @@ fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
         text_input("Server Address", &state.ip).on_input(AppMessage::ServerAddressChanged),
         if can_join { state.btn_connect.view().padding(0) } else { state.btn_connect.view_disabled().padding(0) },
         text("Progress:"),
-        state.btn_back.view().padding(0),
+        //state.btn_back.view().padding(0),
     ]
     .spacing(10)
     .padding(20)
     .width(400)
     .align_x(iced::alignment::Horizontal::Left);
 
-    stack![
-        Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
+    let footer = Some(container(row![state.btn_back.view().padding(6)])
+        .height(56u32)
+        .width(iced::Length::Fill)
+        .align_x(iced::alignment::Horizontal::Left)
+        .into());
 
-        container(content)
-        .center_x(iced::Fill)
-        .center_y(iced::Fill),
+    return stack![
+        Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
         
+        menu_panel(state, "Spiel beitreten:", content.into(), footer)
     ].into()
 }
 
 fn view_rules_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
-    let content = column![
-        text("Game Rules").size(30),
-        text("Here are the game rules (placeholder)."),
-        state.btn_back.view().padding(0),
-    ]
-    .spacing(10)
-    .padding(20)
-    .align_x(iced::alignment::Horizontal::Left);
 
-    stack![
+    let rules_body = column![
+        text("grundlagen:").size(20),
+        text("Wizard ist ein Stichspiel, bei dem das Ziel ist, möglichst genau vorherzusagen,"),
+        text("wie viele Stiche man pro Runde macht."),
+        
+        text("die Anzahl der Spieler bestimmt die Anzahl der gespielten Runden:"),
+        text(" - 3 Spieler: 20 Runden"),
+        text(" - 4 Spieler: 16 Runden"),
+        text(" - 5 Spieler: 13 Runden"),
+        text(" - 6 Spieler: 11 Runden"),
+        text(""),
+        text("karten:").size(20),
+        text("Das Wizard Deck besteht aus 60 Karten:"),
+        text(" - Zahlen 1-13 - Kreuz"),
+        text(" - Zahlen 1-13 - Pik"),
+        text(" - Zahlen 1-13 - Herz"),
+        text(" - Zahlen 1-13 - Karo"),
+        text(" - 4 Wizards"),
+        text(" - 4 Narren"),
+        text(""),
+        text("Stiche:").size(20),
+        text("Ein Stich wird von der höchsten Karte, oder dem ersten gelegten Wizard gewonnen"),
+        text(""),
+        text("Trumpf:").size(20),
+        text("Ein Trumpf ist eine bestimmte Farbe, die im Wert über allen nicht-trumpf Farben steht"),
+        text("wird also eine nicht-Trumpf 12 gelegt, und darauf eine Trumpf 10, gewinnt die Trumpf 10 den Stich"),
+        text("die Trumpf-Farbe wird am Anfang jeder Runde festgelegt"),
+        text(""),
+        text(""),
+        text("Spielablauf:").size(24),
+        text("Anfang:").size(20),
+        text("In der ersten Runde bekommt jeder Spieler genau eine Karte, blabla Placeholder..."),
+        text("Jede Runde in Wizard hat denselben Ablauf, der Trumpf wird aufgedeckt und jeder Spieler bekommt,"),
+        text("der Rundenzahl entsprechend viele Karten (also in Runde 5 -> 5 Karten, in Runde 12 -> 12 Karten...)"),
+        text("als nächstes gibt jeder Spieler an, wie viele Stiche er diese Runde machen wird"),
+        text("ACHTUNG! - Die Gesamtzahl aller angesagten Stiche kann nie gleich mit den möglichen Stichen sein."),
+        text("Anschließend spielt jeder der Reihe nach genau eine Karte."),
+        text("Hat jeder Spieler genau eine Karte gelegt, beginnt der Gewinner dieses Stichs den nächsten Stich."),
+        text("Sind alle Karten ausgespielt, werden Stiche mit den Ansagen abgeglichen und entsprechend Punkte verteilt."),
+        text(""),
+        text("Punkte:").size(20),
+        text("stimmt die Ansage, kriegt man 20 Punkte Plus die Anzahl an gewonnenen Stichen mal 10 "),
+        text("also bei 5 angesagten und 5 gewonnenen: 20 + 10*5 = 70 Punkte"),
+        text("stimmt die Ansage nicht, wird das Zehnfache der Abweichung von den eigenen Punkten abgezogen. "),
+        text("also bei 5 angesagten und 7 gewonnenen: 2 zu viel -> 2*10 = 20 Punkte Abzug"),
+        text(""),
+        text("Ende:").size(20),
+        text("  in der gesamten letzten Runde wird ohne Trumpf gespielt."),
+        text("  ist Runde 20 zuende gespielt, gewinnt der Spieler mit den meisten Punkten"),
+    ];
+
+    let max_h = (state.window_size.height * 0.9) as u32;
+    let rules_body_scroll = scrollable(rules_body).height((max_h as f32 * 0.62) as u32).width(iced::Length::Fill);
+    let footer = Some(container(row![state.btn_back.view().padding(6)])
+        .height(56u32)
+        .width(iced::Length::Fill)
+        .align_x(iced::alignment::Horizontal::Left)
+        .into());
+
+    return stack![
         Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
-
-        container(content)
-        .center_x(iced::Fill)
-        .center_y(iced::Fill)
-    ].into()
+        menu_panel(state, "SPIELREGELN:", rules_body_scroll.into(), footer)
+        ].into();
 }
 
 fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if !state.connected {
         return stack![
-            Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
+            Image::new("assets/wizard_lobby_menu.png").width(iced::Length::Fill).height(iced::Length::Fill),
 
             container(column![
             text("Nicht verbunden zum Server. / IP wurde falsch eingegeben"),
@@ -401,7 +522,6 @@ fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
         let mut player_rows = Column::new().spacing(10);
         for p in &lobby.players {
             let ready_text = if p.ready { "Bereit" } else { "Nicht bereit" };
-            // For the local player show the animated owned ready button, others just show text
             let toggle = if Some(p.id) == state.my_id {
                 state.btn_ready_owned.view_with_label(ready_text)
             } else {
@@ -469,7 +589,7 @@ fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
         .padding(20);
         
         stack![
-            Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
+            Image::new("assets/wizard_lobby_menu.png").width(iced::Length::Fill).height(iced::Length::Fill),
 
             container(content)
             .center_x(iced::Fill)
@@ -477,7 +597,7 @@ fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
         ].into()
     } else {
         stack![
-            Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
+            Image::new("assets/wizard_lobby_menu.png").width(iced::Length::Fill).height(iced::Length::Fill),
 
             container(column![
                 text("Keine Lobby vorhanden"),

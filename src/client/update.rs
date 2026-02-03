@@ -1,4 +1,4 @@
-use iced::{clipboard, Task};
+use iced::Task;
 use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
@@ -70,11 +70,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.ip = addr;
             Task::none()
         }
-        AppMessage::CopyToClipboard(addr) => {
-            state.last_msg = "Server address copied to clipboard.".to_string();
-            clipboard::write(addr)
-        }
-
         AppMessage::SendChat => {
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
@@ -329,10 +324,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.btn_back_to_menu.update_animations();
             state.btn_ready_owned.update_animations();
 
-            // Collect AppMessages to dispatch after processing animations so logic remains routed through AppMessage
+
             let mut pending_msgs: Vec<AppMessage> = Vec::new();
 
-            // Check for click animation ends to trigger actions (push AppMessage only)
             if state.btn_host.check_click_end(|&_id| {
                 pending_msgs.push(AppMessage::Host);
             }) {}
@@ -349,34 +343,28 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 pending_msgs.push(AppMessage::CloseGame);
             }) {}
 
-            // Create lobby button -> route via AppMessage::CreateLobby
             if state.btn_create_lobby.check_click_end(|&_id| {
                 pending_msgs.push(AppMessage::CreateLobby);
             }) {}
 
-            // Ready button (local player) -> ToggleReady via AppMessage
             if state.btn_ready_owned.check_click_end(|&_id| {
                 if let Some(my_id) = state.my_id {
                     pending_msgs.push(AppMessage::ToggleReady(my_id));
                 }
             }) {}
 
-            // Back button
             if state.btn_back.check_click_end(|_| {
                 pending_msgs.push(AppMessage::Navigate(MenuState::Main));
             }) {}
 
-            // Connect button (Join menu)
             if state.btn_connect.check_click_end(|_| {
                 pending_msgs.push(AppMessage::Connect);
             }) {}
 
-            // Send chat
             if state.btn_send_chat.check_click_end(|_| {
                 pending_msgs.push(AppMessage::SendChat);
             }) {}
 
-            // Start game (Lobby) -> only enqueue if conditions met
             if state.btn_start_game.check_click_end(|_| {
                 let can_start = if let Some(lobby) = &state.lobby {
                     lobby.players.len() == state.host_player_count.to_usize()
@@ -398,12 +386,10 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 }
             }) {}
 
-            // Back to menu (cleanup)
             if state.btn_back_to_menu.check_click_end(|_| {
                 pending_msgs.push(AppMessage::BackToMenu);
             }) {}
 
-            // Dispatch pending messages (preserve AppMessage-based routing)
             for msg in pending_msgs {
                 let _ = update(state, msg);
             }
