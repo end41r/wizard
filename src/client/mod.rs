@@ -56,7 +56,6 @@ pub enum MenuState {
     #[allow(dead_code)]
     PlayingTest,
 }
-
 pub struct App {
     window_size: Size,
 
@@ -101,6 +100,22 @@ pub struct App {
 
     // Gameplay view state
     pub viewable_hand: ViewableHand,
+
+    // UI Buttons (main menu)
+    pub btn_host: crate::client::views::Button,
+    pub btn_join: crate::client::views::Button,
+    pub btn_rules: crate::client::views::Button,
+    pub btn_exit: crate::client::views::Button,
+
+    // Buttons for other menus
+    pub btn_create_lobby: crate::client::views::Button,
+    pub btn_back: crate::client::views::Button,
+    pub btn_connect: crate::client::views::Button,
+    pub btn_send_chat: crate::client::views::Button,
+    pub btn_start_game: crate::client::views::Button,
+    pub btn_back_to_menu: crate::client::views::Button,
+
+    pub btn_ready_owned: crate::client::views::Button,
 }
 
 impl Default for App {
@@ -153,6 +168,23 @@ impl Default for App {
             winner: None,
 
             viewable_hand: ViewableHand::new(window_size),
+
+            // Buttons (smaller)
+            btn_host: crate::client::views::Button::new(0, "Host", "assets/button1.png", 180, 44),
+            btn_join: crate::client::views::Button::new(1, "Join", "assets/button1.png", 180, 44),
+            btn_rules: crate::client::views::Button::new(2, "Gamerules", "assets/button1.png", 180, 44),
+            btn_exit: crate::client::views::Button::new(3, "Leave game", "assets/button1.png", 180, 44),
+
+            // Menu/interaction buttons used in other views
+            btn_create_lobby: crate::client::views::Button::new(10, "Create Lobby", "assets/button1.png", 160, 40),
+            btn_back: crate::client::views::Button::new(11, "Back", "assets/button1.png", 100, 36),
+            btn_connect: crate::client::views::Button::new(12, "Connect", "assets/button1.png", 140, 40),
+            btn_send_chat: crate::client::views::Button::new(13, "Senden", "assets/button1.png", 100, 36),
+            btn_start_game: crate::client::views::Button::new(14, "Starten", "assets/button1.png", 140, 40),
+            btn_back_to_menu: crate::client::views::Button::new(15, "Zurück zum Menü", "assets/button1.png", 160, 40),
+
+            // ready button for the local player in lobby
+            btn_ready_owned: crate::client::views::Button::new(20, "Bereit", "assets/button1.png", 100, 36),
         }
     }
 }
@@ -193,6 +225,9 @@ pub enum AppMessage {
 
     // Gameplay view messages
     HandMessage(HandMessage),
+
+    // Button messages from view widgets
+    ButtonMessage(crate::client::views::ButtonMessage),
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {

@@ -295,8 +295,119 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.viewable_hand.update_with_msg(hand_msg);
             Task::none()
         }
+        AppMessage::ButtonMessage(btn_msg) => {
+            // route to buttons (each button filters by id internally)
+            state.btn_host.update_with_msg(btn_msg.clone());
+            state.btn_join.update_with_msg(btn_msg.clone());
+            state.btn_rules.update_with_msg(btn_msg.clone());
+            state.btn_exit.update_with_msg(btn_msg.clone());
+
+            state.btn_create_lobby.update_with_msg(btn_msg.clone());
+            state.btn_back.update_with_msg(btn_msg.clone());
+            state.btn_connect.update_with_msg(btn_msg.clone());
+            state.btn_send_chat.update_with_msg(btn_msg.clone());
+            state.btn_start_game.update_with_msg(btn_msg.clone());
+            state.btn_back_to_menu.update_with_msg(btn_msg.clone());
+
+            state.btn_ready_owned.update_with_msg(btn_msg);
+            Task::none()
+        }
         AppMessage::AnimationTick => {
             state.viewable_hand.update_animations();
+
+            // Update button animations
+            state.btn_host.update_animations();
+            state.btn_join.update_animations();
+            state.btn_rules.update_animations();
+            state.btn_exit.update_animations();
+
+            state.btn_create_lobby.update_animations();
+            state.btn_back.update_animations();
+            state.btn_connect.update_animations();
+            state.btn_send_chat.update_animations();
+            state.btn_start_game.update_animations();
+            state.btn_back_to_menu.update_animations();
+            state.btn_ready_owned.update_animations();
+
+            // Collect AppMessages to dispatch after processing animations so logic remains routed through AppMessage
+            let mut pending_msgs: Vec<AppMessage> = Vec::new();
+
+            // Check for click animation ends to trigger actions (push AppMessage only)
+            if state.btn_host.check_click_end(|&_id| {
+                pending_msgs.push(AppMessage::Host);
+            }) {}
+
+            if state.btn_join.check_click_end(|_| {
+                pending_msgs.push(AppMessage::Navigate(MenuState::Join));
+            }) {}
+
+            if state.btn_rules.check_click_end(|_| {
+                pending_msgs.push(AppMessage::GameRules);
+            }) {}
+
+            if state.btn_exit.check_click_end(|_| {
+                pending_msgs.push(AppMessage::CloseGame);
+            }) {}
+
+            // Create lobby button -> route via AppMessage::CreateLobby
+            if state.btn_create_lobby.check_click_end(|&_id| {
+                pending_msgs.push(AppMessage::CreateLobby);
+            }) {}
+
+            // Ready button (local player) -> ToggleReady via AppMessage
+            if state.btn_ready_owned.check_click_end(|&_id| {
+                if let Some(my_id) = state.my_id {
+                    pending_msgs.push(AppMessage::ToggleReady(my_id));
+                }
+            }) {}
+
+            // Back button
+            if state.btn_back.check_click_end(|_| {
+                pending_msgs.push(AppMessage::Navigate(MenuState::Main));
+            }) {}
+
+            // Connect button (Join menu)
+            if state.btn_connect.check_click_end(|_| {
+                pending_msgs.push(AppMessage::Connect);
+            }) {}
+
+            // Send chat
+            if state.btn_send_chat.check_click_end(|_| {
+                pending_msgs.push(AppMessage::SendChat);
+            }) {}
+
+            // Start game (Lobby) -> only enqueue if conditions met
+            if state.btn_start_game.check_click_end(|_| {
+                let can_start = if let Some(lobby) = &state.lobby {
+                    lobby.players.len() == state.host_player_count.to_usize()
+                        && lobby.players.iter().all(|p| p.ready)
+                } else {
+                    false
+                };
+                let is_host = state.my_id.is_some()
+                    && state
+                        .my_id
+                        .unwrap()
+                        == state
+                            .lobby
+                            .as_ref()
+                            .and_then(|l| l.players.iter().find(|p| p.is_host).map(|p| p.id))
+                            .unwrap_or_default();
+                if can_start && is_host {
+                    pending_msgs.push(AppMessage::StartGame);
+                }
+            }) {}
+
+            // Back to menu (cleanup)
+            if state.btn_back_to_menu.check_click_end(|_| {
+                pending_msgs.push(AppMessage::BackToMenu);
+            }) {}
+
+            // Dispatch pending messages (preserve AppMessage-based routing)
+            for msg in pending_msgs {
+                let _ = update(state, msg);
+            }
+
             Task::none()
         }
         AppMessage::WindowResized(size) => {

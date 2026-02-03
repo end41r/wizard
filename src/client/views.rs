@@ -1,20 +1,227 @@
 use iced::{
     widget::{
-        button, column, container, pick_list, row, scrollable, text, text_input, Column, Row, stack, image::Image, image::Handle,
+        button, column, container, pick_list, row, scrollable, text, text_input, Column, Row, stack, image::Image,
     },
     Element,
     Font,
-    
 };
-
 
 
 const TITLE_FONT: Font = Font::with_name("Magic School One");
 
 use super::{App, AppMessage, MenuState, PlayerCount};
-use crate::api::{Card, Suit, Value};
+use crate::{api::{Card, Suit, Value}, ui_element_traits::Animated};
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
 use crate::ui_element_traits::{Message, Viewable};
+use derive_more::{Deref, DerefMut};
+
+use crate::animation::{BasicAnimation, ReversableBasicAnimation, Easing, animation_end_sensor::AnimationEndSensor};
+use iced::widget::MouseArea;
+
+#[derive(Debug, Clone, Deref, DerefMut)]
+pub struct HoverAnim(ReversableBasicAnimation);
+impl HoverAnim {
+    pub fn new(duration: usize) -> Self {
+        Self(ReversableBasicAnimation::new(duration))
+    }
+    pub fn get_expansion(&self) -> f32 {
+        let progress = self.progress(Easing::InOutCubic);
+        progress * 0.05 + 1.0
+    }
+}
+
+#[derive(Debug, Clone, Deref, DerefMut)]
+pub struct ClickAnim(BasicAnimation);
+impl ClickAnim {
+    pub fn new(duration: usize) -> Self {
+        Self(BasicAnimation::new(duration))
+    }
+    pub fn get_contraction(&self) -> f32 {
+        1.0 - self.progress(Easing::InCubic) * 0.1
+    }
+    pub fn get_opacity(&self) -> f32 {
+        1.0 - self.progress(Easing::Linear) * 0.4
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ButtonMessage {
+    Hovered(usize),
+    NotHovered(usize),
+    Clicked(usize),
+}
+
+#[derive(Debug)]
+pub struct Button {
+    pub id: usize,
+    pub label: &'static str,
+    img_path: &'static str,
+    width: u16,
+    height: u16,
+    hover_animation: HoverAnim,
+    click_animation: ClickAnim,
+    click_end_sensor: AnimationEndSensor<usize>,
+}
+
+impl Button {
+    pub fn new(id: usize, label: &'static str, img_path: &'static str, width: u16, height: u16) -> Self {
+        let click_duration: usize = 15;
+        Self {
+            id,
+            label,
+            img_path,
+            width,
+            height,
+            hover_animation: HoverAnim::new(12),
+            click_animation: ClickAnim::new(click_duration),
+            click_end_sensor: AnimationEndSensor::new(click_duration),
+        }
+    }
+
+    pub fn check_click_end<F>(&mut self, action: F) -> bool
+    where
+        F: FnOnce(&usize),
+    {
+        let finished = self.click_end_sensor.check(|h| {
+            if let Some(k) = h.content() {
+                action(k);
+            }
+        });
+        if finished {
+            self.click_animation.reset();
+        }
+        finished
+    }
+
+    pub fn view(&self) -> container::Container<'_, AppMessage> {
+        let scale = self.hover_animation.get_expansion() * self.click_animation.get_contraction();
+        let width_scaled: u16 = (self.width as f32 * scale).max(1.0).round() as u16;
+        let height_scaled: u16 = (self.height as f32 * scale).max(1.0).round() as u16;
+
+        let img = Image::new(self.img_path)
+            .width(width_scaled as u32)
+            .height(height_scaled as u32)
+            .opacity(self.click_animation.get_opacity());
+
+        let txt_size: u32 = ((height_scaled as f32) * 0.4) as u32;
+        let mut s = stack!();
+        s = s.push(img);
+        s = s.push(
+            container(text(self.label).size(txt_size))
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .center_x(iced::Fill)
+                .center_y(iced::Fill),
+        );
+
+        let base = container(s).width(self.width as u32).height(self.height as u32);
+        let msg_hovered = AppMessage::ButtonMessage(ButtonMessage::Hovered(self.id));
+        let msg_not_hovered = AppMessage::ButtonMessage(ButtonMessage::NotHovered(self.id));
+        let msg_clicked = AppMessage::ButtonMessage(ButtonMessage::Clicked(self.id));
+
+        let mouse_area = MouseArea::new(base)
+            .on_enter(msg_hovered)
+            .on_exit(msg_not_hovered)
+            .on_press(msg_clicked)
+            .interaction(iced::mouse::Interaction::Pointer);
+
+        container(mouse_area)
+    }
+
+    pub fn view_with_label<'a>(&self, label: &'a str) -> container::Container<'a, AppMessage> {
+        let scale = self.hover_animation.get_expansion() * self.click_animation.get_contraction();
+        let width_scaled: u16 = (self.width as f32 * scale).max(1.0).round() as u16;
+        let height_scaled: u16 = (self.height as f32 * scale).max(1.0).round() as u16;
+
+        let img = Image::new(self.img_path)
+            .width(width_scaled as u32)
+            .height(height_scaled as u32)
+            .opacity(self.click_animation.get_opacity());
+
+        let txt_size: u32 = ((height_scaled as f32) * 0.4) as u32;
+        let mut s = stack!();
+        s = s.push(img);
+        s = s.push(
+            container(text(label).size(txt_size))
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .center_x(iced::Fill)
+                .center_y(iced::Fill),
+        );
+
+        let base = container(s).width(self.width as u32).height(self.height as u32);
+
+        let msg_hovered = AppMessage::ButtonMessage(ButtonMessage::Hovered(self.id));
+        let msg_not_hovered = AppMessage::ButtonMessage(ButtonMessage::NotHovered(self.id));
+        let msg_clicked = AppMessage::ButtonMessage(ButtonMessage::Clicked(self.id));
+
+        let mouse_area = MouseArea::new(base)
+            .on_enter(msg_hovered)
+            .on_exit(msg_not_hovered)
+            .on_press(msg_clicked)
+            .interaction(iced::mouse::Interaction::Pointer);
+
+        container(mouse_area)
+    }
+}
+
+impl Message for Button {
+    type OwnMessage = ButtonMessage;
+
+    fn convert_to_app_message(msg: ButtonMessage) -> AppMessage {
+        AppMessage::ButtonMessage(msg)
+    }
+
+    fn update_with_msg(&mut self, msg: ButtonMessage) {
+        match msg {
+            ButtonMessage::Hovered(id) => {
+                if id == self.id {
+                    self.hover_animation.start();
+                }
+            }
+            ButtonMessage::NotHovered(id) => {
+                if id == self.id {
+                    self.hover_animation.reverse();
+                }
+            }
+            ButtonMessage::Clicked(id) => {
+                if id == self.id {
+                    self.click_animation.start();
+                    self.click_end_sensor.start(Some(id));
+                }
+            }
+        }
+    }
+}
+
+impl Button {
+    pub fn view_disabled(&self) -> container::Container<'_, AppMessage> {
+        let width_scaled: u16 = self.width;
+        let height_scaled: u16 = self.height;
+        let img = Image::new(self.img_path)
+            .width(width_scaled as u32)
+            .height(height_scaled as u32)
+            .opacity(0.6);
+        let txt_size: u32 = ((height_scaled as f32) * 0.4) as u32;
+        let mut s = stack!();
+        s = s.push(img);
+        s = s.push(
+            container(text(self.label).size(txt_size).color(iced::Color::from_rgb(0.5,0.5,0.5)))
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .center_x(iced::Fill)
+                .center_y(iced::Fill),
+        );
+        container(s).width(self.width as u32).height(self.height as u32)
+    }
+}
+
+impl Animated for Button {
+    fn update_animations(&mut self) {
+        self.hover_animation.next_frame();
+        self.click_animation.next_frame();
+    }
+}
 
 /// Format a card for display (e.g., "5 Red", "Wizard", "Jester")
 fn format_card(card: &Card) -> String {
@@ -32,17 +239,17 @@ fn format_card(card: &Card) -> String {
 
 pub fn view(state: &App) -> Element<'_, AppMessage> {
     match state.menu {
-        MenuState::Main => view_main_menu(),
+        MenuState::Main => view_main_menu(state),
         MenuState::Host => view_host_menu(state),
         MenuState::Join => view_join_menu(state),
-        MenuState::Rules => view_rules_menu(),
+        MenuState::Rules => view_rules_menu(state),
         MenuState::Lobby => view_lobby_menu(state),
         MenuState::Playing => view_gameplay(state),
         MenuState::PlayingTest => view_test_gameplay(state),
     }
 }
 
-fn view_main_menu<'a>() -> Element<'a, AppMessage> {
+fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let title = 
     text("Wizard").
     size(130).
@@ -51,23 +258,15 @@ fn view_main_menu<'a>() -> Element<'a, AppMessage> {
     .align_y(iced::alignment::Vertical::Top);
 
     let menu_left: Column<'a, AppMessage> = column![
-        button("Host")
-            .on_press(AppMessage::Host)
-            .padding(10),
-        button("Join")
-            .on_press(AppMessage::Navigate(MenuState::Join))
-            .padding(10),
+        state.btn_host.view().padding(10),
+        state.btn_join.view().padding(10),
     ]
     .spacing(100)
     .align_x(iced::alignment::Horizontal::Left);
 
     let menu_right: Column<'a, AppMessage> = column![
-        button("Gamerules")
-            .on_press(AppMessage::GameRules)
-            .padding(10),
-        button("Exit Game")
-            .on_press(AppMessage::CloseGame)
-            .padding(10),
+        state.btn_rules.view().padding(10),
+        state.btn_exit.view().padding(10),
     ]
     .spacing(100)
     .align_x(iced::alignment::Horizontal::Right);
@@ -118,22 +317,26 @@ fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
             Some(state.host_player_count),
             AppMessage::HostPlayerCountChanged
         ),
-        button("Create Lobby").on_press_maybe(if can_join {
-            Some(AppMessage::CreateLobby)
+        // Create Lobby: action only runs when create_lobby button click ends
+        if can_join {
+            state.btn_create_lobby.view().padding(0)
         } else {
-            None
-        }),
-        button("Back").on_press(AppMessage::BackToMenu),
+            state.btn_create_lobby.view_disabled().padding(0)
+        },
+        state.btn_back.view().padding(0),
     ]
     .spacing(10)
     .padding(20)
     .width(400)
     .align_x(iced::alignment::Horizontal::Left);
+    stack![
+        Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
 
-    container(content)
-        .center_x(iced::Fill)
-        .center_y(iced::Fill)
-        .into()
+        container(content)
+            .center_x(iced::Fill)
+            .center_y(iced::Fill),
+    
+    ].into()
 }
 
 fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
@@ -143,60 +346,67 @@ fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
         text("Name:"),
         text_input("Your Name", &state.join_name).on_input(AppMessage::JoinNameChanged),
         text_input("Server Address", &state.ip).on_input(AppMessage::ServerAddressChanged),
-        button("Connect").on_press_maybe(if can_join {
-            Some(AppMessage::Connect)
-        } else {
-            None
-        }),
+        if can_join { state.btn_connect.view().padding(0) } else { state.btn_connect.view_disabled().padding(0) },
         text("Progress:"),
-        button("Back").on_press(AppMessage::BackToMenu),
+        state.btn_back.view().padding(0),
     ]
     .spacing(10)
     .padding(20)
     .width(400)
     .align_x(iced::alignment::Horizontal::Left);
 
-    container(content)
+    stack![
+        Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
+
+        container(content)
         .center_x(iced::Fill)
-        .center_y(iced::Fill)
-        .into()
+        .center_y(iced::Fill),
+        
+    ].into()
 }
 
-fn view_rules_menu<'a>() -> Element<'a, AppMessage> {
+fn view_rules_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = column![
         text("Game Rules").size(30),
         text("Here are the game rules (placeholder)."),
-        button("Back").on_press(AppMessage::BackToMenu),
+        state.btn_back.view().padding(0),
     ]
     .spacing(10)
     .padding(20)
     .align_x(iced::alignment::Horizontal::Left);
 
-    container(content)
+    stack![
+        Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
+
+        container(content)
         .center_x(iced::Fill)
         .center_y(iced::Fill)
-        .into()
+    ].into()
 }
 
-fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
+fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if !state.connected {
-        return container(column![
+        return stack![
+            Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
+
+            container(column![
             text("Nicht verbunden zum Server. / IP wurde falsch eingegeben"),
-            button("Zurück").on_press(AppMessage::BackToMenu)
+            state.btn_back.view().padding(0)
         ])
         .center_x(iced::Fill)
         .center_y(iced::Fill)
-        .into();
+        ].into();
     }
     if let Some(lobby) = &state.lobby {
         let mut player_rows = Column::new().spacing(10);
         for p in &lobby.players {
             let ready_text = if p.ready { "Bereit" } else { "Nicht bereit" };
-            let toggle = button(ready_text).on_press_maybe(if Some(p.id) == state.my_id {
-                Some(AppMessage::ToggleReady(p.id))
+            // For the local player show the animated owned ready button, others just show text
+            let toggle = if Some(p.id) == state.my_id {
+                state.btn_ready_owned.view_with_label(ready_text)
             } else {
-                None
-            });
+                container(text(ready_text)).width(80)
+            };
             let row = row![
                 text(format!(
                     "{}{}",
@@ -215,34 +425,18 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
 
         let can_start = lobby.players.len() == state.host_player_count.to_usize()
             && lobby.players.iter().all(|p| p.ready);
+        let host_id = lobby.players.iter().find(|p| p.is_host).map(|p| p.id).unwrap_or_default();
+        let i_am_host = state.my_id.is_some() && state.my_id.unwrap() == host_id;
+        let start_button_view = if can_start && i_am_host {
+            state.btn_start_game.view().padding(0)
+        } else {
+            state.btn_start_game.view_disabled().padding(0)
+        };
         let start_button = row![
-            button("Starten").on_press_maybe(
-                if can_start
-                    && state.my_id.is_some()
-                    && state.my_id.unwrap()
-                        == lobby
-                            .players
-                            .iter()
-                            .find(|p| p.is_host)
-                            .map(|p| p.id)
-                            .unwrap_or_default()
-                {
-                    Some(AppMessage::StartGame)
-                } else {
-                    None
-                }
-            ),
+            start_button_view,
             text(if !can_start {
                 " (Warten auf Spieler...)"
-            } else if state.my_id.is_some()
-                && state.my_id.unwrap()
-                    != lobby
-                        .players
-                        .iter()
-                        .find(|p| p.is_host)
-                        .map(|p| p.id)
-                        .unwrap_or_default()
-            {
+            } else if state.my_id.is_some() && !i_am_host {
                 " (Nur der Host kann starten)"
             } else {
                 ""
@@ -266,26 +460,32 @@ fn view_lobby_menu<'a>(state: &App) -> Element<'a, AppMessage> {
             scrollable(chat_block).height(150).width(400),
             row![
                 text_input("Nachricht", &state.chat_input).on_input(AppMessage::ChatInputChanged),
-                button("Senden").on_press(AppMessage::SendChat),
+                state.btn_send_chat.view().padding(0),
             ],
             start_button,
-            button("Zurück zum Menü").on_press(AppMessage::BackToMenu)
+            state.btn_back_to_menu.view().padding(0)
         ]
         .spacing(10)
         .padding(20);
+        
+        stack![
+            Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
 
-        container(content)
+            container(content)
             .center_x(iced::Fill)
             .center_y(iced::Fill)
-            .into()
+        ].into()
     } else {
-        container(column![
-            text("Keine Lobby vorhanden"),
-            button("Zurück").on_press(AppMessage::BackToMenu)
-        ])
-        .center_x(iced::Fill)
-        .center_y(iced::Fill)
-        .into()
+        stack![
+            Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
+
+            container(column![
+                text("Keine Lobby vorhanden"),
+                state.btn_back.view().padding(0)
+            ])
+            .center_x(iced::Fill)
+            .center_y(iced::Fill)
+        ].into()
     }
 }
 
@@ -471,9 +671,7 @@ fn view_test_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
             })
             .size(24),
             text(format!("Winner: {}", winner_name)).size(18),
-            button("Back to Menu")
-                .on_press(AppMessage::BackToMenu)
-                .padding(10),
+            state.btn_back_to_menu.view().padding(8),
         ]
         .spacing(10)
         .into()
