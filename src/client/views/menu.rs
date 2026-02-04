@@ -2,7 +2,7 @@ use iced::{
     widget::{
         column, container, pick_list, row, scrollable, stack, text, text_input, Column, Image,
     },
-    Element,
+    ContentFit, Element,
 };
 
 use crate::client::{App, AppMessage, PlayerCount};
@@ -33,7 +33,8 @@ pub fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     stack![
         Image::new("assets/wizard_main_menu.png")
             .width(iced::Length::Fill)
-            .height(iced::Length::Fill),
+            .height(iced::Length::Fill)
+            .content_fit(ContentFit::Cover),
         container(title)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)

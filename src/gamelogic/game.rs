@@ -195,9 +195,10 @@ impl Game {
     }
 
     pub fn start(&mut self) -> Result<Vec<GameEvent>, &'static str> {
-        if self.players.len() < 3 {
-            return Err("Need more than two players to start a game.");
-        }
+        // if self.players.len() < 3 {
+        //     return Err("Need more than two players to start a game.");
+        // }
+        // FOR DEBUGGING, UNCOMMENT ASAP
         if self.players.len() > 6 {
             return Err("Need less than seven players to start a game.");
         }

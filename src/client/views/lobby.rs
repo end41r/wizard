@@ -1,8 +1,7 @@
 //! Lobby view for waiting players before game start.
 
 use iced::{
-    widget::{column, container, row, scrollable, stack, text, text_input, Column, Image},
-    Element,
+    ContentFit, Element, widget::{Column, Image, column, container, row, scrollable, stack, text, text_input}
 };
 
 use crate::api::Lobby;
@@ -24,13 +23,16 @@ fn view_not_connected<'a>(state: &'a App) -> Element<'a, AppMessage> {
     stack![
         Image::new("assets/wizard_lobby_menu.png")
             .width(iced::Length::Fill)
-            .height(iced::Length::Fill),
+            .height(iced::Length::Fill)
+            .content_fit(ContentFit::Cover),
         container(column![
             text("Nicht verbunden zum Server. / IP wurde falsch eingegeben"),
             state.btn_back.view().padding(0)
         ])
-        .center_x(iced::Fill)
-        .center_y(iced::Fill)
+        .width(iced::Length::Fill)
+        .height(iced::Length::Fill)
+        .center_x(iced::Length::Fill)
+        .center_y(iced::Length::Fill)
     ]
     .into()
 }
@@ -39,13 +41,16 @@ fn view_no_lobby<'a>(state: &'a App) -> Element<'a, AppMessage> {
     stack![
         Image::new("assets/wizard_lobby_menu.png")
             .width(iced::Length::Fill)
-            .height(iced::Length::Fill),
+            .height(iced::Length::Fill)
+            .content_fit(ContentFit::Cover),
         container(column![
             text("Keine Lobby vorhanden"),
             state.btn_back.view().padding(0)
         ])
-        .center_x(iced::Fill)
-        .center_y(iced::Fill)
+        .width(iced::Length::Fill)
+        .height(iced::Length::Fill)
+        .center_x(iced::Length::Fill)
+        .center_y(iced::Length::Fill)
     ]
     .into()
 }
@@ -82,8 +87,13 @@ fn view_lobby_content<'a>(state: &'a App, lobby: &'a Lobby) -> Element<'a, AppMe
     stack![
         Image::new("assets/wizard_lobby_menu.png")
             .width(iced::Length::Fill)
-            .height(iced::Length::Fill),
-        container(content).center_x(iced::Fill).center_y(iced::Fill)
+            .height(iced::Length::Fill)
+            .content_fit(ContentFit::Cover),
+        container(content)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .center_x(iced::Length::Fill)
+            .center_y(iced::Length::Fill)
     ]
     .into()
 }
@@ -124,9 +134,9 @@ fn build_chat_block<'a>(lobby: &'a Lobby) -> Column<'a, AppMessage> {
 }
 
 fn build_start_button<'a>(state: &'a App, lobby: &'a Lobby) -> iced::widget::Row<'a, AppMessage> {
-    let can_start = lobby.players.len() == state.host_player_count.to_usize()
-        && lobby.players.iter().all(|p| p.ready);
-
+    // let can_start = lobby.players.len() == state.host_player_count.to_usize()
+    //     && lobby.players.iter().all(|p| p.ready);
+    let can_start = true; // FOR DEBUGGING, UNCOMMENT ASAP
     let host_id = lobby
         .players
         .iter()

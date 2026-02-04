@@ -365,12 +365,14 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             });
 
             state.btn_start_game.check_click_end(|_| {
-                let can_start = if let Some(lobby) = &state.lobby {
-                    lobby.players.len() == state.host_player_count.to_usize()
-                        && lobby.players.iter().all(|p| p.ready)
-                } else {
-                    false
-                };
+                // FOR DEBUGGING, UNCOMMENT ASAP
+                // let can_start = if let Some(lobby) = &state.lobby {
+                //     lobby.players.len() == state.host_player_count.to_usize()
+                //         && lobby.players.iter().all(|p| p.ready)
+                // } else {
+                //     false
+                // };
+                let can_start = true;
                 let is_host = state.my_id.is_some()
                     && state.my_id.unwrap()
                         == state

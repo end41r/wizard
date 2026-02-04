@@ -3,7 +3,7 @@ use std::io::Read;
 
 use iced::{
     widget::{column, container, row, stack, text, Column, Image},
-    Element, Font,
+    ContentFit, Element, Font,
 };
 
 use crate::client::{App, AppMessage};
@@ -54,6 +54,7 @@ pub fn background_image(path: &'static str) -> Image<iced::widget::image::Handle
     Image::new(path)
         .width(iced::Length::Fill)
         .height(iced::Length::Fill)
+        .content_fit(ContentFit::Cover)
 }
 
 pub fn menu_panel<'a>(

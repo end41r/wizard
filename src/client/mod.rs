@@ -303,7 +303,7 @@ pub fn main() -> iced::Result {
         .title("Wizard")
         .subscription(subscription)
         // Keep this value in sync with the App::default function.
-        .window_size(Size::new(1920.0, 1080.0))
+        .window_size(Size::new(300.0, 800.0))
         .settings(iced::Settings {
             fonts: vec![Cow::Borrowed(TITLE_FONT)],
             ..Default::default()

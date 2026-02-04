@@ -1,38 +1,157 @@
 use iced::{
-    widget::{button, column, container, row, scrollable, text, text_input, Column, Row},
-    Element,
+    widget::{
+        button, column, container, row, scrollable, stack, text, text_input, Column, Image, Row,
+    },
+    Border, Color, ContentFit, Element,
 };
 
 use crate::api::Suit;
 use crate::client::{App, AppMessage};
-use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
-use crate::ui_element_traits::{Message, Viewable};
-
-use super::utils::{format_card, get_player_name};
+use super::utils::{format_card, get_player_name, menu_panel};
 
 pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
-    column![
-        state.viewable_hand.view(),
-        button("Draw Cards").on_press(ViewableHand::convert_to_app_message(
-            HandMessage::DrawCards(ViewableHand::build_test_cards(state.window_size))
-        ))
+    let scoreboard = container(view_scoreboard(state))
+        .width(iced::Length::Fixed(250.0))
+        .height(iced::Length::Fill)
+        .center_y(iced::Length::Fill)
+        .padding(10);
+
+    let main_content = column![
+        // Add your main game content here in rows
+    ]
+    .width(iced::Length::Fill)
+    .height(iced::Length::Fill);
+
+    let content = row![main_content, scoreboard,].height(iced::Length::Fill);
+
+    stack![
+        Image::new("assets/background_forall.png")
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .content_fit(ContentFit::Cover),
+        container(content)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill),
     ]
     .into()
 }
 
+// AI Usage: overwrite the view so that the scoreboard is placed correctly
+// and uses rows+cells instead of rows+format strings
+pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
+    let mut scores_col = Column::new().spacing(0).width(iced::Length::Fill);
+    
+    scores_col = scores_col.push(
+        container(text(format!("Round {}", state.round_number + 1)).size(12))
+        .width(iced::Length::Fill)
+        .padding(3)
+        .center_x(iced::Length::Fill),
+    );
+    
+    // Header row
+    scores_col = scores_col.push(scoreboard_row("Name", "Punkte", "Stiche", "Angesagt"));
+    
+    for player_id in &state.player_order {
+        let mut player_name = get_player_name(state, *player_id);
+        let score = state.scores.get(player_id).unwrap_or(&0);
+        let tricks = state.tricks_won.get(player_id).unwrap_or(&0);
+        let bid = state.bids.get(player_id).unwrap_or(&0);
+
+        if player_name.is_empty() {
+            player_name = "???".to_string();
+        }
+
+        scores_col = scores_col.push(scoreboard_row(
+            &player_name,
+            &score.to_string(),
+            &tricks.to_string(),
+            &bid.to_string(),
+        ));
+    }
+
+    let centered_content = container(scores_col)
+        .width(iced::Length::Fill)
+        .height(iced::Length::Fill)
+        .center_x(iced::Length::Fill)
+        .center_y(iced::Length::Fill);
+
+    menu_panel(state, "The Board of Truth", centered_content.into(), bid_panel_footer()).into()
+    //scores_col.into()
+}
+
+fn scoreboard_row(
+    name: &str,
+    score: &str,
+    tricks: &str,
+    bid: &str,
+) -> Element<'static, AppMessage> {
+    let cell = |content: String| {
+        container(text(content).size(12))
+            .width(iced::Length::Fill)
+            .center_x(iced::Length::Fill)
+            .padding(3)
+    };
+
+    let separator = || text("|").size(12);
+
+    let row_content = row![
+        cell(name.to_string()),
+        separator(),
+        cell(score.to_string()),
+        separator(),
+        cell(tricks.to_string()),
+        separator(),
+        cell(bid.to_string()),
+    ]
+    .padding([3, 5])
+    .width(iced::Length::Fill);
+
+    container(row_content)
+        .width(iced::Length::Fill)
+        .style(|_theme| container::Style {
+            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.3).into()),
+            border: Border {
+                color: Color::WHITE,
+                width: 1.0,
+                radius: 0.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
+}
+
+fn bid_panel_footer<'a>() -> Option<Element<'a, AppMessage>> {
+    Some(
+        container(
+            text("Bids are shown for the current round only.")
+                .size(14)
+                .color(Color::WHITE),
+        )
+        .width(iced::Length::Fill)
+        .center_x(iced::Length::Fill)
+        .padding(10)
+        .into(),
+    )
+}
+
+
+/// =======================================
+/// EASTER EGG SECTION: DEBUG GAMEPLAY VIEW
+/// =======================================
+
 pub fn view_test_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = column![
         text("WIZARD").size(24),
-        build_game_over_section(state),
-        build_header(state),
-        build_players_section(state),
-        build_trump_section(state),
-        build_bidding_section(state),
-        build_bids_display(state),
-        build_trick_display(state),
-        build_hand_section(state),
-        build_scores_section(state),
-        build_log_section(state),
+        build_game_over_section_dbg(state),
+        build_header_dbg(state),
+        build_players_section_dbg(state),
+        build_trump_section_dbg(state),
+        build_bidding_section_dbg(state),
+        build_bids_display_dbg(state),
+        build_trick_display_dbg(state),
+        build_hand_section_dbg(state),
+        build_scores_section_dbg(state),
+        build_log_section_dbg(state),
         button("Back to Menu")
             .on_press(AppMessage::BackToMenu)
             .padding(8),
@@ -46,7 +165,7 @@ pub fn view_test_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
         .into()
 }
 
-fn build_header<'a>(state: &'a App) -> Column<'a, AppMessage> {
+fn build_header_dbg<'a>(state: &'a App) -> Column<'a, AppMessage> {
     let my_name = state
         .my_id
         .map(|id| get_player_name(state, id))
@@ -86,7 +205,7 @@ fn build_header<'a>(state: &'a App) -> Column<'a, AppMessage> {
     .spacing(5)
 }
 
-fn build_trump_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
+fn build_trump_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if !state.must_set_trump {
         return text("").into();
     }
@@ -113,7 +232,7 @@ fn build_trump_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .into()
 }
 
-fn build_bidding_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
+fn build_bidding_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if !state.is_bidding_phase || !state.is_my_turn || state.must_set_trump {
         return text("").into();
     }
@@ -135,7 +254,7 @@ fn build_bidding_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .into()
 }
 
-fn build_bids_display<'a>(state: &'a App) -> Element<'a, AppMessage> {
+fn build_bids_display_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if state.bids.is_empty() {
         return text("").into();
     }
@@ -152,7 +271,7 @@ fn build_bids_display<'a>(state: &'a App) -> Element<'a, AppMessage> {
     bids_col.into()
 }
 
-fn build_trick_display<'a>(state: &'a App) -> Element<'a, AppMessage> {
+fn build_trick_display_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if state.current_trick.is_empty() {
         return text("Trick: (empty)").size(12).into();
     }
@@ -176,7 +295,7 @@ fn build_trick_display<'a>(state: &'a App) -> Element<'a, AppMessage> {
     trick_col.into()
 }
 
-fn build_hand_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
+fn build_hand_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let mut hand_col = Column::new().spacing(5);
     hand_col = hand_col.push(text(format!("Your Hand ({} cards):", state.hand.len())).size(16));
 
@@ -206,7 +325,7 @@ fn build_hand_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
     hand_col.into()
 }
 
-fn build_scores_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
+fn build_scores_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let mut scores_col = Column::new().spacing(2);
     scores_col = scores_col.push(text("Scores:").size(14));
 
@@ -219,7 +338,7 @@ fn build_scores_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
     scores_col.into()
 }
 
-fn build_log_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
+fn build_log_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let mut log_col = Column::new().spacing(2);
     log_col = log_col.push(text("Game Log:").size(14));
 
@@ -231,7 +350,7 @@ fn build_log_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
     scrollable(log_col).height(150).into()
 }
 
-fn build_players_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
+fn build_players_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if state.player_order.is_empty() {
         return text("").into();
     }
@@ -256,7 +375,7 @@ fn build_players_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
     text(players_str).size(12).into()
 }
 
-fn build_game_over_section<'a>(state: &'a App) -> Element<'a, AppMessage> {
+fn build_game_over_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if !state.game_over {
         return text("").into();
     }
