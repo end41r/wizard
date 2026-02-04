@@ -1,19 +1,25 @@
 use iced::{
-    Element, Font, widget::{
-        Column, Row, button, column, container, image::Image, pick_list, row, scrollable, stack, text, text_input
-    }
+    widget::{
+        button, column, container, image::Image, pick_list, row, scrollable, stack, text,
+        text_input, Column, Row,
+    },
+    Element, Font,
 };
-
 
 const TITLE_FONT: Font = Font::with_name("Magic School One");
 
 use super::{App, AppMessage, MenuState, PlayerCount};
-use crate::{api::{Card, Suit, Value}, ui_element_traits::Animated};
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
 use crate::ui_element_traits::{Message, Viewable};
+use crate::{
+    api::{Card, Suit, Value},
+    ui_element_traits::Animated,
+};
 use derive_more::{Deref, DerefMut};
 
-use crate::animation::{BasicAnimation, ReversableBasicAnimation, Easing, animation_end_sensor::AnimationEndSensor};
+use crate::animation::{
+    animation_end_sensor::AnimationEndSensor, BasicAnimation, Easing, ReversableBasicAnimation,
+};
 use iced::widget::MouseArea;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -62,7 +68,13 @@ pub struct Button {
 }
 
 impl Button {
-    pub fn new(id: usize, label: &'static str, img_path: &'static str, width: u16, height: u16) -> Self {
+    pub fn new(
+        id: usize,
+        label: &'static str,
+        img_path: &'static str,
+        width: u16,
+        height: u16,
+    ) -> Self {
         let click_duration: usize = 15;
         Self {
             id,
@@ -112,7 +124,9 @@ impl Button {
                 .center_y(iced::Fill),
         );
 
-        let base = container(s).width(self.width as u32).height(self.height as u32);
+        let base = container(s)
+            .width(self.width as u32)
+            .height(self.height as u32);
         let msg_hovered = AppMessage::ButtonMessage(ButtonMessage::Hovered(self.id));
         let msg_not_hovered = AppMessage::ButtonMessage(ButtonMessage::NotHovered(self.id));
         let msg_clicked = AppMessage::ButtonMessage(ButtonMessage::Clicked(self.id));
@@ -147,7 +161,9 @@ impl Button {
                 .center_y(iced::Fill),
         );
 
-        let base = container(s).width(self.width as u32).height(self.height as u32);
+        let base = container(s)
+            .width(self.width as u32)
+            .height(self.height as u32);
 
         let msg_hovered = AppMessage::ButtonMessage(ButtonMessage::Hovered(self.id));
         let msg_not_hovered = AppMessage::ButtonMessage(ButtonMessage::NotHovered(self.id));
@@ -204,13 +220,19 @@ impl Button {
         let mut s = stack!();
         s = s.push(img);
         s = s.push(
-            container(text(self.label).size(txt_size).color(iced::Color::from_rgb(0.5,0.5,0.5)))
-                .width(iced::Length::Fill)
-                .height(iced::Length::Fill)
-                .center_x(iced::Fill)
-                .center_y(iced::Fill),
+            container(
+                text(self.label)
+                    .size(txt_size)
+                    .color(iced::Color::from_rgb(0.5, 0.5, 0.5)),
+            )
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .center_x(iced::Fill)
+            .center_y(iced::Fill),
         );
-        container(s).width(self.width as u32).height(self.height as u32)
+        container(s)
+            .width(self.width as u32)
+            .height(self.height as u32)
     }
 }
 
@@ -256,11 +278,14 @@ fn menu_panel<'a>(
     state: &'a App,
     title: &'a str,
     body: Element<'a, AppMessage>,
-    footer: Option<Element<'a, AppMessage>>) -> Element<'a, AppMessage> {
+    footer: Option<Element<'a, AppMessage>>,
+) -> Element<'a, AppMessage> {
     let (intr_w, intr_h) = png_dimensions("assets/menu_container.png").unwrap_or((560, 440));
     let max_w = (state.window_size.width * 0.9) as u32;
     let max_h = (state.window_size.height * 0.9) as u32;
-    let scale = ((max_w as f32) / (intr_w as f32)).min((max_h as f32) / (intr_h as f32)).min(1.0);
+    let scale = ((max_w as f32) / (intr_w as f32))
+        .min((max_h as f32) / (intr_h as f32))
+        .min(1.0);
     let menu_w: u32 = (intr_w as f32 * scale).round() as u32;
     let menu_h: u32 = (intr_h as f32 * scale).round() as u32;
 
@@ -284,9 +309,13 @@ fn menu_panel<'a>(
     .height(menu_h);
 
     stack![
-        container(Image::new("assets/menu_container.png").width(menu_w).height(menu_h))
-            .center_x(iced::Fill)
-            .center_y(iced::Fill),
+        container(
+            Image::new("assets/menu_container.png")
+                .width(menu_w)
+                .height(menu_h)
+        )
+        .center_x(iced::Fill)
+        .center_y(iced::Fill),
         container(
             Column::new()
                 .width(menu_w)
@@ -322,12 +351,11 @@ pub fn view(state: &App) -> Element<'_, AppMessage> {
 }
 
 fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
-    let title = 
-    text("Wizard").
-    size(130).
-    font(TITLE_FONT).
-    align_x(iced::alignment::Horizontal::Center)
-    .align_y(iced::alignment::Vertical::Top);
+    let title = text("Wizard")
+        .size(130)
+        .font(TITLE_FONT)
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Top);
 
     let menu_left: Column<'a, AppMessage> = column![
         state.btn_host.view().padding(10),
@@ -344,8 +372,9 @@ fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .align_x(iced::alignment::Horizontal::Right);
 
     stack![
-        Image::new("assets/wizard_main_menu.png").width(iced::Length::Fill).height(iced::Length::Fill),
-        
+        Image::new("assets/wizard_main_menu.png")
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill),
         container(title)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
@@ -356,14 +385,15 @@ fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
                 .height(iced::Length::Fill)
                 .center_x(iced::Fill)
                 .center_y(iced::Fill),
-
             container(menu_right)
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
                 .center_x(iced::Fill)
                 .center_y(iced::Fill),
-            ].align_y(iced::alignment::Vertical::Center)
-    ].into()
+        ]
+        .align_y(iced::alignment::Vertical::Center)
+    ]
+    .into()
 }
 
 fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
@@ -395,18 +425,21 @@ fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .width(400)
     .align_x(iced::alignment::Horizontal::Left);
 
-    let footer = Some(container(row![state.btn_back.view().padding(6)])
-        .height(56u32)
-        .width(iced::Length::Fill)
-        .align_x(iced::alignment::Horizontal::Left)
-        .into());
+    let footer = Some(
+        container(row![state.btn_back.view().padding(6)])
+            .height(56u32)
+            .width(iced::Length::Fill)
+            .align_x(iced::alignment::Horizontal::Left)
+            .into(),
+    );
 
-
-    return stack![
-        Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
-
+    stack![
+        Image::new("assets/background_forall.png")
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill),
         menu_panel(state, "Spiel hosten:", content.into(), footer)
-    ].into()
+    ]
+    .into()
 }
 
 fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
@@ -416,7 +449,11 @@ fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
         text("Name:"),
         text_input("Your Name", &state.join_name).on_input(AppMessage::JoinNameChanged),
         text_input("Server Address", &state.ip).on_input(AppMessage::ServerAddressChanged),
-        if can_join { state.btn_connect.view().padding(0) } else { state.btn_connect.view_disabled().padding(0) },
+        if can_join {
+            state.btn_connect.view().padding(0)
+        } else {
+            state.btn_connect.view_disabled().padding(0)
+        },
         text("Progress:"),
         //state.btn_back.view().padding(0),
     ]
@@ -425,26 +462,29 @@ fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .width(400)
     .align_x(iced::alignment::Horizontal::Left);
 
-    let footer = Some(container(row![state.btn_back.view().padding(6)])
-        .height(56u32)
-        .width(iced::Length::Fill)
-        .align_x(iced::alignment::Horizontal::Left)
-        .into());
+    let footer = Some(
+        container(row![state.btn_back.view().padding(6)])
+            .height(56u32)
+            .width(iced::Length::Fill)
+            .align_x(iced::alignment::Horizontal::Left)
+            .into(),
+    );
 
-    return stack![
-        Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
-        
+    stack![
+        Image::new("assets/background_forall.png")
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill),
         menu_panel(state, "Spiel beitreten:", content.into(), footer)
-    ].into()
+    ]
+    .into()
 }
 
 fn view_rules_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
-
     let rules_body = column![
         text("grundlagen:").size(20),
         text("Wizard ist ein Stichspiel, bei dem das Ziel ist, möglichst genau vorherzusagen,"),
         text("wie viele Stiche man pro Runde macht."),
-        
+
         text("die Anzahl der Spieler bestimmt die Anzahl der gespielten Runden:"),
         text(" - 3 Spieler: 20 Runden"),
         text(" - 4 Spieler: 16 Runden"),
@@ -492,31 +532,40 @@ fn view_rules_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     ];
 
     let max_h = (state.window_size.height * 0.9) as u32;
-    let rules_body_scroll = scrollable(rules_body).height((max_h as f32 * 0.62) as u32).width(iced::Length::Fill);
-    let footer = Some(container(row![state.btn_back.view().padding(6)])
-        .height(56u32)
-        .width(iced::Length::Fill)
-        .align_x(iced::alignment::Horizontal::Left)
-        .into());
+    let rules_body_scroll = scrollable(rules_body)
+        .height((max_h as f32 * 0.62) as u32)
+        .width(iced::Length::Fill);
+    let footer = Some(
+        container(row![state.btn_back.view().padding(6)])
+            .height(56u32)
+            .width(iced::Length::Fill)
+            .align_x(iced::alignment::Horizontal::Left)
+            .into(),
+    );
 
-    return stack![
-        Image::new("assets/background_forall.png").width(iced::Length::Fill).height(iced::Length::Fill),
+    stack![
+        Image::new("assets/background_forall.png")
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill),
         menu_panel(state, "SPIELREGELN:", rules_body_scroll.into(), footer)
-        ].into();
+    ]
+    .into()
 }
 
 fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if !state.connected {
         return stack![
-            Image::new("assets/wizard_lobby_menu.png").width(iced::Length::Fill).height(iced::Length::Fill),
-
+            Image::new("assets/wizard_lobby_menu.png")
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill),
             container(column![
-            text("Nicht verbunden zum Server. / IP wurde falsch eingegeben"),
-            state.btn_back.view().padding(0)
-        ])
-        .center_x(iced::Fill)
-        .center_y(iced::Fill)
-        ].into();
+                text("Nicht verbunden zum Server. / IP wurde falsch eingegeben"),
+                state.btn_back.view().padding(0)
+            ])
+            .center_x(iced::Fill)
+            .center_y(iced::Fill)
+        ]
+        .into();
     }
     if let Some(lobby) = &state.lobby {
         let mut player_rows = Column::new().spacing(10);
@@ -545,7 +594,12 @@ fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
 
         let can_start = lobby.players.len() == state.host_player_count.to_usize()
             && lobby.players.iter().all(|p| p.ready);
-        let host_id = lobby.players.iter().find(|p| p.is_host).map(|p| p.id).unwrap_or_default();
+        let host_id = lobby
+            .players
+            .iter()
+            .find(|p| p.is_host)
+            .map(|p| p.id)
+            .unwrap_or_default();
         let i_am_host = state.my_id.is_some() && state.my_id.unwrap() == host_id;
         let start_button_view = if can_start && i_am_host {
             state.btn_start_game.view().padding(0)
@@ -587,25 +641,27 @@ fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
         ]
         .spacing(10)
         .padding(20);
-        
-        stack![
-            Image::new("assets/wizard_lobby_menu.png").width(iced::Length::Fill).height(iced::Length::Fill),
 
-            container(content)
-            .center_x(iced::Fill)
-            .center_y(iced::Fill)
-        ].into()
+        stack![
+            Image::new("assets/wizard_lobby_menu.png")
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill),
+            container(content).center_x(iced::Fill).center_y(iced::Fill)
+        ]
+        .into()
     } else {
         stack![
-            Image::new("assets/wizard_lobby_menu.png").width(iced::Length::Fill).height(iced::Length::Fill),
-
+            Image::new("assets/wizard_lobby_menu.png")
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill),
             container(column![
                 text("Keine Lobby vorhanden"),
                 state.btn_back.view().padding(0)
             ])
             .center_x(iced::Fill)
             .center_y(iced::Fill)
-        ].into()
+        ]
+        .into()
     }
 }
 

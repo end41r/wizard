@@ -171,18 +171,78 @@ impl Default for App {
 
             //Buttons
             btn_host: crate::client::views::Button::new(0, "Host", "assets/button1.png", 180, 44),
-            btn_join: crate::client::views::Button::new(1, "Beitreten", "assets/button1.png", 180, 44),
-            btn_rules: crate::client::views::Button::new(2, "Spielregeln", "assets/button1.png", 180, 44),
-            btn_exit: crate::client::views::Button::new(3, "Spiel verlassen", "assets/button1.png", 180, 44),
+            btn_join: crate::client::views::Button::new(
+                1,
+                "Beitreten",
+                "assets/button1.png",
+                180,
+                44,
+            ),
+            btn_rules: crate::client::views::Button::new(
+                2,
+                "Spielregeln",
+                "assets/button1.png",
+                180,
+                44,
+            ),
+            btn_exit: crate::client::views::Button::new(
+                3,
+                "Spiel verlassen",
+                "assets/button1.png",
+                180,
+                44,
+            ),
 
-            btn_create_lobby: crate::client::views::Button::new(10, "Lobby erstellen", "assets/button1.png", 160, 40),
-            btn_back: crate::client::views::Button::new(11, "zurück", "assets/button1.png", 100, 36),
-            btn_connect: crate::client::views::Button::new(12, "Verbinden", "assets/button1.png", 140, 40),
-            btn_send_chat: crate::client::views::Button::new(13, "Senden", "assets/button1.png", 100, 36),
-            btn_start_game: crate::client::views::Button::new(14, "Starten", "assets/button1.png", 140, 40),
-            btn_back_to_menu: crate::client::views::Button::new(15, "Zurück zum Menü", "assets/button1.png", 160, 40),
+            btn_create_lobby: crate::client::views::Button::new(
+                10,
+                "Lobby erstellen",
+                "assets/button1.png",
+                160,
+                40,
+            ),
+            btn_back: crate::client::views::Button::new(
+                11,
+                "zurück",
+                "assets/button1.png",
+                100,
+                36,
+            ),
+            btn_connect: crate::client::views::Button::new(
+                12,
+                "Verbinden",
+                "assets/button1.png",
+                140,
+                40,
+            ),
+            btn_send_chat: crate::client::views::Button::new(
+                13,
+                "Senden",
+                "assets/button1.png",
+                100,
+                36,
+            ),
+            btn_start_game: crate::client::views::Button::new(
+                14,
+                "Starten",
+                "assets/button1.png",
+                140,
+                40,
+            ),
+            btn_back_to_menu: crate::client::views::Button::new(
+                15,
+                "Zurück zum Menü",
+                "assets/button1.png",
+                160,
+                40,
+            ),
 
-            btn_ready_owned: crate::client::views::Button::new(20, "Bereit", "assets/button1.png", 100, 36),
+            btn_ready_owned: crate::client::views::Button::new(
+                20,
+                "Bereit",
+                "assets/button1.png",
+                100,
+                36,
+            ),
         }
     }
 }
@@ -243,7 +303,7 @@ pub fn main() -> iced::Result {
         .title("Wizard")
         .subscription(subscription)
         // Keep this value in sync with the App::default function.
-        .window_size(Size::new(640.0, 480.0))
+        .window_size(Size::new(1920.0, 1080.0))
         .settings(iced::Settings {
             fonts: vec![Cow::Borrowed(TITLE_FONT)],
             ..Default::default()
