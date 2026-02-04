@@ -550,7 +550,19 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.menu = MenuState::Playing;
+
+                // Check if the host's name is "wizard_master" to enter debug
+                // Easter egg :)
+                if let Some(ref lobby) = state.lobby {
+                    if let Some(host) = lobby.players.iter().find(|p| p.is_host) {
+                        if host.name == "wizard_master" {
+                            state.menu = MenuState::PlayingTest;
+                        } else {
+                            state.menu = MenuState::Playing;
+                        }
+                    }
+                }
+
                 state.scores.clear();
                 state.bids.clear();
                 state.tricks_won.clear();
