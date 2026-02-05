@@ -3,6 +3,7 @@ mod hand_card;
 use crate::animation::{
     animation_end_sensor::AnimationEndSensor, animation_starter::AnimationStarter,
 };
+use crate::gamelogic::round::random_card;
 use crate::client::AppMessage;
 use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableCard};
 use crate::ui_element_traits::*;
@@ -66,28 +67,29 @@ impl ViewableHand {
         }
     }
 
+    /// This function is only for testing and may return impossible dupes of cards.
     pub fn build_test_cards(window_size: Size) -> Vec<ViewableCard> {
         vec![
-            ViewableCard::new(0, CARD_PATH, window_size, true),
-            ViewableCard::new(1, CARD_PATH, window_size, false),
-            ViewableCard::new(2, CARD_PATH, window_size, true),
-            ViewableCard::new(3, CARD_PATH, window_size, true),
-            ViewableCard::new(4, CARD_PATH, window_size, true),
-            ViewableCard::new(5, CARD_PATH, window_size, true),
-            ViewableCard::new(6, CARD_PATH, window_size, true),
-            ViewableCard::new(7, CARD_PATH, window_size, false),
-            ViewableCard::new(8, CARD_PATH, window_size, true),
-            ViewableCard::new(9, CARD_PATH, window_size, true),
-            ViewableCard::new(10, CARD_PATH, window_size, true),
-            ViewableCard::new(11, CARD_PATH, window_size, true),
-            ViewableCard::new(12, CARD_PATH, window_size, true),
-            ViewableCard::new(13, CARD_PATH, window_size, false),
-            ViewableCard::new(14, CARD_PATH, window_size, true),
-            ViewableCard::new(15, CARD_PATH, window_size, true),
-            ViewableCard::new(16, CARD_PATH, window_size, true),
-            ViewableCard::new(17, CARD_PATH, window_size, true),
-            ViewableCard::new(18, CARD_PATH, window_size, true),
-            ViewableCard::new(19, CARD_PATH, window_size, true),
+            ViewableCard::new(0, random_card(), window_size, true),
+            ViewableCard::new(1, random_card(), window_size, false),
+            ViewableCard::new(2, random_card(), window_size, true),
+            ViewableCard::new(3, random_card(), window_size, true),
+            ViewableCard::new(4, random_card(), window_size, true),
+            ViewableCard::new(5, random_card(), window_size, true),
+            ViewableCard::new(6, random_card(), window_size, true),
+            ViewableCard::new(7, random_card(), window_size, false),
+            ViewableCard::new(8, random_card(), window_size, true),
+            ViewableCard::new(9, random_card(), window_size, true),
+            ViewableCard::new(10, random_card(), window_size, true),
+            ViewableCard::new(11, random_card(), window_size, true),
+            ViewableCard::new(12, random_card(), window_size, true),
+            ViewableCard::new(13, random_card(), window_size, false),
+            ViewableCard::new(14, random_card(), window_size, true),
+            ViewableCard::new(15, random_card(), window_size, true),
+            ViewableCard::new(16, random_card(), window_size, true),
+            ViewableCard::new(17, random_card(), window_size, true),
+            ViewableCard::new(18, random_card(), window_size, true),
+            ViewableCard::new(19, random_card(), window_size, true),
         ]
     }
 

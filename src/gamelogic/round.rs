@@ -37,14 +37,7 @@ impl Round {
         if player_ids.is_empty() {
             panic!("Cannot create a round with no players");
         }
-        let mut deck = vec![];
-        for suit in Suit::iter() {
-            deck.push(Card::new(suit, Value::Jester));
-            deck.push(Card::new(suit, Value::Wizard));
-            for num in 1..=13 {
-                deck.push(Card::new(suit, Value::Number(num)));
-            }
-        }
+        let mut deck: Vec<Card> = build_deck();
 
         let mut players = HashMap::new();
         for id in player_ids {
@@ -294,6 +287,18 @@ impl Round {
     }
 }
 
+fn build_deck() -> Vec<Card> {
+        let mut deck = vec![];
+        for suit in Suit::iter() {
+            deck.push(Card::new(suit, Value::Jester));
+            deck.push(Card::new(suit, Value::Wizard));
+            for num in 1..=13 {
+                deck.push(Card::new(suit, Value::Number(num)));
+            }
+        };
+        deck
+    }
+
 fn draw_random_cards(deck: &mut Vec<Card>, count: usize) -> Vec<Card> {
     let mut cards = vec![];
 
@@ -308,4 +313,9 @@ fn draw_random_card(deck: &mut Vec<Card>) -> Card {
     let mut rng: rand::prelude::ThreadRng = rng();
     let index = rng.random_range(0..deck.len());
     deck.remove(index)
+}
+
+// A temporary function for getting a random card used for ViewableCard::build_test_cards.
+pub fn random_card() -> Card {
+    draw_random_card(build_deck().as_mut())
 }

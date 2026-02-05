@@ -165,3 +165,27 @@ pub struct Lobby {
     /// Contains tuples of (sender, message).
     pub chat: Vec<(String, String)>,
 }
+
+pub fn get_card_path(card: Card) -> String {
+    let mut path: String = "assets/cards/variations/".to_owned();
+    if card.value == Value::Jester {
+        path.push_str("jester");
+    } else if card.value == Value::Wizard {
+        path.push_str("wizard");
+    } else {
+        match card.suit {
+            Suit::Blue => {path.push_str("diamond ");}
+            Suit::Green => {path.push_str("club ");}
+            Suit::Red => {path.push_str("heart ");}
+            Suit::Yellow => {path.push_str("spade ");}
+        }
+        match card.value {
+            Value::Number(number) => {
+                path.push_str(number.to_string().as_str());
+            }
+            _ => ()
+        }
+    }
+    path.push_str(".png");
+    path
+}

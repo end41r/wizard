@@ -15,6 +15,7 @@ use crate::gameplay_ui::hand::hand_card::{
 };
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
 use crate::ui_element_traits::*;
+use crate::api::{Card, get_card_path};
 use iced::{
     mouse::Interaction,
     widget::{container, image, pin, stack, Container, MouseArea},
@@ -55,7 +56,8 @@ pub enum CardMessage {
 #[derive(Debug, Clone)]
 pub struct ViewableCard {
     pub id: usize,
-    img_path: &'static str,
+    card: Card,
+    img_path: String,
     pub window_size: Size,
     pub playable: bool,
     pub show_playable_status: bool,
@@ -70,11 +72,12 @@ pub struct ViewableCard {
 }
 
 impl ViewableCard {
-    pub fn new(id: usize, img_path: &'static str, window_size: Size, playable: bool) -> Self {
+    pub fn new(id: usize, card: Card, window_size: Size, playable: bool) -> Self {
         let play_duration: usize = 12;
-        let mut card: ViewableCard = Self {
+        let mut viewable_card: ViewableCard = Self {
             id,
-            img_path,
+            card,
+            img_path: get_card_path(card),
             window_size,
             playable,
             show_playable_status: false,
@@ -87,8 +90,8 @@ impl ViewableCard {
             focus_animation: FocusAnimation::new(70),
             hide_animation: HideAnimation::new(play_duration),
         };
-        card.playable_animation.start();
-        card
+        viewable_card.playable_animation.start();
+        viewable_card
     }
 }
 
@@ -223,7 +226,7 @@ impl Viewable for ViewableCard {
         let scale: f32 = 0.92 * self.hide_animation.get_scale() * self.draw_animation.get_scale();
 
         let mut card = stack!();
-        let img = image(self.img_path)
+        let img = image(self.img_path.clone())
             .content_fit(Fill)
             .width(width)
             .height(height)
