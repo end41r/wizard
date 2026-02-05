@@ -26,7 +26,7 @@ fn format_card(card: &Card) -> String {
 
 pub fn view(state: &App) -> Element<'_, AppMessage> {
     match state.menu {
-        MenuState::Main => view_main_menu(state),
+        MenuState::Main => view_gameplay(state), //view_main_menu(state),
         MenuState::Host => view_host_menu(state),
         MenuState::Join => view_join_menu(state),
         MenuState::Rules => view_rules_menu(),

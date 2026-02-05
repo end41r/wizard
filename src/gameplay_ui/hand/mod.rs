@@ -16,10 +16,7 @@ use std::num::NonZero;
 
 use crate::gameplay_ui::hand::hand_card::CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH;
 
-static CARD1_PATH: &str = "assets/cards/back.png";
-static CARD2_PATH: &str = "assets/cards/diamond.png";
-static CARD3_PATH: &str = "assets/cards/heart.png";
-static CARD4_PATH: &str = "assets/cards/spade.png";
+static CARD_PATH: &str = "assets/cards/back.png";
 
 // Adjust this arbitrary value to manipulate the width of the hand relative to its size,
 // but be careful that the cards don't go out of screen.
@@ -71,26 +68,26 @@ impl ViewableHand {
 
     pub fn build_test_cards(window_size: Size) -> Vec<ViewableCard> {
         vec![
-            ViewableCard::new(0, CARD1_PATH, window_size, true),
-            ViewableCard::new(1, CARD3_PATH, window_size, false),
-            ViewableCard::new(2, CARD2_PATH, window_size, true),
-            ViewableCard::new(3, CARD1_PATH, window_size, true),
-            ViewableCard::new(4, CARD4_PATH, window_size, true),
-            ViewableCard::new(5, CARD2_PATH, window_size, true),
-            ViewableCard::new(6, CARD1_PATH, window_size, true),
-            ViewableCard::new(7, CARD3_PATH, window_size, false),
-            ViewableCard::new(8, CARD2_PATH, window_size, true),
-            ViewableCard::new(9, CARD1_PATH, window_size, true),
-            ViewableCard::new(10, CARD4_PATH, window_size, true),
-            ViewableCard::new(11, CARD2_PATH, window_size, true),
-            ViewableCard::new(12, CARD1_PATH, window_size, true),
-            ViewableCard::new(13, CARD4_PATH, window_size, false),
-            ViewableCard::new(14, CARD2_PATH, window_size, true),
-            ViewableCard::new(15, CARD1_PATH, window_size, true),
-            ViewableCard::new(16, CARD1_PATH, window_size, true),
-            ViewableCard::new(17, CARD2_PATH, window_size, true),
-            ViewableCard::new(18, CARD3_PATH, window_size, true),
-            ViewableCard::new(19, CARD3_PATH, window_size, true),
+            ViewableCard::new(0, CARD_PATH, window_size, true),
+            ViewableCard::new(1, CARD_PATH, window_size, false),
+            ViewableCard::new(2, CARD_PATH, window_size, true),
+            ViewableCard::new(3, CARD_PATH, window_size, true),
+            ViewableCard::new(4, CARD_PATH, window_size, true),
+            ViewableCard::new(5, CARD_PATH, window_size, true),
+            ViewableCard::new(6, CARD_PATH, window_size, true),
+            ViewableCard::new(7, CARD_PATH, window_size, false),
+            ViewableCard::new(8, CARD_PATH, window_size, true),
+            ViewableCard::new(9, CARD_PATH, window_size, true),
+            ViewableCard::new(10, CARD_PATH, window_size, true),
+            ViewableCard::new(11, CARD_PATH, window_size, true),
+            ViewableCard::new(12, CARD_PATH, window_size, true),
+            ViewableCard::new(13, CARD_PATH, window_size, false),
+            ViewableCard::new(14, CARD_PATH, window_size, true),
+            ViewableCard::new(15, CARD_PATH, window_size, true),
+            ViewableCard::new(16, CARD_PATH, window_size, true),
+            ViewableCard::new(17, CARD_PATH, window_size, true),
+            ViewableCard::new(18, CARD_PATH, window_size, true),
+            ViewableCard::new(19, CARD_PATH, window_size, true),
         ]
     }
 
