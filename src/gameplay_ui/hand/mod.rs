@@ -17,8 +17,6 @@ use std::num::NonZero;
 
 use crate::gameplay_ui::hand::hand_card::CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH;
 
-static CARD_PATH: &str = "assets/cards/back.png";
-
 // Adjust this arbitrary value to manipulate the width of the hand relative to its size,
 // but be careful that the cards don't go out of screen.
 // If you want to manipulate the total hand size
