@@ -135,9 +135,12 @@ fn build_chat_block<'a>(lobby: &'a Lobby) -> Column<'a, AppMessage> {
 }
 
 fn build_start_button<'a>(state: &'a App, lobby: &'a Lobby) -> iced::widget::Row<'a, AppMessage> {
-    // let can_start = lobby.players.len() == state.host_player_count.to_usize()
-    //     && lobby.players.iter().all(|p| p.ready);
-    let can_start = true; // FOR DEBUGGING, UNCOMMENT ASAP
+    let can_start = if cfg!(feature = "wiz_debug") {
+        true
+    } else {
+        lobby.players.len() == state.host_player_count.to_usize()
+            && lobby.players.iter().all(|p| p.ready)
+    };
     let host_id = lobby
         .players
         .iter()
