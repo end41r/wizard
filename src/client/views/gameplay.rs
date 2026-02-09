@@ -25,7 +25,7 @@ pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = row![main_content, scoreboard,].height(iced::Length::Fill);
 
     stack![
-        Image::new("assets/background_forall.png")
+        Image::new("assets/ingame_background.png")
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
@@ -65,13 +65,14 @@ pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
     );
     
     // Header row
-    scores_col = scores_col.push(scoreboard_row("Name", "Pkt", "Won", "Bid", true));
+    scores_col = scores_col.push(scoreboard_row("Name", "Pkt", "Won", "Bid", true, false));
     
     for player_id in &state.player_order {
         let mut player_name = get_player_name(state, *player_id);
         let score = state.scores.get(player_id).unwrap_or(&0);
         let tricks = state.tricks_won.get(player_id).unwrap_or(&0);
         let bid = state.bids.get(player_id).unwrap_or(&0);
+        let is_self = state.my_id == Some(*player_id);
 
         if player_name.is_empty() {
             player_name = "???".to_string();
@@ -83,6 +84,7 @@ pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
             &tricks.to_string(),
             &bid.to_string(),
             false,
+            is_self,
         ));
     }
     
@@ -120,12 +122,19 @@ fn scoreboard_row(
     tricks: &str,
     bid: &str,
     is_header: bool,
+    is_self: bool,
 ) -> Element<'static, AppMessage> {
+    let text_color = if is_self {
+        Color::from_rgb(1.0, 0.85, 0.4)
+    } else {
+        Color::WHITE
+    };
+
     let cell = |content: String| {
         container(
             text(content)
                 .size(if is_header { 10 } else { 11 })
-                .color(Color::WHITE),
+                .color(text_color),
         )
         .width(iced::Length::FillPortion(1))
         .center_x(iced::Length::Fill)
@@ -136,7 +145,7 @@ fn scoreboard_row(
         container(
             text(content)
                 .size(if is_header { 10 } else { 11 })
-                .color(Color::WHITE),
+                .color(text_color),
         )
         .width(iced::Length::FillPortion(2))
         .padding(4)
@@ -153,10 +162,18 @@ fn scoreboard_row(
     container(row_content)
         .width(iced::Length::Fill)
         .style(move |_theme| container::Style {
-            background: Some(Color::from_rgba(0.0, 0.0, 0.0, if is_header { 0.4 } else { 0.2 }).into()),
+            background: Some(if is_self {
+                Color::from_rgba(1.0, 0.85, 0.4, 0.15).into()
+            } else {
+                Color::from_rgba(0.0, 0.0, 0.0, if is_header { 0.4 } else { 0.2 }).into()
+            }),
             border: Border {
-                color: Color::from_rgba(1.0, 1.0, 1.0, 0.2),
-                width: 1.0,
+                color: if is_self {
+                    Color::from_rgba(1.0, 0.85, 0.4, 0.5)
+                } else {
+                    Color::from_rgba(1.0, 1.0, 1.0, 0.2)
+                },
+                width: if is_self { 1.5 } else { 1.0 },
                 radius: 2.0.into(),
             },
             ..Default::default()

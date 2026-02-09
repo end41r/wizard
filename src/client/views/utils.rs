@@ -22,10 +22,6 @@ pub fn format_card(card: &Card) -> String {
 }
 
 pub fn get_player_name(state: &App, player_id: u64) -> String {
-    if state.my_id == Some(player_id) {
-        return "You".to_string();
-    }
-
     state
         .lobby
         .as_ref()
