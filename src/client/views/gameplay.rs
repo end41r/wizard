@@ -5,9 +5,9 @@ use iced::{
     Border, Color, ContentFit, Element,
 };
 
+use super::utils::{format_card, get_player_name};
 use crate::api::Suit;
 use crate::client::{App, AppMessage};
-use super::utils::{format_card, get_player_name};
 
 pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let scoreboard = container(view_scoreboard(state))
@@ -40,19 +40,15 @@ pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
 // and uses rows+cells instead of rows+format strings
 pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let mut scores_col = Column::new().spacing(2);
-    
+
     // Title
     scores_col = scores_col.push(
-        container(
-            text("Scoreboard")
-                .size(18)
-                .color(Color::WHITE),
-        )
-        .width(iced::Length::Fill)
-        .center_x(iced::Length::Fill)
-        .padding(5),
+        container(text("Scoreboard").size(18).color(Color::WHITE))
+            .width(iced::Length::Fill)
+            .center_x(iced::Length::Fill)
+            .padding(5),
     );
-    
+
     scores_col = scores_col.push(
         container(
             text(format!("Round {}", state.round_number + 1))
@@ -63,10 +59,10 @@ pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
         .center_x(iced::Length::Fill)
         .padding([0, 5]),
     );
-    
+
     // Header row
     scores_col = scores_col.push(scoreboard_row("Name", "Pkt", "Won", "Bid", true, false));
-    
+
     for player_id in &state.player_order {
         let mut player_name = get_player_name(state, *player_id);
         let score = state.scores.get(player_id).unwrap_or(&0);
@@ -87,7 +83,7 @@ pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
             is_self,
         ));
     }
-    
+
     // Footer note
     scores_col = scores_col.push(
         container(
@@ -183,7 +179,6 @@ fn scoreboard_row(
 
 // bid_panel_footer is no longer needed for gameplay view
 #[allow(dead_code)]
-
 fn bid_panel_footer<'a>() -> Option<Element<'a, AppMessage>> {
     Some(
         text("Bids are shown for the current round only.")
@@ -193,11 +188,9 @@ fn bid_panel_footer<'a>() -> Option<Element<'a, AppMessage>> {
     )
 }
 
-
 /// =======================================
 /// EASTER EGG SECTION: DEBUG GAMEPLAY VIEW
 /// =======================================
-
 pub fn view_test_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = column![
         text("WIZARD").size(24),

@@ -1,7 +1,8 @@
 //! Lobby view for waiting players before game start.
 
 use iced::{
-    ContentFit, Element, widget::{Column, Image, column, container, row, scrollable, stack, text, text_input}
+    widget::{column, container, row, scrollable, stack, text, text_input, Column, Image},
+    ContentFit, Element,
 };
 
 use crate::api::Lobby;
