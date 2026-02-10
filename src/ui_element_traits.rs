@@ -6,7 +6,7 @@ use iced::{
 
 pub trait Message {
     type OwnMessage;
-    fn convert_to_app_message(msg: Self::OwnMessage) -> AppMessage;
+    fn convert_msg(msg: Self::OwnMessage) -> AppMessage;
     /// This function can handle 4 things:
     /// 1: update_with_msg functions of other ui elements of lesser hierarchy,
     /// 2: arbitrary stuff within the struct (e.g. start animations),
@@ -17,7 +17,7 @@ pub trait Message {
 
 /// This trait needs the Message trait because animations are supposed to start with the
 /// update_with_msg function.
-pub trait Animated: Message {
+pub trait Animated {
     /// Call this every AnimationTick.
     /// This function can handle 4 things. ALWAYS handle them in this order
     /// (only 2 and 3 can be switched):

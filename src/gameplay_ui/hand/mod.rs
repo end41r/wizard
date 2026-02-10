@@ -1,44 +1,55 @@
-mod hand_card;
+pub mod hand_card;
 
 use crate::animation::{
     animation_end_sensor::AnimationEndSensor, animation_starter::AnimationStarter,
 };
-use crate::gamelogic::round::random_card;
+use crate::api::Card;
 use crate::client::AppMessage;
-use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableCard};
+use crate::gamelogic::round::random_card;
+use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableHandCard};
+use crate::gameplay_ui::table::middle::card_stack::{CardStackMessage, ViewableCardStack};
+use crate::gameplay_ui::{card_column_step_hand, card_row_step_hand};
 use crate::ui_element_traits::*;
 
 use iced::{
     widget::{container, pin, stack, Container, Pin, Stack},
-    Point, Size,
+    Point, Size, Task,
 };
 use indexmap::{map::MutableKeys, IndexMap};
 use std::num::NonZero;
 
-use crate::gameplay_ui::hand::hand_card::CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH;
-
-// Adjust this arbitrary value to manipulate the width of the hand relative to its size,
-// but be careful that the cards don't go out of screen.
-// If you want to manipulate the total hand size
-// change the value of hand_card::CARD_WIDTH_MULT_WITH_WINDOW_WIDTH.
-static CARD_STEP_MULT_WITH_CARD_WIDTH: f32 = 1.0 / 3.0;
-// Adjust this arbitrary value to manipulate the width of the hand,
-static CARD_ROW_STEP_MULT_WITH_WINDOW_WIDTH: f32 = CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH * 0.43;
-
 #[derive(Debug, Clone)]
 pub enum HandMessage {
     CardMessage(CardMessage),
-    DrawCards(Vec<ViewableCard>),
+    DrawCards(Vec<ViewableHandCard>),
     HideCards,
     ShowCards,
     ShowPlayableStatus(bool),
+}
+
+impl HandMessage {
+    pub fn notify_table(&self, viewable_hand: &ViewableHand) -> Task<AppMessage> {
+        let played_card: Option<Card> = match self {
+            HandMessage::CardMessage(card_msg) => match card_msg {
+                CardMessage::Played(id) => Some(viewable_hand.cards.get(id).unwrap().card),
+                _ => None,
+            },
+            _ => None,
+        };
+        if played_card.is_some() {
+            return Task::done(ViewableCardStack::convert_msg(
+                CardStackMessage::CardPlayed(played_card.unwrap().clone()),
+            ));
+        };
+        Task::none()
+    }
 }
 
 #[derive(Debug)]
 pub struct ViewableHand {
     window_size: Size,
 
-    pub cards: IndexMap<usize, ViewableCard>,
+    pub cards: IndexMap<usize, ViewableHandCard>,
     hovered_card_row_low: bool,
     hovered_card_id: Option<usize>,
     top_card_id_upper: Option<usize>,
@@ -61,37 +72,37 @@ impl ViewableHand {
             // 12 is the duration of the hide animation.
             hide_animation_end_sensor: AnimationEndSensor::new(12),
             // 3 is the delay for the animation start.
-            draw_animation_starter: AnimationStarter::new(NonZero::new(3).unwrap()),
+            draw_animation_starter: AnimationStarter::new(NonZero::new(3).unwrap(), 10),
         }
     }
 
     /// This function is only for testing and may return impossible dupes of cards.
-    pub fn build_test_cards(window_size: Size) -> Vec<ViewableCard> {
+    pub fn build_test_cards(window_size: Size) -> Vec<ViewableHandCard> {
         vec![
-            ViewableCard::new(0, random_card(), window_size, true),
-            ViewableCard::new(1, random_card(), window_size, false),
-            ViewableCard::new(2, random_card(), window_size, true),
-            ViewableCard::new(3, random_card(), window_size, true),
-            ViewableCard::new(4, random_card(), window_size, true),
-            ViewableCard::new(5, random_card(), window_size, true),
-            ViewableCard::new(6, random_card(), window_size, true),
-            ViewableCard::new(7, random_card(), window_size, false),
-            ViewableCard::new(8, random_card(), window_size, true),
-            ViewableCard::new(9, random_card(), window_size, true),
-            ViewableCard::new(10, random_card(), window_size, true),
-            ViewableCard::new(11, random_card(), window_size, true),
-            ViewableCard::new(12, random_card(), window_size, true),
-            ViewableCard::new(13, random_card(), window_size, false),
-            ViewableCard::new(14, random_card(), window_size, true),
-            ViewableCard::new(15, random_card(), window_size, true),
-            ViewableCard::new(16, random_card(), window_size, true),
-            ViewableCard::new(17, random_card(), window_size, true),
-            ViewableCard::new(18, random_card(), window_size, true),
-            ViewableCard::new(19, random_card(), window_size, true),
+            ViewableHandCard::new(0, random_card(), window_size, true),
+            ViewableHandCard::new(1, random_card(), window_size, false),
+            ViewableHandCard::new(2, random_card(), window_size, true),
+            ViewableHandCard::new(3, random_card(), window_size, true),
+            ViewableHandCard::new(4, random_card(), window_size, true),
+            ViewableHandCard::new(5, random_card(), window_size, true),
+            ViewableHandCard::new(6, random_card(), window_size, true),
+            ViewableHandCard::new(7, random_card(), window_size, false),
+            ViewableHandCard::new(8, random_card(), window_size, true),
+            ViewableHandCard::new(9, random_card(), window_size, true),
+            ViewableHandCard::new(10, random_card(), window_size, true),
+            ViewableHandCard::new(11, random_card(), window_size, true),
+            ViewableHandCard::new(12, random_card(), window_size, true),
+            ViewableHandCard::new(13, random_card(), window_size, false),
+            ViewableHandCard::new(14, random_card(), window_size, true),
+            ViewableHandCard::new(15, random_card(), window_size, true),
+            ViewableHandCard::new(16, random_card(), window_size, true),
+            ViewableHandCard::new(17, random_card(), window_size, true),
+            ViewableHandCard::new(18, random_card(), window_size, true),
+            ViewableHandCard::new(19, random_card(), window_size, true),
         ]
     }
 
-    pub fn set_cards(&mut self, cards: Vec<ViewableCard>) {
+    pub fn set_cards(&mut self, cards: Vec<ViewableHandCard>) {
         self.cards.clear();
         for card in cards.iter() {
             self.cards.insert(card.id, card.clone());
@@ -108,25 +119,25 @@ impl ViewableHand {
 
     /// The return value represents the step length between cards in a row length of 10 cards.
     fn card_minimum_step(&self) -> f32 {
-        ViewableCard::width_for(self.window_size) * CARD_STEP_MULT_WITH_CARD_WIDTH
+        card_column_step_hand(ViewableHandCard::width_for(self.window_size))
     }
 
     /// A card would normally be rendered anchored to the top of the hand.
     /// This function calculates the correct y position for the card.
     /// This takes in consideration the row step and the hover animation offset.
     fn card_y_offset_correction(&self) -> f32 {
-        self.height() - ViewableCard::height_for(self.window_size)
+        self.height() - ViewableHandCard::height_for(self.window_size)
     }
 
     fn upper_row_card_step(&self) -> f32 {
         if self.upper_row_exists() {
             match self.cards.len() {
-                11..=14 => ViewableCard::width_for(self.window_size),
+                11..=14 => ViewableHandCard::width_for(self.window_size),
                 _ => {
                     // A negative value is ok.
                     let top_cards_without_last: f32 = self.cards.len() as f32 - 11.0;
                     let upper_row_length: f32 = top_cards_without_last * self.card_minimum_step()
-                        + ViewableCard::width_for(self.window_size);
+                        + ViewableHandCard::width_for(self.window_size);
 
                     self.card_minimum_step()
                         + (self.width_without_animations() - upper_row_length)
@@ -141,12 +152,12 @@ impl ViewableHand {
     fn lower_row_card_step(&self) -> f32 {
         if !self.upper_row_exists() {
             match self.cards.len() {
-                1..=4 => ViewableCard::width_for(self.window_size),
+                1..=4 => ViewableHandCard::width_for(self.window_size),
                 _ => {
                     // A negative value is ok.
                     let cards_without_last: f32 = self.cards.len() as f32 - 1.0;
                     let upper_row_length: f32 = cards_without_last * self.card_minimum_step()
-                        + ViewableCard::width_for(self.window_size);
+                        + ViewableHandCard::width_for(self.window_size);
 
                     self.card_minimum_step()
                         + (self.width_without_animations() - upper_row_length) / cards_without_last
@@ -167,7 +178,7 @@ impl ViewableHand {
             // All cards are only shown within the range of the card step except one focused card.
             let row_len: f32 = ((self.upper_row_card_count() as f32) - 1.0)
                 * self.upper_row_card_step()
-                + ViewableCard::width_for(self.window_size);
+                + ViewableHandCard::width_for(self.window_size);
             row_x_offset = (max_row_len - row_len) / 2.0;
         }
 
@@ -182,7 +193,7 @@ impl ViewableHand {
         if !self.cards.is_empty() {
             // All cards are only shown within the range of the card step except one focused card.
             row_len = ((cards_in_row as f32) - 1.0) * self.lower_row_card_step()
-                + ViewableCard::width_for(self.window_size);
+                + ViewableHandCard::width_for(self.window_size);
         };
         let row_x_offset: f32 = (max_row_len - row_len) / 2.0;
         let row_y_offset: f32 = 0.0;
@@ -191,7 +202,7 @@ impl ViewableHand {
     }
 
     fn row_step(&self) -> f32 {
-        -self.window_size.width * CARD_ROW_STEP_MULT_WITH_WINDOW_WIDTH
+        -card_row_step_hand(self.window_size)
     }
 
     fn upper_row_exists(&self) -> bool {
@@ -212,13 +223,13 @@ impl ViewableHand {
         // The hand reaches its maximum size with 10 cards.
         self.card_minimum_step() * 9.0 +  // 9 cards only viewed within their offset
         // Only one card is fully visible (the hovered card).
-        ViewableCard::width_for(self.window_size)
+        ViewableHandCard::width_for(self.window_size)
     }
 
     fn width_overflow_one_side(&self) -> f32 {
         // A card can reach a max size bigger times 1.1 via the hover animation.
         // So it may increase the hand size on one side by self.card_base_size.width * 0.05.
-        ViewableCard::width_for(self.window_size) * 0.05
+        ViewableHandCard::width_for(self.window_size) * 0.05
     }
 
     fn width_overflow(&self) -> f32 {
@@ -236,7 +247,7 @@ impl ViewableHand {
 impl Message for ViewableHand {
     type OwnMessage = HandMessage;
 
-    fn convert_to_app_message(msg: HandMessage) -> AppMessage {
+    fn convert_msg(msg: HandMessage) -> AppMessage {
         AppMessage::HandMessage(msg)
     }
 
@@ -353,10 +364,10 @@ impl Resizable for ViewableHand {
         self.width_without_animations() + self.width_overflow()
     }
     fn height(&self) -> f32 {
-        ViewableCard::height_for(self.window_size) -  // Upper card height
+        ViewableHandCard::height_for(self.window_size) -  // Upper card height
         self.row_step() +  // Upper card spawn offset
         // The upper card may have an increased size via the hover animation max_offset.
-        ViewableCard::height_for(self.window_size) * 0.15
+        ViewableHandCard::height_for(self.window_size) * 0.15
     }
 }
 

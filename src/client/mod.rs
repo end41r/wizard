@@ -4,6 +4,7 @@ mod ws;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
+use crate::gameplay_ui::table::{TableMessage, ViewableTable};
 use iced::{time, window, Size, Subscription};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -99,6 +100,7 @@ pub struct App {
 
     // Gameplay view state
     pub viewable_hand: ViewableHand,
+    pub viewable_table: ViewableTable,
 }
 
 impl Default for App {
@@ -152,6 +154,7 @@ impl Default for App {
             winner: None,
 
             viewable_hand: ViewableHand::new(window_size),
+            viewable_table: ViewableTable::new(window_size),
         }
     }
 }
@@ -192,6 +195,7 @@ pub enum AppMessage {
 
     // Gameplay view messages
     HandMessage(HandMessage),
+    TableMessage(TableMessage),
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {

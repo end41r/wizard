@@ -6,6 +6,9 @@ mod animation_hover;
 mod animation_play;
 mod animation_playable;
 
+use crate::api::{
+    get_card_path, Card, FALSE_PLAYED_PATH, FRAME_PLAYABLE_FOCUSED_PATH, FRAME_PLAYABLE_PATH,
+};
 use crate::client::AppMessage;
 use crate::gameplay_ui::hand::hand_card::{
     animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
@@ -14,8 +17,8 @@ use crate::gameplay_ui::hand::hand_card::{
     animation_playable::PlayableAnimation,
 };
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
+use crate::gameplay_ui::{card_height_hand, card_img_hand_base_scale, card_width_hand};
 use crate::ui_element_traits::*;
-use crate::api::{Card, get_card_path};
 use iced::{
     mouse::Interaction,
     widget::{container, image, pin, stack, Container, MouseArea},
@@ -23,15 +26,6 @@ use iced::{
     Point, Size,
 };
 use std::ops::Not;
-
-static FRAME_PLAYABLE_PATH: &str = "assets/cards/frame_green.png";
-static FRAME_PLAYABLE_FOCUSED_PATH: &str = "assets/cards/frame_yellow.png";
-static FALSE_PLAYED_PATH: &str = "assets/cards/false_played.png";
-
-// The hand size is depending on the window size with the factor 0.1.
-static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
-// 1.54 is around 1245 / 806 (height to width ratio of a card image).
-pub static CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH: f32 = CARD_WIDTH_MULT_WITH_WINDOW_WIDTH * 1.54;
 
 pub fn f32_min_2(v1: f32, v2: f32) -> f32 {
     if v1 < v2 {
@@ -54,9 +48,9 @@ pub enum CardMessage {
 }
 
 #[derive(Debug, Clone)]
-pub struct ViewableCard {
+pub struct ViewableHandCard {
     pub id: usize,
-    card: Card,
+    pub card: Card,
     img_path: String,
     pub window_size: Size,
     pub playable: bool,
@@ -71,10 +65,10 @@ pub struct ViewableCard {
     pub hide_animation: HideAnimation,
 }
 
-impl ViewableCard {
+impl ViewableHandCard {
     pub fn new(id: usize, card: Card, window_size: Size, playable: bool) -> Self {
         let play_duration: usize = 12;
-        let mut viewable_card: ViewableCard = Self {
+        let mut viewable_card: ViewableHandCard = Self {
             id,
             card,
             img_path: get_card_path(card),
@@ -95,11 +89,11 @@ impl ViewableCard {
     }
 }
 
-impl Message for ViewableCard {
+impl Message for ViewableHandCard {
     type OwnMessage = CardMessage;
 
-    fn convert_to_app_message(msg: CardMessage) -> AppMessage {
-        ViewableHand::convert_to_app_message(HandMessage::CardMessage(msg))
+    fn convert_msg(msg: CardMessage) -> AppMessage {
+        ViewableHand::convert_msg(HandMessage::CardMessage(msg))
     }
 
     fn update_with_msg(&mut self, msg: CardMessage) {
@@ -159,7 +153,7 @@ impl Message for ViewableCard {
     }
 }
 
-impl Animated for ViewableCard {
+impl Animated for ViewableHandCard {
     fn update_animations(&mut self) {
         self.draw_animation.next_frame();
         self.hover_animation.next_frame();
@@ -171,28 +165,28 @@ impl Animated for ViewableCard {
     }
 }
 
-impl Resizable for ViewableCard {
+impl Resizable for ViewableHandCard {
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size;
     }
     fn width(&self) -> f32 {
-        self.window_size.width * CARD_WIDTH_MULT_WITH_WINDOW_WIDTH
+        card_width_hand(self.window_size)
     }
     fn height(&self) -> f32 {
-        self.window_size.width * CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH
+        card_height_hand(self.window_size)
     }
 }
 
-impl SizeFromOutside for ViewableCard {
+impl SizeFromOutside for ViewableHandCard {
     fn width_for(window_size: Size) -> f32 {
-        window_size.width * CARD_WIDTH_MULT_WITH_WINDOW_WIDTH
+        card_width_hand(window_size)
     }
     fn height_for(window_size: Size) -> f32 {
-        window_size.width * CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH
+        card_height_hand(window_size)
     }
 }
 
-impl Viewable for ViewableCard {
+impl Viewable for ViewableHandCard {
     /// DON'T USE THIS!!!
     ///
     /// Instead use view_and_move for a card with x & y at 0.0,
@@ -222,8 +216,9 @@ impl Viewable for ViewableCard {
 
         let rotation: f32 = self.rotation;
 
-        // The factor 0.92 is chosen so the card will not get clipped when rotated.
-        let scale: f32 = 0.92 * self.hide_animation.get_scale() * self.draw_animation.get_scale();
+        let scale: f32 = card_img_hand_base_scale()
+            * self.hide_animation.get_scale()
+            * self.draw_animation.get_scale();
 
         let mut card = stack!();
         let img = image(self.img_path.clone())
@@ -264,20 +259,18 @@ impl Viewable for ViewableCard {
             card = card.push(false_played_effect)
         }
 
-        let msg_hovered: AppMessage =
-            ViewableCard::convert_to_app_message(CardMessage::Hovered(self.id));
+        let msg_hovered: AppMessage = ViewableHandCard::convert_msg(CardMessage::Hovered(self.id));
         let msg_not_hoverd: AppMessage =
-            ViewableCard::convert_to_app_message(CardMessage::NotHovered(self.id));
-        let msg_show_playable_status = ViewableHand::convert_to_app_message(
-            HandMessage::ShowPlayableStatus(self.show_playable_status.not()),
-        );
+            ViewableHandCard::convert_msg(CardMessage::NotHovered(self.id));
+        let msg_show_playable_status = ViewableHand::convert_msg(HandMessage::ShowPlayableStatus(
+            self.show_playable_status.not(),
+        ));
         let card_id: usize = self.id;
         let msg_cursor_moved = move |position: Point| {
-            ViewableCard::convert_to_app_message(CardMessage::CursorMoved(card_id, position))
+            ViewableHandCard::convert_msg(CardMessage::CursorMoved(card_id, position))
         };
-        let msg_played = ViewableCard::convert_to_app_message(CardMessage::Played(self.id));
-        let msg_false_played =
-            ViewableCard::convert_to_app_message(CardMessage::FalsePlayed(self.id));
+        let msg_played = ViewableHandCard::convert_msg(CardMessage::Played(self.id));
+        let msg_false_played = ViewableHandCard::convert_msg(CardMessage::FalsePlayed(self.id));
 
         let mut mouse_area = MouseArea::new(card)
             .on_enter(msg_hovered)

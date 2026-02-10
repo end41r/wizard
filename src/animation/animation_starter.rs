@@ -7,6 +7,7 @@ use std::num::NonZero;
 #[derive(Debug)]
 pub struct AnimationStarter<C> {
     animation_delay: NonZero<usize>,
+    animation_duration: usize,
     tick: usize,
     times: usize,
     /// `Active` -> `true`
@@ -17,9 +18,10 @@ pub struct AnimationStarter<C> {
 }
 
 impl<C> AnimationStarter<C> {
-    pub fn new(animation_delay: NonZero<usize>) -> Self {
+    pub fn new(animation_delay: NonZero<usize>, animation_duration: usize) -> Self {
         Self {
             animation_delay,
+            animation_duration,
             tick: 0,
             times: 1, // This Will be set in the start function first before it matters.
             state: false,
@@ -50,15 +52,14 @@ impl<C> AnimationStarter<C> {
     /// everytime the delay period has passed except for the first animation which is started
     /// immediately.
     ///
-    /// This function returns true when the last tick is reached
-    /// and all animations are started (NOT ended).
+    /// This function returns true when the last animation has ended.
     /// You can use this property with an if-statement then to immediately execute an action.
     pub fn check<A>(&mut self, action: A) -> bool
     where
         A: FnOnce(&mut Self),
     {
         if self.state {
-            if self.tick % self.animation_delay == 0 {
+            if (self.tick % self.animation_delay == 0) && !self.after_all_started() {
                 action(self);
             }
             if self.last_tick_reached() {
@@ -86,6 +87,9 @@ impl<C> AnimationStarter<C> {
         (self.tick - (self.tick % self.animation_delay)) / self.animation_delay
     }
     fn last_tick_reached(&self) -> bool {
-        self.tick == self.times * self.animation_delay.get()
+        self.tick == self.times * self.animation_delay.get() + self.animation_duration
+    }
+    fn after_all_started(&self) -> bool {
+        self.tick > self.times * self.animation_delay.get()
     }
 }

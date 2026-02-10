@@ -6,9 +6,11 @@ use iced::{
 };
 
 use super::{App, AppMessage, MenuState, PlayerCount};
-use crate::api::{Card, Suit, Value};
-use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
 use crate::ui_element_traits::{Message, Viewable};
+use crate::{
+    api::{Card, Suit, Value},
+    gameplay_ui::table::middle::card_deck::{CardDeckMessage, ViewableCardDeck},
+};
 
 /// Format a card for display (e.g., "5 Red", "Wizard", "Jester")
 fn format_card(card: &Card) -> String {
@@ -510,10 +512,12 @@ fn view_test_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
 
 fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     column![
+        state.viewable_table.view(),
         state.viewable_hand.view(),
-        button("Draw Cards").on_press(ViewableHand::convert_to_app_message(
-            HandMessage::DrawCards(ViewableHand::build_test_cards(state.window_size))
-        ))
+        button("Draw Cards").on_press(ViewableCardDeck::convert_msg(CardDeckMessage::Deal(
+            20,
+            Some(Card::new(Suit::Red, Value::Wizard))
+        )))
     ]
     .into()
 }

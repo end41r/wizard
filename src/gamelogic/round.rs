@@ -288,16 +288,16 @@ impl Round {
 }
 
 fn build_deck() -> Vec<Card> {
-        let mut deck = vec![];
-        for suit in Suit::iter() {
-            deck.push(Card::new(suit, Value::Jester));
-            deck.push(Card::new(suit, Value::Wizard));
-            for num in 1..=13 {
-                deck.push(Card::new(suit, Value::Number(num)));
-            }
-        };
-        deck
+    let mut deck = vec![];
+    for suit in Suit::iter() {
+        deck.push(Card::new(suit, Value::Jester));
+        deck.push(Card::new(suit, Value::Wizard));
+        for num in 1..=13 {
+            deck.push(Card::new(suit, Value::Number(num)));
+        }
     }
+    deck
+}
 
 fn draw_random_cards(deck: &mut Vec<Card>, count: usize) -> Vec<Card> {
     let mut cards = vec![];

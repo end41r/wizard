@@ -292,16 +292,22 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             Task::none()
         }
         AppMessage::HandMessage(hand_msg) => {
-            state.viewable_hand.update_with_msg(hand_msg);
-            Task::none()
+            state.viewable_hand.update_with_msg(hand_msg.clone());
+            hand_msg.notify_table(&state.viewable_hand)
+        }
+        AppMessage::TableMessage(table_msg) => {
+            state.viewable_table.update_with_msg(table_msg.clone());
+            table_msg.notify_hand(&state.viewable_table)
         }
         AppMessage::AnimationTick => {
             state.viewable_hand.update_animations();
+            state.viewable_table.update_animations();
             Task::none()
         }
-        AppMessage::WindowResized(size) => {
-            state.window_size = size;
-            state.viewable_hand.update_size(size);
+        AppMessage::WindowResized(window_size) => {
+            state.window_size = window_size;
+            state.viewable_hand.update_size(window_size);
+            state.viewable_table.update_size(window_size);
             Task::none()
         }
     }

@@ -3,6 +3,11 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
+pub static CARD_BACK_PATH: &str = "assets/cards/back.png";
+pub static FRAME_PLAYABLE_PATH: &str = "assets/cards/frame_green.png";
+pub static FRAME_PLAYABLE_FOCUSED_PATH: &str = "assets/cards/frame_yellow.png";
+pub static FALSE_PLAYED_PATH: &str = "assets/cards/false_played.png";
+
 pub type PlayerId = u64;
 pub type SessionId = u64;
 
@@ -174,16 +179,24 @@ pub fn get_card_path(card: Card) -> String {
         path.push_str("wizard");
     } else {
         match card.suit {
-            Suit::Blue => {path.push_str("diamond ");}
-            Suit::Green => {path.push_str("club ");}
-            Suit::Red => {path.push_str("heart ");}
-            Suit::Yellow => {path.push_str("spade ");}
+            Suit::Blue => {
+                path.push_str("diamond ");
+            }
+            Suit::Green => {
+                path.push_str("club ");
+            }
+            Suit::Red => {
+                path.push_str("heart ");
+            }
+            Suit::Yellow => {
+                path.push_str("spade ");
+            }
         }
         match card.value {
             Value::Number(number) => {
                 path.push_str(number.to_string().as_str());
             }
-            _ => ()
+            _ => (),
         }
     }
     path.push_str(".png");
