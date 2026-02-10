@@ -63,8 +63,8 @@ pub fn menu_panel<'a>(
     let max_w = (state.window_size.width * 0.9) as u32;
     let max_h = (state.window_size.height * 0.9) as u32;
 
-    let scale = ((max_w as f32) / (intr_w as f32))
-        .min((max_h as f32) / (intr_h as f32))
+    let scale = ((max_w as f32) / (intr_w as f32).max(1.0))
+        .min((max_h as f32) / (intr_h as f32).max(1.0))
         .min(1.0);
 
     let menu_w = (intr_w as f32 * scale).round() as u32;
