@@ -1,18 +1,21 @@
 use crate::client::AppMessage;
 use iced::{
     widget::{pin, Container},
-    Point, Size,
+    Point, Size, Task,
 };
 
 pub trait Message {
     type OwnMessage;
     fn convert_msg(msg: Self::OwnMessage) -> AppMessage;
+    fn convert_msg_to_task(msg: Self::OwnMessage) -> Task<AppMessage> {
+        Task::done(Self::convert_msg(msg))
+    }
     /// This function can handle 4 things:
     /// 1: update_with_msg functions of other ui elements of lesser hierarchy,
     /// 2: arbitrary stuff within the struct (e.g. start animations),
     /// 3: AnimationStarter start functions,
     /// 4: AnimationEndSensor start functions,
-    fn update_with_msg(&mut self, msg: Self::OwnMessage);
+    fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage>;
 }
 
 /// This trait needs the Message trait because animations are supposed to start with the

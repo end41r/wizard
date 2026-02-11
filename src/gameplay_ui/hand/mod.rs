@@ -3,11 +3,9 @@ pub mod hand_card;
 use crate::animation::{
     animation_end_sensor::AnimationEndSensor, animation_starter::AnimationStarter,
 };
-use crate::api::Card;
 use crate::client::AppMessage;
 use crate::gamelogic::round::random_card;
 use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableHandCard};
-use crate::gameplay_ui::table::middle::card_stack::{CardStackMessage, ViewableCardStack};
 use crate::gameplay_ui::{card_column_step_hand, card_row_step_hand};
 use crate::ui_element_traits::*;
 
@@ -25,24 +23,6 @@ pub enum HandMessage {
     HideCards,
     ShowCards,
     ShowPlayableStatus(bool),
-}
-
-impl HandMessage {
-    pub fn notify_table(&self, viewable_hand: &ViewableHand) -> Task<AppMessage> {
-        let played_card: Option<Card> = match self {
-            HandMessage::CardMessage(card_msg) => match card_msg {
-                CardMessage::Played(id) => Some(viewable_hand.cards.get(id).unwrap().card),
-                _ => None,
-            },
-            _ => None,
-        };
-        if played_card.is_some() {
-            return Task::done(ViewableCardStack::convert_msg(
-                CardStackMessage::CardPlayed(played_card.unwrap().clone()),
-            ));
-        };
-        Task::none()
-    }
 }
 
 #[derive(Debug)]
@@ -237,10 +217,12 @@ impl ViewableHand {
         self.width_overflow_one_side() * 2.0
     }
 
-    fn update_cards_with_msg(&mut self, msg: CardMessage) {
+    fn update_cards_with_msg(&mut self, msg: CardMessage) -> Vec<Task<AppMessage>> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
         for (_, card) in self.cards.iter_mut() {
-            card.update_with_msg(msg.clone());
+            tasks.push(card.update_with_msg(msg.clone()))
         }
+        tasks
     }
 }
 
@@ -251,13 +233,14 @@ impl Message for ViewableHand {
         AppMessage::HandMessage(msg)
     }
 
-    fn update_with_msg(&mut self, msg: HandMessage) {
+    fn update_with_msg(&mut self, msg: HandMessage) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
         match msg {
             HandMessage::CardMessage(card_msg) => {
                 match card_msg {
                     CardMessage::Hovered(id) => {
                         if !self.hide_animation_end_sensor.active() {
-                            self.update_cards_with_msg(card_msg);
+                            tasks.append(self.update_cards_with_msg(card_msg).as_mut());
                             self.hovered_card_id = Some(id);
                             if self.upper_row_exists() &&
                                // AI-Usage: Claude.ai for learning how to see if value is in a vec
@@ -274,26 +257,26 @@ impl Message for ViewableHand {
                     }
                     CardMessage::Played(id) => {
                         if !self.draw_animation_starter.active() {
-                            self.update_cards_with_msg(card_msg);
-                            self.update_with_msg(HandMessage::HideCards);
+                            tasks.append(self.update_cards_with_msg(card_msg).as_mut());
+                            tasks.push(ViewableHand::convert_msg_to_task(HandMessage::HideCards));
                             self.hide_animation_end_sensor.start(Some(id));
                         }
                     }
                     _ => {
-                        self.update_cards_with_msg(card_msg);
+                        tasks.append(self.update_cards_with_msg(card_msg).as_mut());
                     }
                 }
             }
             HandMessage::HideCards => {
                 for (id, card) in self.cards.iter_mut() {
                     if !card.play_animation.moving_forward() {
-                        card.update_with_msg(CardMessage::Hide(*id));
+                        tasks.push(card.update_with_msg(CardMessage::Hide(*id)));
                     }
                 }
             }
             HandMessage::ShowCards => {
                 for (id, card) in self.cards.iter_mut() {
-                    card.update_with_msg(CardMessage::Show(*id));
+                    tasks.push(card.update_with_msg(CardMessage::Show(*id)));
                 }
             }
             HandMessage::DrawCards(cards) => {
@@ -310,10 +293,11 @@ impl Message for ViewableHand {
             }
             HandMessage::ShowPlayableStatus(do_show) => {
                 for (id, card) in self.cards.iter_mut() {
-                    card.update_with_msg(CardMessage::ShowPlayableStatus(*id, do_show));
+                    tasks.push(card.update_with_msg(CardMessage::ShowPlayableStatus(*id, do_show)));
                 }
             }
         }
+        Task::batch(tasks)
     }
 }
 

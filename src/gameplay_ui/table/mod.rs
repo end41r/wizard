@@ -1,12 +1,10 @@
 pub mod middle;
 
-use crate::gameplay_ui::hand::ViewableHand;
 use crate::{
-    api::Card,
     client::AppMessage,
     gameplay_ui::{
         hand::HandMessage,
-        table::middle::{card_deck::CardDeckMessage, TableMiddleMessage, ViewableTableMiddle},
+        table::middle::{TableMiddleMessage, ViewableTableMiddle},
     },
     ui_element_traits::*,
 };
@@ -15,26 +13,6 @@ use iced::{widget::Container, Size, Task};
 #[derive(Debug, Clone)]
 pub enum TableMessage {
     TableMiddleMessage(TableMiddleMessage),
-}
-
-impl TableMessage {
-    pub fn notify_hand(&self, viewable_table: &ViewableTable) -> Task<AppMessage> {
-        let cards_dealt: Option<(usize, Option<Card>)> = match self {
-            TableMessage::TableMiddleMessage(table_middle_msg) => match table_middle_msg {
-                TableMiddleMessage::CardDeckMessage(card_deck_msg) => match card_deck_msg {
-                    CardDeckMessage::Deal(amount, trump) => Some((*amount, *trump)),
-                    _ => None,
-                },
-                _ => None,
-            },
-        };
-        if cards_dealt.is_some() {
-            return Task::done(ViewableHand::convert_msg(HandMessage::DrawCards(
-                ViewableHand::build_test_cards(viewable_table.window_size),
-            )));
-        };
-        Task::none()
-    }
 }
 
 pub struct ViewableTable {
@@ -56,12 +34,14 @@ impl Message for ViewableTable {
     fn convert_msg(msg: Self::OwnMessage) -> AppMessage {
         AppMessage::TableMessage(msg)
     }
-    fn update_with_msg(&mut self, msg: Self::OwnMessage) {
+    fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
         match msg {
             TableMessage::TableMiddleMessage(table_middle_msg) => {
-                self.middle.update_with_msg(table_middle_msg)
+                tasks.push(self.middle.update_with_msg(table_middle_msg))
             }
-        }
+        };
+        Task::batch(tasks)
     }
 }
 

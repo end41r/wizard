@@ -7,16 +7,20 @@ use crate::{
     client::AppMessage,
     gameplay_ui::{
         card_img_table_base_scale, card_width_middle,
-        table::middle::{
-            card_deck::{deck_card::ViewableDeckCard, trump_card::ViewableTrumpCard},
-            TableMiddleMessage, ViewableTableMiddle,
+        hand::ViewableHand,
+        table::{
+            middle::{
+                card_deck::{deck_card::ViewableDeckCard, trump_card::ViewableTrumpCard},
+                TableMiddleMessage, ViewableTableMiddle,
+            },
+            HandMessage,
         },
     },
     ui_element_traits::*,
 };
 use iced::{
     widget::{image, pin, stack, Container},
-    Point, Size,
+    Point, Size, Task,
 };
 use std::num::NonZero;
 
@@ -53,7 +57,8 @@ impl Message for ViewableCardDeck {
     fn convert_msg(msg: Self::OwnMessage) -> AppMessage {
         ViewableTableMiddle::convert_msg(TableMiddleMessage::CardDeckMessage(msg))
     }
-    fn update_with_msg(&mut self, msg: Self::OwnMessage) {
+    fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
         match msg {
             CardDeckMessage::Deal(cards, trump_card) => {
                 self.deal_card_animation_starter
@@ -66,9 +71,13 @@ impl Message for ViewableCardDeck {
                 } else {
                     self.trump_card = None;
                 }
+                tasks.push(ViewableHand::convert_msg_to_task(HandMessage::DrawCards(
+                    ViewableHand::build_test_cards(self.window_size),
+                )));
             }
             CardDeckMessage::Shuffle => {}
         }
+        Task::batch(tasks)
     }
 }
 

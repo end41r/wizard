@@ -33,10 +33,10 @@ fn format_card(card: &Card) -> String {
 }
 
 pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
+    let mut tasks: Vec<Task<AppMessage>> = vec![];
     match msg {
         AppMessage::Navigate(menu) => {
             state.menu = menu;
-            Task::none()
         }
         AppMessage::Host => {
             let local_ip = crate::server::local_ip();
@@ -44,11 +44,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.ip = local_ip;
 
             state.menu = MenuState::Host;
-            Task::none()
         }
         AppMessage::HostNameChanged(name) => {
             state.host_name = name;
-            Task::none()
         }
         AppMessage::HostPlayerCountChanged(count) => {
             state.host_player_count = count;
@@ -60,19 +58,16 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = format!("Player count set to {count}");
                 }
             }
-            Task::none()
         }
         AppMessage::JoinNameChanged(name) => {
             state.join_name = name;
-            Task::none()
         }
         AppMessage::ServerAddressChanged(addr) => {
             state.ip = addr;
-            Task::none()
         }
         AppMessage::CopyToClipboard(addr) => {
             state.last_msg = "Server address copied to clipboard.".to_string();
-            clipboard::write(addr)
+            tasks.push(clipboard::write(addr))
         }
 
         AppMessage::SendChat => {
@@ -86,11 +81,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.chat_input.clear();
                 }
             }
-            Task::none()
         }
         AppMessage::ChatInputChanged(input) => {
             state.chat_input = input;
-            Task::none()
         }
         AppMessage::CreateLobby => {
             if !state.connected {
@@ -120,7 +113,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 }
             }
             state.menu = MenuState::Lobby;
-            Task::none()
         }
         AppMessage::Connect => {
             if !state.connected {
@@ -134,7 +126,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 state.msg = "Connecting...".into();
                 state.connecting = true;
             }
-            Task::none()
         }
 
         AppMessage::ToggleReady(player_to_toggle) => {
@@ -161,7 +152,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = format!("Set ready: {new_ready_state}");
                 }
             }
-            Task::none()
         }
         AppMessage::StartGame => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -170,12 +160,10 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = "Starting game...".to_string();
                 }
             }
-            Task::none()
         }
 
         AppMessage::GameRules => {
             state.menu = MenuState::Rules;
-            Task::none()
         }
         AppMessage::BackToMenu => {
             // Stops the server if the player is the host; otherwise drops the connection.
@@ -236,7 +224,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.game_over = false;
             state.winner = None;
             state.menu = MenuState::Main;
-            Task::none()
         }
         AppMessage::CloseGame => {
             // Calls the Application exit.
@@ -246,7 +233,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         // Gameplay message handlers
         AppMessage::BidInputChanged(input) => {
             state.bid_input = input;
-            Task::none()
         }
         AppMessage::SubmitBid => {
             if let Ok(amount) = state.bid_input.parse::<usize>() {
@@ -262,7 +248,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             } else {
                 state.last_msg = "Invalid bid - enter a number".to_string();
             }
-            Task::none()
         }
         AppMessage::PlayCard(card) => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -273,7 +258,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.game_log.push(log);
                 }
             }
-            Task::none()
         }
         AppMessage::SetTrump(suit) => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -285,32 +269,27 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.must_set_trump = false;
                 }
             }
-            Task::none()
         }
         AppMessage::ServerTick => {
             handle_tick(state);
-            Task::none()
         }
         AppMessage::HandMessage(hand_msg) => {
-            state.viewable_hand.update_with_msg(hand_msg.clone());
-            hand_msg.notify_table(&state.viewable_hand)
+            tasks.push(state.viewable_hand.update_with_msg(hand_msg.clone()));
         }
         AppMessage::TableMessage(table_msg) => {
-            state.viewable_table.update_with_msg(table_msg.clone());
-            table_msg.notify_hand(&state.viewable_table)
+            tasks.push(state.viewable_table.update_with_msg(table_msg.clone()));
         }
         AppMessage::AnimationTick => {
             state.viewable_hand.update_animations();
             state.viewable_table.update_animations();
-            Task::none()
         }
         AppMessage::WindowResized(window_size) => {
             state.window_size = window_size;
             state.viewable_hand.update_size(window_size);
             state.viewable_table.update_size(window_size);
-            Task::none()
         }
     }
+    Task::batch(tasks)
 }
 
 fn handle_tick(state: &mut App) {

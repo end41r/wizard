@@ -17,8 +17,10 @@ use crate::gameplay_ui::hand::hand_card::{
     animation_playable::PlayableAnimation,
 };
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
+use crate::gameplay_ui::table::middle::card_stack::{CardStackMessage, ViewableCardStack};
 use crate::gameplay_ui::{card_height_hand, card_img_hand_base_scale, card_width_hand};
 use crate::ui_element_traits::*;
+use iced::Task;
 use iced::{
     mouse::Interaction,
     widget::{container, image, pin, stack, Container, MouseArea},
@@ -96,40 +98,44 @@ impl Message for ViewableHandCard {
         ViewableHand::convert_msg(HandMessage::CardMessage(msg))
     }
 
-    fn update_with_msg(&mut self, msg: CardMessage) {
+    fn update_with_msg(&mut self, msg: CardMessage) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
         match msg {
             CardMessage::Hovered(id) => {
                 if id == self.id {
                     self.hover_animation.start();
                     self.focus_animation.start();
-                }
+                };
             }
             CardMessage::Played(id) => {
                 if id == self.id {
                     self.play_animation.start();
-                }
+                    tasks.push(ViewableCardStack::convert_msg_to_task(
+                        CardStackMessage::CardPlayed(self.card.clone()),
+                    ));
+                };
             }
             CardMessage::NotHovered(id) => {
                 if id == self.id {
                     self.hover_animation.reverse();
                     self.focus_animation.reset();
                     self.rotation = 0.0;
-                }
+                };
             }
             CardMessage::Hide(id) => {
                 if id == self.id {
                     self.hide_animation.start();
-                }
+                };
             }
             CardMessage::Show(id) => {
                 if id == self.id {
                     self.hide_animation.start_from_reverse();
-                }
+                };
             }
             CardMessage::Draw(id) => {
                 if id == self.id {
                     self.draw_animation.start();
-                }
+                };
             }
             CardMessage::CursorMoved(id, point) => {
                 if id == self.id {
@@ -137,19 +143,20 @@ impl Message for ViewableHandCard {
                     let factor_width: f32 = (point.x - halve_card_width) / halve_card_width;
                     // The factor 0.05 is representing a 5% rotation offset on maximum.
                     self.rotation = 0.05 * factor_width;
-                }
+                };
             }
             CardMessage::FalsePlayed(id) => {
                 if id == self.id {
                     self.false_played_animation.start();
-                }
+                };
             }
             CardMessage::ShowPlayableStatus(id, do_show) => {
                 if id == self.id {
                     self.show_playable_status = do_show;
-                }
+                };
             }
         }
+        Task::batch(tasks)
     }
 }
 

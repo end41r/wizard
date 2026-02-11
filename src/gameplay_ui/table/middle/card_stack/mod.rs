@@ -10,7 +10,7 @@ use crate::{
 };
 use iced::{
     widget::{Container, Stack},
-    Size,
+    Size, Task,
 };
 
 #[derive(Debug, Clone)]
@@ -37,12 +37,13 @@ impl Message for ViewableCardStack {
     fn convert_msg(msg: Self::OwnMessage) -> AppMessage {
         ViewableTableMiddle::convert_msg(TableMiddleMessage::CardStackMessage(msg))
     }
-    fn update_with_msg(&mut self, msg: Self::OwnMessage) {
+    fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
             CardStackMessage::CardPlayed(card) => self
                 .cards
                 .push(ViewableStackCard::new(self.window_size, card)),
-        }
+        };
+        Task::none()
     }
 }
 

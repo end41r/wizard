@@ -14,7 +14,7 @@ use crate::{
 };
 use iced::{
     widget::{row, Container},
-    Size,
+    Size, Task,
 };
 
 #[derive(Debug, Clone)]
@@ -44,15 +44,17 @@ impl Message for ViewableTableMiddle {
     fn convert_msg(msg: Self::OwnMessage) -> AppMessage {
         ViewableTable::convert_msg(TableMessage::TableMiddleMessage(msg))
     }
-    fn update_with_msg(&mut self, msg: Self::OwnMessage) {
+    fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
         match msg {
             TableMiddleMessage::CardDeckMessage(card_deck_msg) => {
-                self.card_deck.update_with_msg(card_deck_msg)
+                tasks.push(self.card_deck.update_with_msg(card_deck_msg))
             }
             TableMiddleMessage::CardStackMessage(card_stack_msg) => {
-                self.card_stack.update_with_msg(card_stack_msg)
+                tasks.push(self.card_stack.update_with_msg(card_stack_msg))
             }
         }
+        Task::batch(tasks)
     }
 }
 
