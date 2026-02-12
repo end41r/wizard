@@ -280,8 +280,8 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             tasks.push(state.viewable_table.update_with_msg(table_msg.clone()));
         }
         AppMessage::AnimationTick => {
-            state.viewable_hand.update_animations();
-            state.viewable_table.update_animations();
+            tasks.push(state.viewable_hand.update_animations());
+            tasks.push(state.viewable_table.update_animations());
         }
         AppMessage::WindowResized(window_size) => {
             state.window_size = window_size;

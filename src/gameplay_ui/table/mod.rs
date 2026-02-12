@@ -46,8 +46,10 @@ impl Message for ViewableTable {
 }
 
 impl Animated for ViewableTable {
-    fn update_animations(&mut self) {
-        self.middle.update_animations();
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
+        tasks.push(self.middle.update_animations());
+        Task::batch(tasks)
     }
 }
 

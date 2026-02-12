@@ -4,7 +4,7 @@ use crate::ui_element_traits::SizeFromOutside;
 use derive_more::{Deref, DerefMut};
 use iced::Size;
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Clone, Debug, Deref, DerefMut)]
 pub struct HoverAnimation(ReversableBasicAnimation);
 
 impl HoverAnimation {

@@ -32,6 +32,7 @@ pub struct ViewableHand {
     pub cards: IndexMap<usize, ViewableHandCard>,
     hovered_card_row_low: bool,
     hovered_card_id: Option<usize>,
+    played_card_id: Option<usize>,
     top_card_id_upper: Option<usize>,
     top_card_id_lower: Option<usize>,
     hide_animation_end_sensor: AnimationEndSensor<usize>,
@@ -47,6 +48,7 @@ impl ViewableHand {
             cards: IndexMap::from([]),
             hovered_card_row_low: true,
             hovered_card_id: None,
+            played_card_id: None,
             top_card_id_upper: None,
             top_card_id_lower: None,
             // 12 is the duration of the hide animation.
@@ -257,6 +259,7 @@ impl Message for ViewableHand {
                     }
                     CardMessage::Played(id) => {
                         if !self.draw_animation_starter.active() {
+                            self.played_card_id = Some(id);
                             tasks.append(self.update_cards_with_msg(card_msg).as_mut());
                             tasks.push(ViewableHand::convert_msg_to_task(HandMessage::HideCards));
                             self.hide_animation_end_sensor.start(Some(id));
@@ -269,10 +272,11 @@ impl Message for ViewableHand {
             }
             HandMessage::HideCards => {
                 for (id, card) in self.cards.iter_mut() {
-                    if !card.play_animation.moving_forward() {
+                    if self.played_card_id.is_some() && self.played_card_id.unwrap() != *id {
                         tasks.push(card.update_with_msg(CardMessage::Hide(*id)));
                     }
                 }
+                self.played_card_id = None;
             }
             HandMessage::ShowCards => {
                 for (id, card) in self.cards.iter_mut() {
@@ -302,27 +306,16 @@ impl Message for ViewableHand {
 }
 
 impl Animated for ViewableHand {
-    fn update_animations(&mut self) {
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
         self.draw_animation_starter
             .check(|d: &mut AnimationStarter<()>| {
                 let id: usize = self.cards[d.cycle()].id;
-                self.cards[d.cycle()].update_with_msg(CardMessage::Draw(id));
+                tasks.push(self.cards[d.cycle()].update_with_msg(CardMessage::Draw(id)));
             });
 
-        for (id, card) in self.cards.iter_mut2() {
-            card.update_animations();
-            // Sometimes on_exit for a viewed card won't register
-            // and won't send the CardNotHoverd msg.
-            // To ensure that an unhovered card is not sticking up all the time
-            // following if-statement tries to check for this unwanted state
-            // and instead sends the msg itself.
-            if self.hovered_card_id.is_some()
-                && *id != self.hovered_card_id.unwrap()
-                && card.hover_animation.get_offset(self.window_size) != 0.0
-                && card.hover_animation.not_moving()
-            {
-                card.update_with_msg(CardMessage::NotHovered(*id));
-            }
+        for (_, card) in self.cards.iter_mut2() {
+            tasks.push(card.update_animations());
         }
 
         if self
@@ -332,8 +325,9 @@ impl Animated for ViewableHand {
                 self.cards.shift_remove(key);
             })
         {
-            self.update_with_msg(HandMessage::ShowCards);
+            tasks.push(self.update_with_msg(HandMessage::ShowCards));
         };
+        Task::batch(tasks)
     }
 }
 

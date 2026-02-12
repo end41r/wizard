@@ -32,7 +32,7 @@ pub trait Animated {
     ///
     /// Note: Ensure that 1 and 4 are actually called at 1 and 4 respectively or otherwise there
     ///       will be off by one bugs!
-    fn update_animations(&mut self);
+    fn update_animations(&mut self) -> Task<AppMessage>;
 }
 
 pub trait Resizable {

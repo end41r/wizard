@@ -8,7 +8,7 @@ use crate::{
 use derive_more::{Deref, DerefMut};
 use iced::{
     widget::{image, Container},
-    Point, Size,
+    Point, Size, Task,
 };
 
 #[derive(Debug, Clone)]
@@ -73,8 +73,8 @@ impl ViewableDeckCard {
 }
 
 impl Animated for ViewableDeckCard {
-    fn update_animations(&mut self) {
-        self.deal_animation.next_frame();
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        self.deal_animation.next_frame()
     }
 }
 

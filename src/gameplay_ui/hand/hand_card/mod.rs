@@ -105,6 +105,14 @@ impl Message for ViewableHandCard {
                 if id == self.id {
                     self.hover_animation.start();
                     self.focus_animation.start();
+                } else {
+                    // Sometimes on_exit for a viewed card won't register
+                    // and won't send the CardNotHovered msg.
+                    // To ensure that an unhovered card is not sticking up all the time
+                    // send NotHovered to all cards except the hovered one.
+                    tasks.push(ViewableHandCard::convert_msg_to_task(
+                        CardMessage::NotHovered(self.id),
+                    ))
                 };
             }
             CardMessage::Played(id) => {
@@ -117,6 +125,7 @@ impl Message for ViewableHandCard {
             }
             CardMessage::NotHovered(id) => {
                 if id == self.id {
+                    // println!("{} {}", id, self.id);
                     self.hover_animation.reverse();
                     self.focus_animation.reset();
                     self.rotation = 0.0;
@@ -161,14 +170,16 @@ impl Message for ViewableHandCard {
 }
 
 impl Animated for ViewableHandCard {
-    fn update_animations(&mut self) {
-        self.draw_animation.next_frame();
-        self.hover_animation.next_frame();
-        self.play_animation.next_frame();
-        self.playable_animation.next_frame();
-        self.false_played_animation.next_frame();
-        self.focus_animation.next_frame();
-        self.hide_animation.next_frame();
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        Task::batch(vec![
+            self.draw_animation.next_frame(),
+            self.hover_animation.next_frame(),
+            self.play_animation.next_frame(),
+            self.playable_animation.next_frame(),
+            self.false_played_animation.next_frame(),
+            self.focus_animation.next_frame(),
+            self.hide_animation.next_frame(),
+        ])
     }
 }
 

@@ -9,7 +9,7 @@ use crate::{
 };
 use iced::{
     widget::{image, Container},
-    Size,
+    Size, Task,
 };
 
 pub struct ViewableTrumpCard {
@@ -27,7 +27,9 @@ impl ViewableTrumpCard {
 }
 
 impl Animated for ViewableTrumpCard {
-    fn update_animations(&mut self) {}
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        Task::none()
+    }
 }
 
 impl Resizable for ViewableTrumpCard {

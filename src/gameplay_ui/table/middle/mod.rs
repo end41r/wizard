@@ -59,9 +59,11 @@ impl Message for ViewableTableMiddle {
 }
 
 impl Animated for ViewableTableMiddle {
-    fn update_animations(&mut self) {
-        self.card_deck.update_animations();
-        self.card_stack.update_animations();
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
+        tasks.push(self.card_deck.update_animations());
+        tasks.push(self.card_stack.update_animations());
+        Task::batch(tasks)
     }
 }
 

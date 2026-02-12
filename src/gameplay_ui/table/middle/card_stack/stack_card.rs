@@ -9,7 +9,7 @@ use crate::{
 use derive_more::{Deref, DerefMut};
 use iced::{
     widget::{image, Container},
-    Size,
+    Size, Task,
 };
 use rand::Rng;
 
@@ -50,8 +50,8 @@ impl ViewableStackCard {
 }
 
 impl Animated for ViewableStackCard {
-    fn update_animations(&mut self) {
-        self.reveal_animation.next_frame();
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        self.reveal_animation.next_frame()
     }
 }
 

@@ -82,7 +82,8 @@ impl Message for ViewableCardDeck {
 }
 
 impl Animated for ViewableCardDeck {
-    fn update_animations(&mut self) {
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
         if self.deal_card_animation_starter.check(|d| {
             let view_able_deck_card = ViewableDeckCard::new(self.window_size, d.cycle());
             self.deck_cards.push(view_able_deck_card);
@@ -90,11 +91,12 @@ impl Animated for ViewableCardDeck {
             self.deck_cards.clear();
         }
         if self.trump_card.is_some() {
-            self.trump_card.as_mut().unwrap().update_animations();
+            tasks.push(self.trump_card.as_mut().unwrap().update_animations());
         }
         for card in self.deck_cards.iter_mut() {
-            card.update_animations();
+            tasks.push(card.update_animations());
         }
+        Task::batch(tasks)
     }
 }
 

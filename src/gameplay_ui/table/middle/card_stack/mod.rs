@@ -48,10 +48,12 @@ impl Message for ViewableCardStack {
 }
 
 impl Animated for ViewableCardStack {
-    fn update_animations(&mut self) {
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        let mut tasks: Vec<Task<AppMessage>> = vec![];
         for card in self.cards.iter_mut() {
-            card.update_animations();
+            tasks.push(card.update_animations());
         }
+        Task::batch(tasks)
     }
 }
 
