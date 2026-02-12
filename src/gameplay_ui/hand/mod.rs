@@ -88,7 +88,7 @@ impl ViewableHand {
     pub fn set_cards(&mut self, cards: Vec<ViewableHandCard>) {
         self.cards.clear();
         for card in cards.iter() {
-            self.cards.insert(card.id, card.clone());
+            self.cards.insert(card.id(), card.clone());
         }
     }
 

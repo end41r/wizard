@@ -52,21 +52,21 @@ pub enum CardMessage {
 
 #[derive(Debug, Clone)]
 pub struct ViewableHandCard {
-    pub id: usize,
-    pub card: Card,
+    id: usize,
+    card: Card,
     img_path: String,
-    pub window_size: Size,
-    pub clickable: bool,
-    pub playable: bool,
-    pub show_playable_status: bool,
-    pub rotation: f32,
-    pub draw_animation: DrawAnimation,
-    pub hover_animation: HoverAnimation,
-    pub play_animation: PlayAnimation,
-    pub playable_animation: PlayableAnimation,
-    pub false_played_animation: FalsePlayedAnimation,
-    pub focus_animation: FocusAnimation,
-    pub hide_animation: HideAnimation,
+    window_size: Size,
+    clickable: bool,
+    playable: bool,
+    show_playable_status: bool,
+    rotation: f32,
+    draw_animation: DrawAnimation,
+    hover_animation: HoverAnimation,
+    play_animation: PlayAnimation,
+    playable_animation: PlayableAnimation,
+    false_played_animation: FalsePlayedAnimation,
+    focus_animation: FocusAnimation,
+    hide_animation: HideAnimation,
 }
 
 impl ViewableHandCard {
@@ -99,6 +99,10 @@ impl ViewableHandCard {
             )));
         viewable_card.playable_animation.start();
         viewable_card
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
     }
 }
 
