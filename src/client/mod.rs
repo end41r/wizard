@@ -21,6 +21,8 @@ pub enum PlayerCount {
     P6,
 }
 
+const TITLE_FONT: &[u8] = include_bytes!("../../assets/MagicSchoolOne.ttf");
+
 impl PlayerCount {
     pub fn to_usize(self) -> usize {
         match self {
@@ -54,7 +56,6 @@ pub enum MenuState {
     #[allow(dead_code)]
     PlayingTest,
 }
-
 pub struct App {
     window_size: Size,
 
@@ -99,6 +100,22 @@ pub struct App {
 
     // Gameplay view state
     pub viewable_hand: ViewableHand,
+
+    // UI Buttons (main menu)
+    pub btn_host: crate::client::views::Button,
+    pub btn_join: crate::client::views::Button,
+    pub btn_rules: crate::client::views::Button,
+    pub btn_exit: crate::client::views::Button,
+
+    // Buttons for other menus
+    pub btn_create_lobby: crate::client::views::Button,
+    pub btn_back: crate::client::views::Button,
+    pub btn_connect: crate::client::views::Button,
+    pub btn_send_chat: crate::client::views::Button,
+    pub btn_start_game: crate::client::views::Button,
+    pub btn_back_to_menu: crate::client::views::Button,
+
+    pub btn_ready_owned: crate::client::views::Button,
 }
 
 impl Default for App {
@@ -115,7 +132,6 @@ impl Default for App {
             msg: String::new(),
 
             menu: MenuState::Main,
-
             host_name: "".to_string(),
             host_player_count: PlayerCount::P4,
             join_name: "".to_string(),
@@ -152,6 +168,81 @@ impl Default for App {
             winner: None,
 
             viewable_hand: ViewableHand::new(window_size),
+
+            //Buttons
+            btn_host: crate::client::views::Button::new(0, "Host", "assets/button1.png", 180, 44),
+            btn_join: crate::client::views::Button::new(
+                1,
+                "Beitreten",
+                "assets/button1.png",
+                180,
+                44,
+            ),
+            btn_rules: crate::client::views::Button::new(
+                2,
+                "Spielregeln",
+                "assets/button1.png",
+                180,
+                44,
+            ),
+            btn_exit: crate::client::views::Button::new(
+                3,
+                "Spiel verlassen",
+                "assets/button1.png",
+                180,
+                44,
+            ),
+
+            btn_create_lobby: crate::client::views::Button::new(
+                10,
+                "Lobby erstellen",
+                "assets/button1.png",
+                160,
+                40,
+            ),
+            btn_back: crate::client::views::Button::new(
+                11,
+                "zurück",
+                "assets/button1.png",
+                100,
+                36,
+            ),
+            btn_connect: crate::client::views::Button::new(
+                12,
+                "Verbinden",
+                "assets/button1.png",
+                140,
+                40,
+            ),
+            btn_send_chat: crate::client::views::Button::new(
+                13,
+                "Senden",
+                "assets/button1.png",
+                100,
+                36,
+            ),
+            btn_start_game: crate::client::views::Button::new(
+                14,
+                "Starten",
+                "assets/button1.png",
+                140,
+                40,
+            ),
+            btn_back_to_menu: crate::client::views::Button::new(
+                15,
+                "Zurück zum Menü",
+                "assets/button1.png",
+                160,
+                40,
+            ),
+
+            btn_ready_owned: crate::client::views::Button::new(
+                20,
+                "Bereit",
+                "assets/button1.png",
+                100,
+                36,
+            ),
         }
     }
 }
@@ -167,7 +258,6 @@ pub enum AppMessage {
     HostPlayerCountChanged(PlayerCount),
     JoinNameChanged(String),
     ServerAddressChanged(String),
-    CopyToClipboard(String),
 
     SendChat,
     ChatInputChanged(String),
@@ -192,6 +282,9 @@ pub enum AppMessage {
 
     // Gameplay view messages
     HandMessage(HandMessage),
+
+    // Button messages from view widgets
+    ButtonMessage(crate::client::views::ButtonMessage),
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
@@ -205,10 +298,15 @@ fn subscription(state: &App) -> Subscription<AppMessage> {
 }
 
 pub fn main() -> iced::Result {
+    use std::borrow::Cow;
     iced::application(App::default, update, view)
         .title("Wizard")
         .subscription(subscription)
         // Keep this value in sync with the App::default function.
-        .window_size(Size::new(640.0, 480.0))
+        .window_size(Size::new(300.0, 800.0))
+        .settings(iced::Settings {
+            fonts: vec![Cow::Borrowed(TITLE_FONT)],
+            ..Default::default()
+        })
         .run()
 }

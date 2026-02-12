@@ -1,4 +1,4 @@
-use iced::{clipboard, Task};
+use iced::Task;
 use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
@@ -70,11 +70,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.ip = addr;
             Task::none()
         }
-        AppMessage::CopyToClipboard(addr) => {
-            state.last_msg = "Server address copied to clipboard.".to_string();
-            clipboard::write(addr)
-        }
-
         AppMessage::SendChat => {
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
@@ -295,9 +290,106 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.viewable_hand.update_with_msg(hand_msg);
             Task::none()
         }
+        AppMessage::ButtonMessage(btn_msg) => {
+            // route to buttons (each button filters by id internally)
+            state.btn_host.update_with_msg(btn_msg.clone());
+            state.btn_join.update_with_msg(btn_msg.clone());
+            state.btn_rules.update_with_msg(btn_msg.clone());
+            state.btn_exit.update_with_msg(btn_msg.clone());
+
+            state.btn_create_lobby.update_with_msg(btn_msg.clone());
+            state.btn_back.update_with_msg(btn_msg.clone());
+            state.btn_connect.update_with_msg(btn_msg.clone());
+            state.btn_send_chat.update_with_msg(btn_msg.clone());
+            state.btn_start_game.update_with_msg(btn_msg.clone());
+            state.btn_back_to_menu.update_with_msg(btn_msg.clone());
+
+            state.btn_ready_owned.update_with_msg(btn_msg);
+            Task::none()
+        }
         AppMessage::AnimationTick => {
             state.viewable_hand.update_animations();
-            Task::none()
+
+            // Update button animations
+            state.btn_host.update_animations();
+            state.btn_join.update_animations();
+            state.btn_rules.update_animations();
+            state.btn_exit.update_animations();
+
+            state.btn_create_lobby.update_animations();
+            state.btn_back.update_animations();
+            state.btn_connect.update_animations();
+            state.btn_send_chat.update_animations();
+            state.btn_start_game.update_animations();
+            state.btn_back_to_menu.update_animations();
+            state.btn_ready_owned.update_animations();
+
+            let mut pending_msgs: Vec<Task<AppMessage>> = Vec::new();
+
+            state.btn_host.check_click_end(|&_id| {
+                pending_msgs.push(Task::done(AppMessage::Host));
+            });
+
+            state.btn_join.check_click_end(|_| {
+                pending_msgs.push(Task::done(AppMessage::Navigate(MenuState::Join)));
+            });
+
+            state.btn_rules.check_click_end(|_| {
+                pending_msgs.push(Task::done(AppMessage::GameRules));
+            });
+
+            state.btn_exit.check_click_end(|_| {
+                pending_msgs.push(Task::done(AppMessage::CloseGame));
+            });
+
+            state.btn_create_lobby.check_click_end(|&_id| {
+                pending_msgs.push(Task::done(AppMessage::CreateLobby));
+            });
+
+            state.btn_ready_owned.check_click_end(|&_id| {
+                if let Some(my_id) = state.my_id {
+                    pending_msgs.push(Task::done(AppMessage::ToggleReady(my_id)));
+                }
+            });
+
+            state.btn_back.check_click_end(|_| {
+                pending_msgs.push(Task::done(AppMessage::Navigate(MenuState::Main)));
+            });
+
+            state.btn_connect.check_click_end(|_| {
+                pending_msgs.push(Task::done(AppMessage::Connect));
+            });
+
+            state.btn_send_chat.check_click_end(|_| {
+                pending_msgs.push(Task::done(AppMessage::SendChat));
+            });
+
+            state.btn_start_game.check_click_end(|_| {
+                let can_start = if cfg!(feature = "wiz_debug") {
+                    true
+                } else {
+                    state.lobby.as_ref().is_some_and(|lobby| {
+                        lobby.players.len() == state.host_player_count.to_usize()
+                            && lobby.players.iter().all(|p| p.ready)
+                    })
+                };
+                let is_host = state.my_id.is_some()
+                    && state.my_id.unwrap()
+                        == state
+                            .lobby
+                            .as_ref()
+                            .and_then(|l| l.players.iter().find(|p| p.is_host).map(|p| p.id))
+                            .unwrap_or_default();
+                if can_start && is_host {
+                    pending_msgs.push(Task::done(AppMessage::StartGame));
+                }
+            });
+
+            state.btn_back_to_menu.check_click_end(|_| {
+                pending_msgs.push(Task::done(AppMessage::BackToMenu));
+            });
+
+            Task::batch(pending_msgs)
         }
         AppMessage::WindowResized(size) => {
             state.window_size = size;
@@ -456,7 +548,19 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.menu = MenuState::Playing;
+
+                // Check if the host's name is "wizard_master" to enter debug
+                // Easter egg :)
+                if let Some(ref lobby) = state.lobby {
+                    if let Some(host) = lobby.players.iter().find(|p| p.is_host) {
+                        if host.name == "wizard_master" {
+                            state.menu = MenuState::PlayingTest;
+                        } else {
+                            state.menu = MenuState::Playing;
+                        }
+                    }
+                }
+
                 state.scores.clear();
                 state.bids.clear();
                 state.tricks_won.clear();

@@ -195,7 +195,7 @@ impl Game {
     }
 
     pub fn start(&mut self) -> Result<Vec<GameEvent>, &'static str> {
-        if self.players.len() < 3 {
+        if cfg!(not(feature = "wiz_debug")) && self.players.len() < 3 {
             return Err("Need more than two players to start a game.");
         }
         if self.players.len() > 6 {
@@ -316,7 +316,11 @@ fn start_game_with_2_players() {
     let mut game = Game::new();
     let _ = game.add_player(111);
     let _ = game.add_player(222);
-    assert!(game.start().is_err());
+    if cfg!(not(feature = "wiz_debug")) {
+        assert!(game.start().is_err());
+    } else {
+        assert!(game.start().is_ok());
+    }
 }
 
 #[cfg(test)]
