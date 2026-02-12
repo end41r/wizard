@@ -47,6 +47,7 @@ pub enum CardMessage {
     Draw(usize),
     CursorMoved(usize, Point),
     ShowPlayableStatus(usize, bool),
+    MakeClickable(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -55,6 +56,7 @@ pub struct ViewableHandCard {
     pub card: Card,
     img_path: String,
     pub window_size: Size,
+    pub clickable: bool,
     pub playable: bool,
     pub show_playable_status: bool,
     pub rotation: f32,
@@ -75,6 +77,7 @@ impl ViewableHandCard {
             card,
             img_path: get_card_path(card),
             window_size,
+            clickable: true,
             playable,
             show_playable_status: false,
             rotation: 0.0,
@@ -86,7 +89,14 @@ impl ViewableHandCard {
             focus_animation: FocusAnimation::new(70),
             hide_animation: HideAnimation::new(play_duration),
         };
-        viewable_card.play_animation.on_end(ViewableHand::convert_msg(HandMessage::DeleteCard(id)));
+        viewable_card
+            .play_animation
+            .on_end(ViewableHand::convert_msg(HandMessage::DeleteCard(id)));
+        viewable_card
+            .hide_animation
+            .on_end(ViewableHandCard::convert_msg(CardMessage::MakeClickable(
+                id,
+            )));
         viewable_card.playable_animation.start();
         viewable_card
     }
@@ -118,6 +128,7 @@ impl Message for ViewableHandCard {
             }
             CardMessage::Played(id) => {
                 if id == self.id {
+                    self.clickable = false;
                     self.play_animation.start();
                     tasks.push(ViewableCardStack::convert_msg_to_task(
                         CardStackMessage::CardPlayed(self.card.clone()),
@@ -134,6 +145,7 @@ impl Message for ViewableHandCard {
             }
             CardMessage::Hide(id) => {
                 if id == self.id {
+                    self.clickable = false;
                     self.hide_animation.start();
                 };
             }
@@ -164,6 +176,11 @@ impl Message for ViewableHandCard {
                 if id == self.id {
                     self.show_playable_status = do_show;
                 };
+            }
+            CardMessage::MakeClickable(id) => {
+                if id == self.id {
+                    self.clickable = true;
+                }
             }
         }
         Task::batch(tasks)

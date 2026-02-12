@@ -1,8 +1,6 @@
 pub mod hand_card;
 
-use crate::animation::{
-    animation_starter::AnimationStarter,
-};
+use crate::animation::AnimationStarter;
 use crate::client::AppMessage;
 use crate::gamelogic::round::random_card;
 use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableHandCard};
@@ -14,7 +12,6 @@ use iced::{
     Point, Size, Task,
 };
 use indexmap::{map::MutableKeys, IndexMap};
-use std::num::NonZero;
 
 #[derive(Debug, Clone)]
 pub enum HandMessage {
@@ -39,7 +36,7 @@ pub struct ViewableHand {
     top_card_id_lower: Option<usize>,
     // AI-Usage: Claude.ai for the idea of passing a union type for a generic
     //           where the type doesn't matter.
-    draw_animation_starter: AnimationStarter<()>,
+    draw_animation_starter: AnimationStarter,
 }
 
 impl ViewableHand {
@@ -54,7 +51,11 @@ impl ViewableHand {
             top_card_id_upper: None,
             top_card_id_lower: None,
             // 3 is the delay for the animation start.
-            draw_animation_starter: AnimationStarter::new(NonZero::new(3).unwrap(), 10),
+            draw_animation_starter: AnimationStarter::new(
+                3,
+                10,
+                ViewableHandCard::convert_msg(CardMessage::Draw(0)),
+            ),
         }
     }
 
@@ -258,11 +259,9 @@ impl Message for ViewableHand {
                         }
                     }
                     CardMessage::Played(id) => {
-                        if !self.draw_animation_starter.active() {
-                            self.played_card_id = Some(id);
-                            tasks.append(self.update_cards_with_msg(card_msg).as_mut());
-                            tasks.push(ViewableHand::convert_msg_to_task(HandMessage::HideCards));
-                        }
+                        self.played_card_id = Some(id);
+                        tasks.append(self.update_cards_with_msg(card_msg).as_mut());
+                        tasks.push(ViewableHand::convert_msg_to_task(HandMessage::HideCards));
                     }
                     _ => {
                         tasks.append(self.update_cards_with_msg(card_msg).as_mut());
@@ -296,8 +295,7 @@ impl Message for ViewableHand {
                 self.top_card_id_upper = None;
                 self.draw_animation_starter.reset();
                 self.update_size(self.window_size);
-                self.draw_animation_starter
-                    .start(None, NonZero::new(self.cards.len()).unwrap());
+                self.draw_animation_starter.start(self.cards.len());
             }
             HandMessage::ShowPlayableStatus(do_show) => {
                 for (id, card) in self.cards.iter_mut() {
@@ -312,11 +310,7 @@ impl Message for ViewableHand {
 impl Animated for ViewableHand {
     fn update_animations(&mut self) -> Task<AppMessage> {
         let mut tasks: Vec<Task<AppMessage>> = vec![];
-        self.draw_animation_starter
-            .check(|d: &mut AnimationStarter<()>| {
-                let id: usize = self.cards[d.cycle()].id;
-                tasks.push(self.cards[d.cycle()].update_with_msg(CardMessage::Draw(id)));
-            });
+        tasks.push(self.draw_animation_starter.next_frame());
 
         for (_, card) in self.cards.iter_mut2() {
             tasks.push(card.update_animations());

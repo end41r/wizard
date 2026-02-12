@@ -3,8 +3,12 @@ mod views;
 mod ws;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
+use crate::gameplay_ui::hand::hand_card::CardMessage;
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
-use crate::gameplay_ui::table::{TableMessage, ViewableTable};
+use crate::gameplay_ui::table::{
+    middle::{card_deck::CardDeckMessage, TableMiddleMessage},
+    TableMessage, ViewableTable,
+};
 use iced::{time, window, Size, Subscription};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -196,6 +200,25 @@ pub enum AppMessage {
     // Gameplay view messages
     HandMessage(HandMessage),
     TableMessage(TableMessage),
+}
+
+impl AppMessage {
+    /// Checks if the message has a usize at the end and replaces it if its exists.
+    /// This is only intended for AnimationStarter, so this function only needs to match
+    /// AppMessages used for it.
+    pub fn replace_usize(&self, value: usize) -> AppMessage {
+        match self {
+            AppMessage::HandMessage(HandMessage::CardMessage(CardMessage::Draw(_))) => {
+                AppMessage::HandMessage(HandMessage::CardMessage(CardMessage::Draw(value)))
+            }
+            AppMessage::TableMessage(TableMessage::TableMiddleMessage(
+                TableMiddleMessage::CardDeckMessage(CardDeckMessage::AddDeckCard(_)),
+            )) => AppMessage::TableMessage(TableMessage::TableMiddleMessage(
+                TableMiddleMessage::CardDeckMessage(CardDeckMessage::AddDeckCard(value)),
+            )),
+            _ => self.clone(),
+        }
+    }
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {

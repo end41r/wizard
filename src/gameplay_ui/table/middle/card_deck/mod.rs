@@ -2,7 +2,7 @@ pub mod deck_card;
 pub mod trump_card;
 
 use crate::{
-    animation::animation_starter::AnimationStarter,
+    animation::AnimationStarter,
     api::{Card, CARD_BACK_PATH},
     client::AppMessage,
     gameplay_ui::{
@@ -22,7 +22,6 @@ use iced::{
     widget::{image, pin, stack, Container},
     Point, Size, Task,
 };
-use std::num::NonZero;
 
 type TrumpCard = Card;
 
@@ -30,6 +29,8 @@ type TrumpCard = Card;
 pub enum CardDeckMessage {
     Deal(usize, Option<TrumpCard>),
     Shuffle,
+    ClearDeckCards,
+    AddDeckCard(usize),
 }
 
 pub struct ViewableCardDeck {
@@ -37,18 +38,28 @@ pub struct ViewableCardDeck {
     show_base_card: bool,
     trump_card: Option<ViewableTrumpCard>,
     deck_cards: Vec<ViewableDeckCard>,
-    deal_card_animation_starter: AnimationStarter<()>,
+    deal_card_animation_starter: AnimationStarter,
 }
 
 impl ViewableCardDeck {
     pub fn new(window_size: Size) -> Self {
-        Self {
+        let mut viewable_card_deck = Self {
             window_size,
             show_base_card: true,
             trump_card: None,
             deck_cards: Vec::new(),
-            deal_card_animation_starter: AnimationStarter::new(NonZero::new(3).unwrap(), 5),
-        }
+            deal_card_animation_starter: AnimationStarter::new(
+                3,
+                5,
+                ViewableCardDeck::convert_msg(CardDeckMessage::AddDeckCard(0)),
+            ),
+        };
+        viewable_card_deck
+            .deal_card_animation_starter
+            .on_all_ended(ViewableCardDeck::convert_msg(
+                CardDeckMessage::ClearDeckCards,
+            ));
+        viewable_card_deck
     }
 }
 
@@ -60,9 +71,15 @@ impl Message for ViewableCardDeck {
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         let mut tasks: Vec<Task<AppMessage>> = vec![];
         match msg {
+            CardDeckMessage::AddDeckCard(cycle) => {
+                let view_able_deck_card = ViewableDeckCard::new(self.window_size, cycle);
+                self.deck_cards.push(view_able_deck_card);
+            }
+            CardDeckMessage::ClearDeckCards => {
+                self.deck_cards.clear();
+            }
             CardDeckMessage::Deal(cards, trump_card) => {
-                self.deal_card_animation_starter
-                    .start(None, NonZero::new(cards).unwrap());
+                self.deal_card_animation_starter.start(cards);
                 if trump_card.is_some() {
                     self.trump_card = Some(ViewableTrumpCard::new(
                         self.window_size,
@@ -84,12 +101,7 @@ impl Message for ViewableCardDeck {
 impl Animated for ViewableCardDeck {
     fn update_animations(&mut self) -> Task<AppMessage> {
         let mut tasks: Vec<Task<AppMessage>> = vec![];
-        if self.deal_card_animation_starter.check(|d| {
-            let view_able_deck_card = ViewableDeckCard::new(self.window_size, d.cycle());
-            self.deck_cards.push(view_able_deck_card);
-        }) {
-            self.deck_cards.clear();
-        }
+        tasks.push(self.deal_card_animation_starter.next_frame());
         if self.trump_card.is_some() {
             tasks.push(self.trump_card.as_mut().unwrap().update_animations());
         }

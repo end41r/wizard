@@ -25,8 +25,6 @@
 /// via the new function.
 /// Keep in mind that if you choose 0 for the animation duration the animation will always
 /// count as finished (the progress function returns 1.0).
-pub mod animation_starter;
-
 use derive_more::{Deref, DerefMut};
 use iced::Task;
 use std::f32::consts::PI;
@@ -333,5 +331,87 @@ impl CircularAutoReversingAnimation {
             _ => {}
         }
         Task::none()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct AnimationStarter {
+    state: AnimationState,
+    times: Option<usize>,
+    animation_delay: usize,
+    animation_length: usize,
+    tick: usize,
+    started: usize,
+    on_start_single: AppMessage,
+    on_all_ended: Option<AppMessage>,
+}
+
+impl AnimationStarter {
+    /// Check AppMessage::replace_usize
+    pub fn new(
+        animation_delay: usize,
+        animation_duration: usize,
+        first_start_msg: AppMessage,
+    ) -> Self {
+        Self {
+            times: None,
+            state: AnimationState::NotMoving,
+            animation_delay,
+            animation_length: animation_duration,
+            tick: 0,
+            started: 0,
+            on_start_single: first_start_msg,
+            on_all_ended: None,
+        }
+    }
+    pub fn start(&mut self, times: usize) {
+        self.times = Some(times);
+        self.state = AnimationState::MovingForward;
+    }
+    pub fn next_frame(&mut self) -> Task<AppMessage> {
+        if self.state == AnimationState::MovingForward {
+            self.tick += 1;
+            if self.check_all_ended() {
+                return self.all_ended();
+            } else if self.check_tick() {
+                return self.start_single();
+            }
+        }
+        Task::none()
+    }
+    pub fn on_all_ended(&mut self, msg: AppMessage) {
+        self.on_all_ended = Some(msg)
+    }
+    pub fn reset(&mut self) {
+        self.times = None;
+        self.state = AnimationState::NotMoving;
+        self.tick = 0;
+        self.started = 0;
+        self.on_all_ended = None;
+    }
+    fn check_tick(&self) -> bool {
+        self.tick % self.animation_delay == 0
+    }
+    fn check_all_ended(&self) -> bool {
+        // println!("{} == {} * {} + {}", self.tick, self.animation_delay, self.times.unwrap(), self.animation_length);
+        (self.tick == self.animation_delay * self.times.unwrap() + self.animation_length)
+            || (self.times.unwrap() == 0)
+    }
+    fn all_ended(&mut self) -> Task<AppMessage> {
+        println!("aa");
+        let task: Task<AppMessage> = match &self.on_all_ended {
+            Some(msg) => Task::done(msg.clone()),
+            None => Task::none(),
+        };
+        self.reset();
+        task
+    }
+    fn start_single(&mut self) -> Task<AppMessage> {
+        self.started += 1;
+        if self.started == 1 {
+            Task::done(self.on_start_single.clone())
+        } else {
+            Task::done(self.on_start_single.clone().replace_usize(self.started))
+        }
     }
 }
