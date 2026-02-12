@@ -406,10 +406,6 @@ impl AnimationStarter {
     }
     fn start_single(&mut self) -> Task<AppMessage> {
         self.started += 1;
-        if self.started == 1 {
-            Task::done(self.on_start_single.clone())
-        } else {
-            Task::done(self.on_start_single.clone().replace_usize(self.started))
-        }
+        Task::done(self.on_start_single.clone().replace_usize(self.started - 1))
     }
 }
