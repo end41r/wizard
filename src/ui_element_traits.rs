@@ -4,12 +4,8 @@ use iced::{
     Point, Size, Task,
 };
 
-pub trait Message {
-    type OwnMessage;
-    fn convert_msg(msg: Self::OwnMessage) -> AppMessage;
-    fn convert_msg_to_task(msg: Self::OwnMessage) -> Task<AppMessage> {
-        Task::done(Self::convert_msg(msg))
-    }
+pub trait Notifiable {
+    type OwnMessage: Message;
     /// This function can handle 4 things:
     /// 1: update_with_msg functions of other ui elements of lesser hierarchy,
     /// 2: arbitrary stuff within the struct (e.g. start animations),
@@ -57,5 +53,15 @@ pub trait Viewable {
     fn view<'a>(&self) -> Container<'a, AppMessage>;
     fn view_and_move<'a>(&self, x: f32, y: f32) -> Container<'a, AppMessage> {
         Container::new(pin(self.view()).position(Point::new(x, y)))
+    }
+}
+
+pub trait Message: Clone {
+    fn convert_msg_from(msg: Self) -> AppMessage;
+    fn convert_msg(&self) -> AppMessage {
+        Self::convert_msg_from(self.clone())
+    }
+    fn convert_msg_to_task(&self) -> Task<AppMessage> {
+        Task::done(self.convert_msg())
     }
 }

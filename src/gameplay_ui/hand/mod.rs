@@ -23,6 +23,12 @@ pub enum HandMessage {
     ShowPlayableStatus(bool),
 }
 
+impl Message for HandMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        AppMessage::HandMessage(msg)
+    }
+}
+
 #[derive(Debug)]
 pub struct ViewableHand {
     window_size: Size,
@@ -54,7 +60,7 @@ impl ViewableHand {
             draw_animation_starter: AnimationStarter::new(
                 3,
                 10,
-                ViewableHandCard::convert_msg(CardMessage::Draw(0)),
+                CardMessage::Draw(0).convert_msg(),
             ),
         }
     }
@@ -229,12 +235,8 @@ impl ViewableHand {
     }
 }
 
-impl Message for ViewableHand {
+impl Notifiable for ViewableHand {
     type OwnMessage = HandMessage;
-
-    fn convert_msg(msg: HandMessage) -> AppMessage {
-        AppMessage::HandMessage(msg)
-    }
 
     fn update_with_msg(&mut self, msg: HandMessage) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
@@ -261,7 +263,7 @@ impl Message for ViewableHand {
                     CardMessage::Played(id) => {
                         self.played_card_id = Some(id);
                         tb.push(self.update_cards_with_msg(card_msg));
-                        tb.push(ViewableHand::convert_msg_to_task(HandMessage::HideCards));
+                        tb.push(HandMessage::HideCards.convert_msg_to_task());
                     }
                     _ => {
                         tb.push(self.update_cards_with_msg(card_msg));
@@ -279,7 +281,7 @@ impl Message for ViewableHand {
             }
             HandMessage::DeleteCard(id) => {
                 self.cards.shift_remove(&id);
-                tb.push(ViewableHand::convert_msg_to_task(HandMessage::ShowCards));
+                tb.push(HandMessage::ShowCards.convert_msg_to_task());
             }
             HandMessage::ShowCards => {
                 self.allow_hover = true;

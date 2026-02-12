@@ -15,6 +15,12 @@ pub enum TableMessage {
     TableMiddleMessage(TableMiddleMessage),
 }
 
+impl Message for TableMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        AppMessage::TableMessage(msg)
+    }
+}
+
 pub struct ViewableTable {
     window_size: Size,
     middle: ViewableTableMiddle,
@@ -29,11 +35,9 @@ impl ViewableTable {
     }
 }
 
-impl Message for ViewableTable {
+impl Notifiable for ViewableTable {
     type OwnMessage = TableMessage;
-    fn convert_msg(msg: Self::OwnMessage) -> AppMessage {
-        AppMessage::TableMessage(msg)
-    }
+
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
             TableMessage::TableMiddleMessage(table_middle_msg) => {

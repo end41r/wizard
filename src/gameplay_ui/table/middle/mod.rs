@@ -8,7 +8,7 @@ use crate::{
             card_deck::{CardDeckMessage, ViewableCardDeck},
             card_stack::{CardStackMessage, ViewableCardStack},
         },
-        TableMessage, ViewableTable,
+        TableMessage,
     },
     ui_element_traits::*,
 };
@@ -21,6 +21,12 @@ use iced::{
 pub enum TableMiddleMessage {
     CardDeckMessage(CardDeckMessage),
     CardStackMessage(CardStackMessage),
+}
+
+impl Message for TableMiddleMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        TableMessage::convert_msg_from(TableMessage::TableMiddleMessage(msg))
+    }
 }
 
 pub struct ViewableTableMiddle {
@@ -39,11 +45,9 @@ impl ViewableTableMiddle {
     }
 }
 
-impl Message for ViewableTableMiddle {
+impl Notifiable for ViewableTableMiddle {
     type OwnMessage = TableMiddleMessage;
-    fn convert_msg(msg: Self::OwnMessage) -> AppMessage {
-        ViewableTable::convert_msg(TableMessage::TableMiddleMessage(msg))
-    }
+
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
             TableMiddleMessage::CardDeckMessage(card_deck_msg) => {

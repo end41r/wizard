@@ -3,15 +3,17 @@ pub mod trump_card;
 
 use crate::{
     animation::AnimationStarter,
-    api::{CARD_BACK_PATH, Card},
+    api::{Card, CARD_BACK_PATH},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_img_table_base_scale, card_width_middle,
         hand::ViewableHand,
         table::{
-            HandMessage, middle::{
-                TableMiddleMessage, ViewableTableMiddle, card_deck::{deck_card::ViewableDeckCard, trump_card::ViewableTrumpCard}
-            }
+            middle::{
+                card_deck::{deck_card::ViewableDeckCard, trump_card::ViewableTrumpCard},
+                TableMiddleMessage,
+            },
+            HandMessage,
         },
     },
     ui_element_traits::*,
@@ -29,6 +31,12 @@ pub enum CardDeckMessage {
     Shuffle,
     ClearDeckCards,
     AddDeckCard(usize),
+}
+
+impl Message for CardDeckMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        TableMiddleMessage::convert_msg_from(TableMiddleMessage::CardDeckMessage(msg))
+    }
 }
 
 pub struct ViewableCardDeck {
@@ -49,23 +57,19 @@ impl ViewableCardDeck {
             deal_card_animation_starter: AnimationStarter::new(
                 3,
                 5,
-                ViewableCardDeck::convert_msg(CardDeckMessage::AddDeckCard(0)),
+                CardDeckMessage::AddDeckCard(0).convert_msg(),
             ),
         };
         viewable_card_deck
             .deal_card_animation_starter
-            .on_all_ended(ViewableCardDeck::convert_msg(
-                CardDeckMessage::ClearDeckCards,
-            ));
+            .on_all_ended(CardDeckMessage::ClearDeckCards.convert_msg());
         viewable_card_deck
     }
 }
 
-impl Message for ViewableCardDeck {
+impl Notifiable for ViewableCardDeck {
     type OwnMessage = CardDeckMessage;
-    fn convert_msg(msg: Self::OwnMessage) -> AppMessage {
-        ViewableTableMiddle::convert_msg(TableMiddleMessage::CardDeckMessage(msg))
-    }
+
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
             CardDeckMessage::AddDeckCard(cycle) => {
@@ -85,9 +89,8 @@ impl Message for ViewableCardDeck {
                 } else {
                     self.trump_card = None;
                 }
-                return ViewableHand::convert_msg_to_task(HandMessage::DrawCards(
-                    ViewableHand::build_test_cards(self.window_size),
-                ));
+                return HandMessage::DrawCards(ViewableHand::build_test_cards(self.window_size))
+                    .convert_msg_to_task();
             }
             CardDeckMessage::Shuffle => {}
         }

@@ -9,7 +9,7 @@ use super::{App, AppMessage, MenuState, PlayerCount};
 use crate::ui_element_traits::{Message, Viewable};
 use crate::{
     api::{Card, Suit, Value},
-    gameplay_ui::table::middle::card_deck::{CardDeckMessage, ViewableCardDeck},
+    gameplay_ui::table::middle::card_deck::CardDeckMessage,
 };
 
 /// Format a card for display (e.g., "5 Red", "Wizard", "Jester")
@@ -514,10 +514,9 @@ fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     column![
         state.viewable_table.view(),
         state.viewable_hand.view(),
-        button("Draw Cards").on_press(ViewableCardDeck::convert_msg(CardDeckMessage::Deal(
-            20,
-            Some(Card::new(Suit::Red, Value::Wizard))
-        )))
+        button("Draw Cards").on_press(
+            CardDeckMessage::Deal(20, Some(Card::new(Suit::Red, Value::Wizard))).convert_msg()
+        )
     ]
     .into()
 }

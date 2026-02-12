@@ -3,9 +3,7 @@ pub mod stack_card;
 use crate::{
     api::Card,
     client::{AppMessage, TaskBatcher},
-    gameplay_ui::table::middle::{
-        card_stack::stack_card::ViewableStackCard, TableMiddleMessage, ViewableTableMiddle,
-    },
+    gameplay_ui::table::middle::{card_stack::stack_card::ViewableStackCard, TableMiddleMessage},
     ui_element_traits::*,
 };
 use iced::{
@@ -16,6 +14,12 @@ use iced::{
 #[derive(Debug, Clone)]
 pub enum CardStackMessage {
     CardPlayed(Card),
+}
+
+impl Message for CardStackMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        TableMiddleMessage::convert_msg_from(TableMiddleMessage::CardStackMessage(msg))
+    }
 }
 
 pub struct ViewableCardStack {
@@ -32,11 +36,9 @@ impl ViewableCardStack {
     }
 }
 
-impl Message for ViewableCardStack {
+impl Notifiable for ViewableCardStack {
     type OwnMessage = CardStackMessage;
-    fn convert_msg(msg: Self::OwnMessage) -> AppMessage {
-        ViewableTableMiddle::convert_msg(TableMiddleMessage::CardStackMessage(msg))
-    }
+
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
             CardStackMessage::CardPlayed(card) => self

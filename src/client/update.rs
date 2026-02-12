@@ -4,7 +4,7 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
-use crate::ui_element_traits::{Animated, Message, Resizable};
+use crate::ui_element_traits::{Animated, Notifiable, Resizable};
 
 /// Helper function to get player name from ID using lobby data
 fn get_player_name(state: &App, player_id: u64) -> String {

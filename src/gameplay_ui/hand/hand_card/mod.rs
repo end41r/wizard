@@ -16,8 +16,8 @@ use crate::gameplay_ui::hand::hand_card::{
     animation_hover::HoverAnimation, animation_play::PlayAnimation,
     animation_playable::PlayableAnimation,
 };
-use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
-use crate::gameplay_ui::table::middle::card_stack::{CardStackMessage, ViewableCardStack};
+use crate::gameplay_ui::hand::HandMessage;
+use crate::gameplay_ui::table::middle::card_stack::CardStackMessage;
 use crate::gameplay_ui::{card_height_hand, card_img_hand_base_scale, card_width_hand};
 use crate::ui_element_traits::*;
 use iced::Task;
@@ -48,6 +48,12 @@ pub enum CardMessage {
     CursorMoved(usize, Point),
     ShowPlayableStatus(usize, bool),
     MakeClickable(usize),
+}
+
+impl Message for CardMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        HandMessage::convert_msg_from(HandMessage::CardMessage(msg))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -91,12 +97,10 @@ impl ViewableHandCard {
         };
         viewable_card
             .play_animation
-            .on_end(ViewableHand::convert_msg(HandMessage::DeleteCard(id)));
+            .on_end(HandMessage::DeleteCard(id).convert_msg());
         viewable_card
             .hide_animation
-            .on_end(ViewableHandCard::convert_msg(CardMessage::MakeClickable(
-                id,
-            )));
+            .on_end(CardMessage::MakeClickable(id).convert_msg());
         viewable_card.playable_animation.start();
         viewable_card
     }
@@ -106,12 +110,8 @@ impl ViewableHandCard {
     }
 }
 
-impl Message for ViewableHandCard {
+impl Notifiable for ViewableHandCard {
     type OwnMessage = CardMessage;
-
-    fn convert_msg(msg: CardMessage) -> AppMessage {
-        ViewableHand::convert_msg(HandMessage::CardMessage(msg))
-    }
 
     fn update_with_msg(&mut self, msg: CardMessage) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
@@ -125,18 +125,14 @@ impl Message for ViewableHandCard {
                     // and won't send the CardNotHovered msg.
                     // To ensure that an unhovered card is not sticking up all the time
                     // send NotHovered to all cards except the hovered one.
-                    tb.push(ViewableHandCard::convert_msg_to_task(
-                        CardMessage::NotHovered(self.id),
-                    ))
+                    tb.push(CardMessage::NotHovered(self.id).convert_msg_to_task())
                 };
             }
             CardMessage::Played(id) => {
                 if id == self.id {
                     self.clickable = false;
                     self.play_animation.start();
-                    tb.push(ViewableCardStack::convert_msg_to_task(
-                        CardStackMessage::CardPlayed(self.card.clone()),
-                    ));
+                    tb.push(CardStackMessage::CardPlayed(self.card.clone()).convert_msg_to_task());
                 };
             }
             CardMessage::NotHovered(id) => {
@@ -298,18 +294,15 @@ impl Viewable for ViewableHandCard {
             card = card.push(false_played_effect)
         }
 
-        let msg_hovered: AppMessage = ViewableHandCard::convert_msg(CardMessage::Hovered(self.id));
-        let msg_not_hoverd: AppMessage =
-            ViewableHandCard::convert_msg(CardMessage::NotHovered(self.id));
-        let msg_show_playable_status = ViewableHand::convert_msg(HandMessage::ShowPlayableStatus(
-            self.show_playable_status.not(),
-        ));
+        let msg_hovered: AppMessage = CardMessage::Hovered(self.id).convert_msg();
+        let msg_not_hoverd: AppMessage = CardMessage::NotHovered(self.id).convert_msg();
+        let msg_show_playable_status =
+            HandMessage::ShowPlayableStatus(self.show_playable_status.not()).convert_msg();
         let card_id: usize = self.id;
-        let msg_cursor_moved = move |position: Point| {
-            ViewableHandCard::convert_msg(CardMessage::CursorMoved(card_id, position))
-        };
-        let msg_played = ViewableHandCard::convert_msg(CardMessage::Played(self.id));
-        let msg_false_played = ViewableHandCard::convert_msg(CardMessage::FalsePlayed(self.id));
+        let msg_cursor_moved =
+            move |position: Point| CardMessage::CursorMoved(card_id, position).convert_msg();
+        let msg_played = CardMessage::Played(self.id).convert_msg();
+        let msg_false_played = CardMessage::FalsePlayed(self.id).convert_msg();
 
         let mut mouse_area = MouseArea::new(card)
             .on_enter(msg_hovered)
