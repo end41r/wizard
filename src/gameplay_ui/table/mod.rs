@@ -35,21 +35,17 @@ impl Message for ViewableTable {
         AppMessage::TableMessage(msg)
     }
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
-        let mut tasks: Vec<Task<AppMessage>> = vec![];
         match msg {
             TableMessage::TableMiddleMessage(table_middle_msg) => {
-                tasks.push(self.middle.update_with_msg(table_middle_msg))
+                self.middle.update_with_msg(table_middle_msg)
             }
-        };
-        Task::batch(tasks)
+        }
     }
 }
 
 impl Animated for ViewableTable {
     fn update_animations(&mut self) -> Task<AppMessage> {
-        let mut tasks: Vec<Task<AppMessage>> = vec![];
-        tasks.push(self.middle.update_animations());
-        Task::batch(tasks)
+        self.middle.update_animations()
     }
 }
 

@@ -393,12 +393,10 @@ impl AnimationStarter {
         self.tick % self.animation_delay == 0
     }
     fn check_all_ended(&self) -> bool {
-        // println!("{} == {} * {} + {}", self.tick, self.animation_delay, self.times.unwrap(), self.animation_length);
         (self.tick == self.animation_delay * self.times.unwrap() + self.animation_length)
             || (self.times.unwrap() == 0)
     }
     fn all_ended(&mut self) -> Task<AppMessage> {
-        println!("aa");
         let task: Task<AppMessage> = match &self.on_all_ended {
             Some(msg) => Task::done(msg.clone()),
             None => Task::none(),

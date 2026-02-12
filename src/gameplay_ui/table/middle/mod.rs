@@ -2,7 +2,7 @@ pub mod card_deck;
 pub mod card_stack;
 
 use crate::{
-    client::AppMessage,
+    client::{AppMessage, TaskBatcher},
     gameplay_ui::table::{
         middle::{
             card_deck::{CardDeckMessage, ViewableCardDeck},
@@ -45,25 +45,23 @@ impl Message for ViewableTableMiddle {
         ViewableTable::convert_msg(TableMessage::TableMiddleMessage(msg))
     }
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
-        let mut tasks: Vec<Task<AppMessage>> = vec![];
         match msg {
             TableMiddleMessage::CardDeckMessage(card_deck_msg) => {
-                tasks.push(self.card_deck.update_with_msg(card_deck_msg))
+                self.card_deck.update_with_msg(card_deck_msg)
             }
             TableMiddleMessage::CardStackMessage(card_stack_msg) => {
-                tasks.push(self.card_stack.update_with_msg(card_stack_msg))
+                self.card_stack.update_with_msg(card_stack_msg)
             }
         }
-        Task::batch(tasks)
     }
 }
 
 impl Animated for ViewableTableMiddle {
     fn update_animations(&mut self) -> Task<AppMessage> {
-        let mut tasks: Vec<Task<AppMessage>> = vec![];
-        tasks.push(self.card_deck.update_animations());
-        tasks.push(self.card_stack.update_animations());
-        Task::batch(tasks)
+        TaskBatcher::instant_batch([
+            self.card_deck.update_animations(),
+            self.card_stack.update_animations(),
+        ])
     }
 }
 

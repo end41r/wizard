@@ -3,17 +3,15 @@ pub mod trump_card;
 
 use crate::{
     animation::AnimationStarter,
-    api::{Card, CARD_BACK_PATH},
-    client::AppMessage,
+    api::{CARD_BACK_PATH, Card},
+    client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_img_table_base_scale, card_width_middle,
         hand::ViewableHand,
         table::{
-            middle::{
-                card_deck::{deck_card::ViewableDeckCard, trump_card::ViewableTrumpCard},
-                TableMiddleMessage, ViewableTableMiddle,
-            },
-            HandMessage,
+            HandMessage, middle::{
+                TableMiddleMessage, ViewableTableMiddle, card_deck::{deck_card::ViewableDeckCard, trump_card::ViewableTrumpCard}
+            }
         },
     },
     ui_element_traits::*,
@@ -69,7 +67,6 @@ impl Message for ViewableCardDeck {
         ViewableTableMiddle::convert_msg(TableMiddleMessage::CardDeckMessage(msg))
     }
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
-        let mut tasks: Vec<Task<AppMessage>> = vec![];
         match msg {
             CardDeckMessage::AddDeckCard(cycle) => {
                 let view_able_deck_card = ViewableDeckCard::new(self.window_size, cycle);
@@ -88,27 +85,27 @@ impl Message for ViewableCardDeck {
                 } else {
                     self.trump_card = None;
                 }
-                tasks.push(ViewableHand::convert_msg_to_task(HandMessage::DrawCards(
+                return ViewableHand::convert_msg_to_task(HandMessage::DrawCards(
                     ViewableHand::build_test_cards(self.window_size),
-                )));
+                ));
             }
             CardDeckMessage::Shuffle => {}
         }
-        Task::batch(tasks)
+        Task::none()
     }
 }
 
 impl Animated for ViewableCardDeck {
     fn update_animations(&mut self) -> Task<AppMessage> {
-        let mut tasks: Vec<Task<AppMessage>> = vec![];
-        tasks.push(self.deal_card_animation_starter.next_frame());
+        let mut tb = TaskBatcher::new();
+        tb.push(self.deal_card_animation_starter.next_frame());
         if self.trump_card.is_some() {
-            tasks.push(self.trump_card.as_mut().unwrap().update_animations());
+            tb.push(self.trump_card.as_mut().unwrap().update_animations());
         }
         for card in self.deck_cards.iter_mut() {
-            tasks.push(card.update_animations());
+            tb.push(card.update_animations());
         }
-        Task::batch(tasks)
+        tb.batch()
     }
 }
 

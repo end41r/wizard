@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, ServerMessage, Value, B, C, S};
+use crate::client::TaskBatcher;
 use crate::ui_element_traits::{Animated, Message, Resizable};
 
 /// Helper function to get player name from ID using lobby data
@@ -33,7 +34,7 @@ fn format_card(card: &Card) -> String {
 }
 
 pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
-    let mut tasks: Vec<Task<AppMessage>> = vec![];
+    let mut tb = TaskBatcher::new();
     match msg {
         AppMessage::Navigate(menu) => {
             state.menu = menu;
@@ -67,7 +68,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::CopyToClipboard(addr) => {
             state.last_msg = "Server address copied to clipboard.".to_string();
-            tasks.push(clipboard::write(addr))
+            tb.push(clipboard::write(addr))
         }
 
         AppMessage::SendChat => {
@@ -274,14 +275,14 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             handle_tick(state);
         }
         AppMessage::HandMessage(hand_msg) => {
-            tasks.push(state.viewable_hand.update_with_msg(hand_msg.clone()));
+            tb.push(state.viewable_hand.update_with_msg(hand_msg.clone()));
         }
         AppMessage::TableMessage(table_msg) => {
-            tasks.push(state.viewable_table.update_with_msg(table_msg.clone()));
+            tb.push(state.viewable_table.update_with_msg(table_msg.clone()));
         }
         AppMessage::AnimationTick => {
-            tasks.push(state.viewable_hand.update_animations());
-            tasks.push(state.viewable_table.update_animations());
+            tb.push(state.viewable_hand.update_animations());
+            tb.push(state.viewable_table.update_animations());
         }
         AppMessage::WindowResized(window_size) => {
             state.window_size = window_size;
@@ -289,7 +290,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.viewable_table.update_size(window_size);
         }
     }
-    Task::batch(tasks)
+    tb.batch()
 }
 
 fn handle_tick(state: &mut App) {

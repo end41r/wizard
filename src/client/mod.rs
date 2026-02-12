@@ -9,7 +9,7 @@ use crate::gameplay_ui::table::{
     middle::{card_deck::CardDeckMessage, TableMiddleMessage},
     TableMessage, ViewableTable,
 };
-use iced::{time, window, Size, Subscription};
+use iced::{time, window, Size, Subscription, Task};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -218,6 +218,28 @@ impl AppMessage {
             )),
             _ => self.clone(),
         }
+    }
+}
+
+pub struct TaskBatcher {
+    tasks: Vec<Task<AppMessage>>,
+}
+
+impl TaskBatcher {
+    pub fn new() -> Self {
+        Self { tasks: vec![] }
+    }
+    pub fn push(&mut self, task: Task<AppMessage>) {
+        if task.units() != 0 {
+            self.tasks.push(task)
+        }
+    }
+    pub fn batch(self) -> Task<AppMessage> {
+        Task::batch(self.tasks)
+    }
+    // AI-Usage: Gemini for learning how to put an array into a function and filter it.
+    pub fn instant_batch<const SIZE: usize>(tasks: [Task<AppMessage>; SIZE]) -> Task<AppMessage> {
+        Task::batch(tasks.into_iter().filter(|task| task.units() != 0))
     }
 }
 

@@ -9,7 +9,7 @@ mod animation_playable;
 use crate::api::{
     get_card_path, Card, FALSE_PLAYED_PATH, FRAME_PLAYABLE_FOCUSED_PATH, FRAME_PLAYABLE_PATH,
 };
-use crate::client::AppMessage;
+use crate::client::{AppMessage, TaskBatcher};
 use crate::gameplay_ui::hand::hand_card::{
     animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
     animation_focus::FocusAnimation, animation_hide::HideAnimation,
@@ -114,7 +114,7 @@ impl Message for ViewableHandCard {
     }
 
     fn update_with_msg(&mut self, msg: CardMessage) -> Task<AppMessage> {
-        let mut tasks: Vec<Task<AppMessage>> = vec![];
+        let mut tb = TaskBatcher::new();
         match msg {
             CardMessage::Hovered(id) => {
                 if id == self.id {
@@ -125,7 +125,7 @@ impl Message for ViewableHandCard {
                     // and won't send the CardNotHovered msg.
                     // To ensure that an unhovered card is not sticking up all the time
                     // send NotHovered to all cards except the hovered one.
-                    tasks.push(ViewableHandCard::convert_msg_to_task(
+                    tb.push(ViewableHandCard::convert_msg_to_task(
                         CardMessage::NotHovered(self.id),
                     ))
                 };
@@ -134,14 +134,13 @@ impl Message for ViewableHandCard {
                 if id == self.id {
                     self.clickable = false;
                     self.play_animation.start();
-                    tasks.push(ViewableCardStack::convert_msg_to_task(
+                    tb.push(ViewableCardStack::convert_msg_to_task(
                         CardStackMessage::CardPlayed(self.card.clone()),
                     ));
                 };
             }
             CardMessage::NotHovered(id) => {
                 if id == self.id {
-                    // println!("{} {}", id, self.id);
                     self.hover_animation.reverse();
                     self.focus_animation.reset();
                     self.rotation = 0.0;
@@ -187,13 +186,13 @@ impl Message for ViewableHandCard {
                 }
             }
         }
-        Task::batch(tasks)
+        tb.batch()
     }
 }
 
 impl Animated for ViewableHandCard {
     fn update_animations(&mut self) -> Task<AppMessage> {
-        Task::batch(vec![
+        TaskBatcher::instant_batch([
             self.draw_animation.next_frame(),
             self.hover_animation.next_frame(),
             self.play_animation.next_frame(),

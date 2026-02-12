@@ -2,7 +2,7 @@ pub mod stack_card;
 
 use crate::{
     api::Card,
-    client::AppMessage,
+    client::{AppMessage, TaskBatcher},
     gameplay_ui::table::middle::{
         card_stack::stack_card::ViewableStackCard, TableMiddleMessage, ViewableTableMiddle,
     },
@@ -49,11 +49,11 @@ impl Message for ViewableCardStack {
 
 impl Animated for ViewableCardStack {
     fn update_animations(&mut self) -> Task<AppMessage> {
-        let mut tasks: Vec<Task<AppMessage>> = vec![];
+        let mut tb = TaskBatcher::new();
         for card in self.cards.iter_mut() {
-            tasks.push(card.update_animations());
+            tb.push(card.update_animations());
         }
-        Task::batch(tasks)
+        tb.batch()
     }
 }
 
