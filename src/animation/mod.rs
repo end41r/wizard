@@ -25,7 +25,6 @@
 /// via the new function.
 /// Keep in mind that if you choose 0 for the animation duration the animation will always
 /// count as finished (the progress function returns 1.0).
-pub mod animation_end_sensor;
 pub mod animation_starter;
 
 use derive_more::{Deref, DerefMut};

@@ -86,6 +86,7 @@ impl ViewableHandCard {
             focus_animation: FocusAnimation::new(70),
             hide_animation: HideAnimation::new(play_duration),
         };
+        viewable_card.play_animation.on_end(ViewableHand::convert_msg(HandMessage::DeleteCard(id)));
         viewable_card.playable_animation.start();
         viewable_card
     }

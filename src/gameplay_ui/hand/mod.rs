@@ -1,7 +1,7 @@
 pub mod hand_card;
 
 use crate::animation::{
-    animation_end_sensor::AnimationEndSensor, animation_starter::AnimationStarter,
+    animation_starter::AnimationStarter,
 };
 use crate::client::AppMessage;
 use crate::gamelogic::round::random_card;
@@ -19,6 +19,7 @@ use std::num::NonZero;
 #[derive(Debug, Clone)]
 pub enum HandMessage {
     CardMessage(CardMessage),
+    DeleteCard(usize),
     DrawCards(Vec<ViewableHandCard>),
     HideCards,
     ShowCards,
@@ -31,11 +32,11 @@ pub struct ViewableHand {
 
     pub cards: IndexMap<usize, ViewableHandCard>,
     hovered_card_row_low: bool,
+    allow_hover: bool,
     hovered_card_id: Option<usize>,
     played_card_id: Option<usize>,
     top_card_id_upper: Option<usize>,
     top_card_id_lower: Option<usize>,
-    hide_animation_end_sensor: AnimationEndSensor<usize>,
     // AI-Usage: Claude.ai for the idea of passing a union type for a generic
     //           where the type doesn't matter.
     draw_animation_starter: AnimationStarter<()>,
@@ -47,12 +48,11 @@ impl ViewableHand {
             window_size,
             cards: IndexMap::from([]),
             hovered_card_row_low: true,
+            allow_hover: true,
             hovered_card_id: None,
             played_card_id: None,
             top_card_id_upper: None,
             top_card_id_lower: None,
-            // 12 is the duration of the hide animation.
-            hide_animation_end_sensor: AnimationEndSensor::new(12),
             // 3 is the delay for the animation start.
             draw_animation_starter: AnimationStarter::new(NonZero::new(3).unwrap(), 10),
         }
@@ -241,7 +241,7 @@ impl Message for ViewableHand {
             HandMessage::CardMessage(card_msg) => {
                 match card_msg {
                     CardMessage::Hovered(id) => {
-                        if !self.hide_animation_end_sensor.active() {
+                        if self.allow_hover {
                             tasks.append(self.update_cards_with_msg(card_msg).as_mut());
                             self.hovered_card_id = Some(id);
                             if self.upper_row_exists() &&
@@ -262,7 +262,6 @@ impl Message for ViewableHand {
                             self.played_card_id = Some(id);
                             tasks.append(self.update_cards_with_msg(card_msg).as_mut());
                             tasks.push(ViewableHand::convert_msg_to_task(HandMessage::HideCards));
-                            self.hide_animation_end_sensor.start(Some(id));
                         }
                     }
                     _ => {
@@ -271,6 +270,7 @@ impl Message for ViewableHand {
                 }
             }
             HandMessage::HideCards => {
+                self.allow_hover = false;
                 for (id, card) in self.cards.iter_mut() {
                     if self.played_card_id.is_some() && self.played_card_id.unwrap() != *id {
                         tasks.push(card.update_with_msg(CardMessage::Hide(*id)));
@@ -278,7 +278,12 @@ impl Message for ViewableHand {
                 }
                 self.played_card_id = None;
             }
+            HandMessage::DeleteCard(id) => {
+                self.cards.shift_remove(&id);
+                tasks.push(ViewableHand::convert_msg_to_task(HandMessage::ShowCards));
+            }
             HandMessage::ShowCards => {
+                self.allow_hover = true;
                 for (id, card) in self.cards.iter_mut() {
                     tasks.push(card.update_with_msg(CardMessage::Show(*id)));
                 }
@@ -290,7 +295,6 @@ impl Message for ViewableHand {
                 self.top_card_id_lower = None;
                 self.top_card_id_upper = None;
                 self.draw_animation_starter.reset();
-                self.hide_animation_end_sensor.reset();
                 self.update_size(self.window_size);
                 self.draw_animation_starter
                     .start(None, NonZero::new(self.cards.len()).unwrap());
@@ -317,16 +321,6 @@ impl Animated for ViewableHand {
         for (_, card) in self.cards.iter_mut2() {
             tasks.push(card.update_animations());
         }
-
-        if self
-            .hide_animation_end_sensor
-            .check(|h: &mut AnimationEndSensor<usize>| {
-                let key: &usize = h.content().unwrap();
-                self.cards.shift_remove(key);
-            })
-        {
-            tasks.push(self.update_with_msg(HandMessage::ShowCards));
-        };
         Task::batch(tasks)
     }
 }
