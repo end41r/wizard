@@ -3,24 +3,20 @@ pub mod trump_card;
 
 use crate::{
     animation::AnimationStarter,
-    api::{Card, CARD_BACK_PATH},
+    api::{CARD_BACK_PATH, Card},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_img_table_base_scale, card_width_middle,
-        hand::ViewableHand,
-        table::{
-            middle::{
-                card_deck::{deck_card::ViewableDeckCard, trump_card::ViewableTrumpCard},
-                TableMiddleMessage,
-            },
-            HandMessage,
-        },
+        card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point, card_img_middle_base_scale, hand::ViewableHand, table::{
+            HandMessage, middle::{
+                TableMiddleMessage, card_deck::{deck_card::ViewableDeckCard, trump_card::ViewableTrumpCard}
+            }
+        }
     },
     ui_element_traits::*,
 };
 use iced::{
     widget::{image, pin, stack, Container},
-    Point, Size, Task,
+    Size, Task,
 };
 
 type TrumpCard = Card;
@@ -125,10 +121,10 @@ impl Animated for ViewableCardDeck {
 
 impl Resizable for ViewableCardDeck {
     fn height(&self) -> f32 {
-        ViewableDeckCard::height_for(self.window_size)
+        card_area_middle_space_heigth(self.window_size)
     }
     fn width(&self) -> f32 {
-        ViewableDeckCard::width_for(self.window_size)
+        card_area_middle_space_width(self.window_size)
     }
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size;
@@ -145,26 +141,24 @@ impl Viewable for ViewableCardDeck {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let mut card_stack = stack!();
         if self.show_base_card {
-            let img = image(CARD_BACK_PATH.to_string())
-                .width(self.width() * card_img_table_base_scale())
-                .height(self.height() * card_img_table_base_scale());
-            card_stack = card_stack.push(pin(img).position(Point::new(
-                card_width_middle(self.window_size) / 6.0,
-                card_width_middle(self.window_size) / 6.0,
-            )));
+            let width = ViewableDeckCard::width_for(self.window_size);
+            let heigth = ViewableDeckCard::height_for(self.window_size);
+            let spawn_point = card_area_middle_spawn_point(width, heigth, self.window_size);
+            let img = pin(image(CARD_BACK_PATH.to_string())
+                .width(width)
+                .height(heigth)
+                .scale(card_img_middle_base_scale())).position(spawn_point);
+            card_stack = card_stack.push(img);
         }
         for card in self.deck_cards.iter() {
-            card_stack = card_stack.push(card.view_and_move(
-                card_width_middle(self.window_size) / 6.0 + card.offset().x,
-                card_width_middle(self.window_size) / 6.0 + card.offset().y,
-            ));
+            let spawn_point = card_area_middle_spawn_point(card.width(), card.height(), self.window_size);
+            card_stack = card_stack.push(card.view_and_move(spawn_point.x + card.offset().x, spawn_point.y + card.offset().y));
         }
         if self.trump_card.is_some() {
-            card_stack = card_stack.push(self.trump_card.as_ref().unwrap().view_and_move(
-                card_width_middle(self.window_size) / 6.0,
-                card_width_middle(self.window_size) / 6.0,
-            ))
-        }
+            let trump_card = self.trump_card.as_ref().unwrap();
+            let spawn_point = card_area_middle_spawn_point(trump_card.width(), trump_card.height(), self.window_size);
+            card_stack = card_stack.push(trump_card.view_and_move(spawn_point.x, spawn_point.y));
+        };
         Container::new(card_stack)
             .width(self.width())
             .height(self.height())

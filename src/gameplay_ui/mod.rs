@@ -1,7 +1,7 @@
 pub mod hand;
 pub mod table;
 
-use iced::Size;
+use iced::{Point, Size};
 
 // The hand size is depending on the window size with the factor 0.1.
 static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
@@ -16,16 +16,16 @@ static CARD_COLUMN_STEP_MULT_WITH_CARD_WIDTH: f32 = 1.0 / 3.0;
 // Adjust this arbitrary value to manipulate the height of the hand,
 static CARD_ROW_STEP_MULT_WITH_WINDOW_WIDTH: f32 = CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH * 0.43;
 
-// 1.5 to make a middle card appear a bit smaller than a hand card.
-static CARD_MIDDLE_HAND_RELATION_MULT_WITH_WINDOW_WIDTH: f32 = 1.5;
-
-// The factor 0.92 is chosen so the card img will not get clipped when rotated.
+// The factor is chosen so the card img will not get clipped when rotated.
 static CARD_IMG_BASE_SCALE: f32 = 0.92;
+static CARD_IMG_MIDDLE_BASE_SCALE: f32 = 0.8;
+
+static CARD_AREA_MIDDLE_RELATION: f32 = 1.3;
 
 fn card_width_hand(window_size: Size) -> f32 {
     CARD_WIDTH_MULT_WITH_WINDOW_WIDTH * window_size.width
 }
-fn card_height_hand(window_size: Size) -> f32 {
+fn card_heigth_hand(window_size: Size) -> f32 {
     CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH * window_size.width
 }
 fn card_column_step_hand(card_width: f32) -> f32 {
@@ -34,15 +34,27 @@ fn card_column_step_hand(card_width: f32) -> f32 {
 fn card_row_step_hand(window_size: Size) -> f32 {
     CARD_ROW_STEP_MULT_WITH_WINDOW_WIDTH * window_size.width
 }
-fn card_width_middle(window_size: Size) -> f32 {
-    card_width_hand(window_size) * CARD_MIDDLE_HAND_RELATION_MULT_WITH_WINDOW_WIDTH
-}
-fn card_heigth_middle(window_size: Size) -> f32 {
-    card_height_hand(window_size) * CARD_MIDDLE_HAND_RELATION_MULT_WITH_WINDOW_WIDTH
-}
-fn card_img_hand_base_scale() -> f32 {
+fn card_img_base_scale() -> f32 {
     CARD_IMG_BASE_SCALE
 }
-fn card_img_table_base_scale() -> f32 {
-    CARD_IMG_BASE_SCALE * (2.0 / 3.0)
+fn card_img_middle_base_scale() -> f32 {
+    CARD_IMG_MIDDLE_BASE_SCALE
+}
+fn card_width_middle(window_size: Size) -> f32 {
+    card_width_hand(window_size) * (card_img_base_scale() / card_img_middle_base_scale())
+}
+fn card_heigth_middle(window_size: Size) -> f32 {
+    card_heigth_hand(window_size) * (card_img_base_scale() / card_img_middle_base_scale())
+}
+fn card_area_middle_space_width(window_size: Size) -> f32 {
+    card_width_middle(window_size) * CARD_AREA_MIDDLE_RELATION
+}
+fn card_area_middle_space_heigth(window_size: Size) -> f32 {
+    card_heigth_middle(window_size) * CARD_AREA_MIDDLE_RELATION
+}
+fn card_area_middle_spawn_point(width: f32, height: f32, window_size: Size) -> Point {
+    Point::new(
+        (card_area_middle_space_width(window_size) - width) / 2.0,
+        (card_area_middle_space_heigth(window_size) - height) / 2.0
+    )
 }

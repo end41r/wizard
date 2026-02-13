@@ -2,7 +2,7 @@ use crate::{
     animation::{Easing, ReversableBasicAnimation},
     api::CARD_BACK_PATH,
     client::AppMessage,
-    gameplay_ui::{card_heigth_middle, card_img_table_base_scale, card_width_middle},
+    gameplay_ui::{card_heigth_hand, card_heigth_middle, card_img_middle_base_scale, card_width_hand, card_width_middle},
     ui_element_traits::*,
 };
 use derive_more::{Deref, DerefMut};
@@ -34,6 +34,7 @@ impl DealAnimation {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ViewableDeckCard {
     window_size: Size,
     direction: Direction,
@@ -52,8 +53,8 @@ impl ViewableDeckCard {
     }
     pub fn offset(&self) -> Point {
         let linear_progress: f32 = self.deal_animation.get_offset();
-        let horizontal_offset: f32 = linear_progress * card_width_middle(self.window_size) / 6.0;
-        let vertical_offset: f32 = linear_progress * card_heigth_middle(self.window_size) / 6.0;
+        let horizontal_offset: f32 = linear_progress * card_width_hand(self.window_size) / 6.0;
+        let vertical_offset: f32 = linear_progress * card_heigth_hand(self.window_size) / 6.0;
         match self.direction {
             Direction::Down => Point::new(0.0, linear_progress * horizontal_offset),
             Direction::Left => Point::new(-linear_progress * vertical_offset, 0.0),
@@ -102,8 +103,9 @@ impl SizeFromOutside for ViewableDeckCard {
 impl Viewable for ViewableDeckCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let img = image(CARD_BACK_PATH.to_string())
-            .width(self.width() * card_img_table_base_scale())
-            .height(self.height() * card_img_table_base_scale())
+            .width(self.width())
+            .height(self.height())
+            .scale(card_img_middle_base_scale())
             .opacity(self.deal_animation.get_opacity());
         Container::new(img)
     }

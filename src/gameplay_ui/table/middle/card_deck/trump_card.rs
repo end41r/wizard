@@ -2,16 +2,15 @@ use crate::{
     api::get_card_path,
     client::AppMessage,
     gameplay_ui::{
-        card_heigth_middle, card_img_table_base_scale, card_width_middle,
-        table::middle::card_deck::Card,
+        card_heigth_middle, card_img_middle_base_scale, card_width_middle, table::middle::card_deck::Card
     },
     ui_element_traits::*,
 };
 use iced::{
-    widget::{image, Container},
-    Size, Task,
+    Size, Task, widget::{Container, image}
 };
 
+#[derive(Debug, Clone)]
 pub struct ViewableTrumpCard {
     window_size: Size,
     trump_card: Card,
@@ -47,8 +46,9 @@ impl Resizable for ViewableTrumpCard {
 impl Viewable for ViewableTrumpCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let img = image(get_card_path(self.trump_card))
-            .width(self.width() * card_img_table_base_scale())
-            .height(self.height() * card_img_table_base_scale());
+            .width(self.width())
+            .height(self.height())
+            .scale(card_img_middle_base_scale());
         Container::new(img)
     }
 }

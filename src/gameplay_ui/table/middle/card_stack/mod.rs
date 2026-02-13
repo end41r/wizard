@@ -3,12 +3,11 @@ pub mod stack_card;
 use crate::{
     api::Card,
     client::{AppMessage, TaskBatcher},
-    gameplay_ui::table::middle::{card_stack::stack_card::ViewableStackCard, TableMiddleMessage},
+    gameplay_ui::{card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point, table::middle::{TableMiddleMessage, card_stack::stack_card::ViewableStackCard}},
     ui_element_traits::*,
 };
 use iced::{
-    widget::{Container, Stack},
-    Size, Task,
+    Size, Task, widget::{Container, Stack}
 };
 
 #[derive(Debug, Clone)]
@@ -61,10 +60,10 @@ impl Animated for ViewableCardStack {
 
 impl Resizable for ViewableCardStack {
     fn height(&self) -> f32 {
-        ViewableStackCard::height_for(self.window_size)
+        card_area_middle_space_heigth(self.window_size)
     }
     fn width(&self) -> f32 {
-        ViewableStackCard::width_for(self.window_size)
+        card_area_middle_space_width(self.window_size)
     }
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size;
@@ -78,7 +77,8 @@ impl Viewable for ViewableCardStack {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let mut card_stack = Stack::new();
         for card in self.cards.iter() {
-            card_stack = card_stack.push(card.view())
+            let spawn_point = card_area_middle_spawn_point(card.width(), card.height(), self.window_size);
+            card_stack = card_stack.push(card.view_and_move(spawn_point.x, spawn_point.y))
         }
         Container::new(card_stack)
             .width(self.width())
