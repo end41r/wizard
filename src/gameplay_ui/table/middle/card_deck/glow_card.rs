@@ -60,7 +60,7 @@ impl CardStackGlow {
         let mut card_stack_glow = Self {
             window_size,
             img_path: "".to_string(),
-            reveal_animation: RevealAnimation::new(120),
+            reveal_animation: RevealAnimation::new(30),
             glow_animation: GlowAnimation::new(60),
         };
         card_stack_glow

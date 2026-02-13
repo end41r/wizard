@@ -77,7 +77,10 @@ impl Notifiable for ViewableCardStack {
                 self.cards
                     .push(ViewableStackCard::new(self.window_size, card));
                 if self.cards.len() == 1 {
-                    return CardDeckMessage::ChangeGlow(card).convert_msg_to_task();
+                    return TaskBatcher::instant_batch([
+                        CardDeckMessage::ChangeGlow(card).convert_msg_to_task(),
+                        CardDeckMessage::ShowGlow.convert_msg_to_task()
+                    ])
                 }
             }
             CardStackMessage::HideAllCard => {

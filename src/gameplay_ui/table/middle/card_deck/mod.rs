@@ -44,6 +44,7 @@ pub enum CardDeckMessage {
     TrumpCardMessage(TrumpCardMessage),
     ChangeGlow(Card),
     GlowMessage(GlowMessage),
+    ShowGlow,
 }
 
 impl Message for CardDeckMessage {
@@ -65,6 +66,7 @@ impl ReplaceUsize for CardDeckMessage {
             CardDeckMessage::Shuffle => self.clone(),
             CardDeckMessage::ChangeGlow(_) => self.clone(),
             CardDeckMessage::GlowMessage(_) => self.clone(),
+            CardDeckMessage::ShowGlow => self.clone()
         }
     }
 }
@@ -130,7 +132,6 @@ impl Notifiable for ViewableCardDeck {
             }
             CardDeckMessage::Deal(cards, trump_card) => {
                 let mut tb = TaskBatcher::new();
-                self.glow.reveal_animation.start_force();
                 if self.deal_msg.is_none() {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
                     self.deal_card_animation_starter.start(cards);
@@ -182,6 +183,9 @@ impl Notifiable for ViewableCardDeck {
             }
             CardDeckMessage::GlowMessage(glow_msg) => {
                 return self.glow.update_with_msg(glow_msg);
+            }
+            CardDeckMessage::ShowGlow => {
+                self.glow.reveal_animation.start_force();
             }
         }
         Task::none()
