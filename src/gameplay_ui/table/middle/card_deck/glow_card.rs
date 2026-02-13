@@ -1,6 +1,17 @@
-use crate::{animation::{CircularAutoReversingAnimation, Easing, ReversableBasicAnimation}, api::{Card, get_glow_path}, client::{AppMessage, TaskBatcher}, gameplay_ui::{card_heigth_middle, card_width_middle}, ui_element_traits::{Animated, Resizable, Viewable}};
+use crate::{
+    animation::{CircularAutoReversingAnimation, Easing, ReversableBasicAnimation},
+    api::{get_glow_path, Card},
+    client::{AppMessage, TaskBatcher},
+    gameplay_ui::{
+        card_heigth_middle, card_width_middle, table::middle::card_deck::CardDeckMessage,
+    },
+    ui_element_traits::{Animated, Message, Notifiable, Resizable, Viewable},
+};
 use derive_more::{Deref, DerefMut};
-use iced::{Size, widget::{Container, image}};
+use iced::{
+    widget::{image, Container},
+    Size, Task,
+};
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct RevealAnimation(ReversableBasicAnimation);
@@ -26,6 +37,17 @@ impl GlowAnimation {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum GlowMessage {
+    ResetColor,
+}
+
+impl Message for GlowMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        CardDeckMessage::convert_msg_from(CardDeckMessage::GlowMessage(msg))
+    }
+}
+
 pub struct CardStackGlow {
     window_size: Size,
     img_path: String,
@@ -38,17 +60,29 @@ impl CardStackGlow {
         let mut card_stack_glow = Self {
             window_size,
             img_path: "".to_string(),
-            reveal_animation: RevealAnimation::new(250),
-            glow_animation: GlowAnimation::new(60)
+            reveal_animation: RevealAnimation::new(120),
+            glow_animation: GlowAnimation::new(60),
         };
+        card_stack_glow
+            .reveal_animation
+            .on_start(GlowMessage::ResetColor.convert_msg());
         card_stack_glow.glow_animation.start();
         card_stack_glow
     }
     pub fn change_color(&mut self, card: Card) {
         self.img_path = get_glow_path(card);
     }
-    pub fn reset_color(&mut self) {
-        self.img_path = "".to_string()
+}
+
+impl Notifiable for CardStackGlow {
+    type OwnMessage = GlowMessage;
+    fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
+        match msg {
+            GlowMessage::ResetColor => {
+                self.img_path = "".to_string();
+            }
+        }
+        Task::none()
     }
 }
 
@@ -56,7 +90,7 @@ impl Animated for CardStackGlow {
     fn update_animations(&mut self) -> iced::Task<crate::client::AppMessage> {
         TaskBatcher::instant_batch([
             self.reveal_animation.next_frame(),
-            self.glow_animation.next_frame()
+            self.glow_animation.next_frame(),
         ])
     }
 }
@@ -78,7 +112,11 @@ impl Viewable for CardStackGlow {
         let img = image(self.img_path.to_string())
             .width(self.width())
             .height(self.height())
-            .opacity(self.glow_animation.get_opacity().min(self.reveal_animation.get_opacity()));
+            .opacity(
+                self.glow_animation
+                    .get_opacity()
+                    .min(self.reveal_animation.get_opacity()),
+            );
         Container::new(img)
     }
 }

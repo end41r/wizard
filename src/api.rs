@@ -228,4 +228,3 @@ pub fn get_glow_path(card: Card) -> String {
     path.push_str(".png");
     path
 }
-

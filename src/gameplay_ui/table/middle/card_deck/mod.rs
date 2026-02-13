@@ -1,21 +1,26 @@
 pub mod deck_card;
+pub mod glow_card;
 pub mod trump_card;
 
 use crate::{
     animation::AnimationStarter,
-    api::{CARD_BACK_PATH, Card},
+    api::{Card, CARD_BACK_PATH},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point,
         card_img_middle_base_scale,
         hand::ViewableHand,
         table::{
-            HandMessage, middle::{
-                TableMiddleMessage, card_deck::{
+            middle::{
+                card_deck::{
                     deck_card::ViewableDeckCard,
+                    glow_card::{CardStackGlow, GlowMessage},
                     trump_card::{TrumpCardMessage, ViewableTrumpCard},
-                }, card_stack::{CardStackMessage, glow_card::CardStackGlow}
-            }
+                },
+                card_stack::CardStackMessage,
+                TableMiddleMessage,
+            },
+            HandMessage,
         },
     },
     ui_element_traits::*,
@@ -38,6 +43,7 @@ pub enum CardDeckMessage {
     DealDeckCard(usize),
     TrumpCardMessage(TrumpCardMessage),
     ChangeGlow(Card),
+    GlowMessage(GlowMessage),
 }
 
 impl Message for CardDeckMessage {
@@ -58,6 +64,7 @@ impl ReplaceUsize for CardDeckMessage {
             CardDeckMessage::ClearTrumpCard => self.clone(),
             CardDeckMessage::Shuffle => self.clone(),
             CardDeckMessage::ChangeGlow(_) => self.clone(),
+            CardDeckMessage::GlowMessage(_) => self.clone(),
         }
     }
 }
@@ -70,7 +77,7 @@ pub struct ViewableCardDeck {
     trump_card: Option<ViewableTrumpCard>,
     deck_cards: Vec<ViewableDeckCard>,
     deal_card_animation_starter: AnimationStarter<CardDeckMessage, CardDeckMessage>,
-    clear_card_animation_starter: AnimationStarter<CardDeckMessage, CardDeckMessage>
+    clear_card_animation_starter: AnimationStarter<CardDeckMessage, CardDeckMessage>,
 }
 
 impl ViewableCardDeck {
@@ -118,7 +125,8 @@ impl Notifiable for ViewableCardDeck {
             }
             CardDeckMessage::ClearTrumpCard => {
                 self.trump_card = None;
-                self.clear_card_animation_starter.start(self.deal_card_animation_starter.times());
+                self.clear_card_animation_starter
+                    .start(self.deal_card_animation_starter.times());
             }
             CardDeckMessage::Deal(cards, trump_card) => {
                 let mut tb = TaskBatcher::new();
@@ -134,23 +142,26 @@ impl Notifiable for ViewableCardDeck {
                     } else {
                         self.trump_card = None;
                     }
-                    tb.push(HandMessage::DrawCards(ViewableHand::build_test_cards(self.window_size)).convert_msg_to_task());
+                    tb.push(
+                        HandMessage::DrawCards(ViewableHand::build_test_cards(self.window_size))
+                            .convert_msg_to_task(),
+                    );
                 } else {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
                     tb.push(CardDeckMessage::Shuffle.convert_msg_to_task());
                     tb.push(CardStackMessage::HideAllCard.convert_msg_to_task());
                 }
-                return tb.batch()
+                return tb.batch();
             }
             CardDeckMessage::AllDealt => {
                 self.deck_cards.clear();
-                return TrumpCardMessage::TurnPart1.convert_msg_to_task()
+                return TrumpCardMessage::TurnPart1.convert_msg_to_task();
             }
             CardDeckMessage::AllCleared => {
                 if self.deal_msg.is_some() {
                     let deal_msg_copy: Option<CardDeckMessage> = self.deal_msg.clone();
                     self.deal_msg = None;
-                    return deal_msg_copy.unwrap().convert_msg_to_task()
+                    return deal_msg_copy.unwrap().convert_msg_to_task();
                 }
             }
             CardDeckMessage::TrumpCardMessage(trump_card_msg) => {
@@ -163,12 +174,14 @@ impl Notifiable for ViewableCardDeck {
                 }
             }
             CardDeckMessage::Shuffle => {
-                self.glow.reset_color();
                 self.glow.reveal_animation.reverse();
-                return TrumpCardMessage::RemovePart1.convert_msg_to_task()
+                return TrumpCardMessage::RemovePart1.convert_msg_to_task();
             }
             CardDeckMessage::ChangeGlow(card) => {
                 self.glow.change_color(card);
+            }
+            CardDeckMessage::GlowMessage(glow_msg) => {
+                return self.glow.update_with_msg(glow_msg);
             }
         }
         Task::none()
@@ -216,7 +229,8 @@ impl Viewable for ViewableCardDeck {
 
         let width: f32 = ViewableDeckCard::width_for(self.window_size);
         let heigth: f32 = ViewableDeckCard::height_for(self.window_size);
-        let spawn_point: iced::Point = card_area_middle_spawn_point(width, heigth, self.window_size);
+        let spawn_point: iced::Point =
+            card_area_middle_spawn_point(width, heigth, self.window_size);
         card_stack = card_stack.push(self.glow.view_and_move(spawn_point.x, spawn_point.y));
         if self.show_base_card {
             // Construct base card template

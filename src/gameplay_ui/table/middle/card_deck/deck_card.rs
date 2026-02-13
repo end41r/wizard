@@ -110,7 +110,11 @@ impl SizeFromOutside for ViewableDeckCard {
 
 impl Viewable for ViewableDeckCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        let opacity = if self.add {1.0 - self.deal_animation.get_opacity()} else {self.deal_animation.get_opacity()};
+        let opacity = if self.add {
+            1.0 - self.deal_animation.get_opacity()
+        } else {
+            self.deal_animation.get_opacity()
+        };
         let img = image(CARD_BACK_PATH.to_string())
             .width(self.width())
             .height(self.height())

@@ -1,9 +1,10 @@
 use crate::{
     animation::{BasicAnimation, Easing},
-    api::{Card, get_card_path},
+    api::{get_card_path, Card},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        CARD_AREA_MIDDLE_RELATION, card_heigth_middle, card_img_middle_base_scale, card_width_middle,
+        card_heigth_middle, card_img_middle_base_scale, card_width_middle,
+        CARD_AREA_MIDDLE_RELATION,
     },
     ui_element_traits::*,
 };
@@ -73,7 +74,7 @@ impl Animated for ViewableStackCard {
     fn update_animations(&mut self) -> Task<AppMessage> {
         TaskBatcher::instant_batch([
             self.reveal_animation.next_frame(),
-            self.remove_animation.next_frame()
+            self.remove_animation.next_frame(),
         ])
     }
 }
@@ -83,7 +84,9 @@ impl Resizable for ViewableStackCard {
         card_heigth_middle(self.window_size) * self.reveal_animation.get_scale()
     }
     fn width(&self) -> f32 {
-        card_width_middle(self.window_size) * self.reveal_animation.get_scale() * self.remove_animation.get_contraction()
+        card_width_middle(self.window_size)
+            * self.reveal_animation.get_scale()
+            * self.remove_animation.get_contraction()
     }
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size
