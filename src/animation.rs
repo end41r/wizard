@@ -35,7 +35,7 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum AnimationState {
+enum AnimationState {
     NotMoving,
     MovingForward,
     Reversing,
@@ -144,7 +144,9 @@ impl AnimationCore {
         }
     }
     pub fn start(&mut self) {
-        if self.not_moving() || self.animation_state == AnimationState::Ended {
+        if self.animation_state == AnimationState::NotMoving
+            || self.animation_state == AnimationState::Ended
+        {
             self.animation_state = AnimationState::MovingForward;
         }
     }
@@ -180,13 +182,11 @@ impl AnimationCore {
     pub fn current_frame_number(&self) -> usize {
         self.current_frame_number
     }
-    pub fn not_moving(&self) -> bool {
-        self.animation_state == AnimationState::NotMoving
-    }
-    pub fn on_end(&mut self, msg: AppMessage) {
+    /// Message sent when an animation reaches a reverse point or end if not reversing.
+    pub fn on_special(&mut self, msg: AppMessage) {
         self.on_ping = Some(msg)
     }
-    /// Send a message when aa animation reaches a special point (e.g. end, new repetition)
+    /// Send a message when an animation reaches a reverse point or end if not reversing.
     fn task_ping(&self) -> Task<AppMessage> {
         match &self.on_ping {
             Some(msg) => Task::done(msg.clone()),
@@ -274,7 +274,6 @@ impl ReversableBasicAnimation {
                     self.current_frame_number -= 1;
                 } else {
                     self.animation_state = AnimationState::Ended;
-                    return self.task_ping();
                 }
             }
             _ => {}
@@ -301,7 +300,6 @@ impl AutoReversingAnimation {
                     self.current_frame_number -= 1;
                 } else {
                     self.reset();
-                    return self.task_ping();
                 }
             }
             _ => {}
@@ -328,7 +326,6 @@ impl CircularAutoReversingAnimation {
                     self.current_frame_number -= 1;
                 } else {
                     self.animation_state = AnimationState::MovingForward;
-                    return self.task_ping();
                 }
             }
             _ => {}

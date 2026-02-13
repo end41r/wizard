@@ -55,6 +55,6 @@ fn card_area_middle_space_heigth(window_size: Size) -> f32 {
 fn card_area_middle_spawn_point(width: f32, height: f32, window_size: Size) -> Point {
     Point::new(
         (card_area_middle_space_width(window_size) - width) / 2.0,
-        (card_area_middle_space_heigth(window_size) - height) / 2.0
+        (card_area_middle_space_heigth(window_size) - height) / 2.0,
     )
 }

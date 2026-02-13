@@ -1,10 +1,18 @@
 use crate::{
-    animation::{BasicAnimation, Easing}, api::{Card, get_card_path}, client::AppMessage, gameplay_ui::{CARD_AREA_MIDDLE_RELATION, card_heigth_middle, card_img_middle_base_scale, card_width_middle}, ui_element_traits::*
+    animation::{BasicAnimation, Easing},
+    api::{get_card_path, Card},
+    client::AppMessage,
+    gameplay_ui::{
+        card_heigth_middle, card_img_middle_base_scale, card_width_middle,
+        CARD_AREA_MIDDLE_RELATION,
+    },
+    ui_element_traits::*,
 };
 
 use derive_more::{Deref, DerefMut};
 use iced::{
-    Size, Task, widget::{Container, image}
+    widget::{image, Container},
+    Size, Task,
 };
 use rand::Rng;
 
@@ -19,7 +27,8 @@ impl RevealAnimation {
         self.progress(Easing::InSine)
     }
     pub fn get_scale(&self) -> f32 {
-        CARD_AREA_MIDDLE_RELATION - (CARD_AREA_MIDDLE_RELATION - 1.0) * self.progress(Easing::OutElastic)
+        CARD_AREA_MIDDLE_RELATION
+            - (CARD_AREA_MIDDLE_RELATION - 1.0) * self.progress(Easing::OutElastic)
     }
 }
 

@@ -2,7 +2,10 @@ use crate::{
     animation::{Easing, ReversableBasicAnimation},
     api::CARD_BACK_PATH,
     client::AppMessage,
-    gameplay_ui::{card_heigth_hand, card_heigth_middle, card_img_middle_base_scale, card_width_hand, card_width_middle},
+    gameplay_ui::{
+        card_heigth_hand, card_heigth_middle, card_img_middle_base_scale, card_width_hand,
+        card_width_middle,
+    },
     ui_element_traits::*,
 };
 use derive_more::{Deref, DerefMut};

@@ -3,14 +3,22 @@ pub mod trump_card;
 
 use crate::{
     animation::AnimationStarter,
-    api::{CARD_BACK_PATH, Card},
+    api::{Card, CARD_BACK_PATH},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point, card_img_middle_base_scale, hand::ViewableHand, table::{
-            HandMessage, middle::{
-                TableMiddleMessage, card_deck::{deck_card::ViewableDeckCard, trump_card::ViewableTrumpCard}
-            }
-        }
+        card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point,
+        card_img_middle_base_scale,
+        hand::ViewableHand,
+        table::{
+            middle::{
+                card_deck::{
+                    deck_card::ViewableDeckCard,
+                    trump_card::{TrumpCardMessage, ViewableTrumpCard},
+                },
+                TableMiddleMessage,
+            },
+            HandMessage,
+        },
     },
     ui_element_traits::*,
 };
@@ -23,10 +31,12 @@ type TrumpCard = Card;
 
 #[derive(Debug, Clone)]
 pub enum CardDeckMessage {
+    AllDealt,
     Deal(usize, Option<TrumpCard>),
     Shuffle,
     ClearDeckCards,
     AddDeckCard(usize),
+    TrumpCardMessage(TrumpCardMessage),
 }
 
 impl Message for CardDeckMessage {
@@ -40,6 +50,8 @@ impl ReplaceUsize for CardDeckMessage {
         match self {
             CardDeckMessage::AddDeckCard(_) => CardDeckMessage::AddDeckCard(value),
             CardDeckMessage::Deal(_, trump_card) => CardDeckMessage::Deal(value, *trump_card),
+            CardDeckMessage::AllDealt => self.clone(),
+            CardDeckMessage::TrumpCardMessage(_) => self.clone(),
             CardDeckMessage::ClearDeckCards => self.clone(),
             CardDeckMessage::Shuffle => self.clone(),
         }
@@ -69,7 +81,7 @@ impl ViewableCardDeck {
         };
         viewable_card_deck
             .deal_card_animation_starter
-            .on_all_ended(CardDeckMessage::ClearDeckCards);
+            .on_all_ended(CardDeckMessage::AllDealt);
         viewable_card_deck
     }
 }
@@ -98,6 +110,21 @@ impl Notifiable for ViewableCardDeck {
                 }
                 return HandMessage::DrawCards(ViewableHand::build_test_cards(self.window_size))
                     .convert_msg_to_task();
+            }
+            CardDeckMessage::AllDealt => {
+                return TaskBatcher::instant_batch([
+                    CardDeckMessage::ClearDeckCards.convert_msg_to_task(),
+                    TrumpCardMessage::TurnPart1.convert_msg_to_task(),
+                ])
+            }
+            CardDeckMessage::TrumpCardMessage(trump_card_msg) => {
+                if self.trump_card.is_some() {
+                    return self
+                        .trump_card
+                        .as_mut()
+                        .unwrap()
+                        .update_with_msg(trump_card_msg);
+                }
             }
             CardDeckMessage::Shuffle => {}
         }
@@ -147,18 +174,27 @@ impl Viewable for ViewableCardDeck {
             let img = pin(image(CARD_BACK_PATH.to_string())
                 .width(width)
                 .height(heigth)
-                .scale(card_img_middle_base_scale())).position(spawn_point);
+                .scale(card_img_middle_base_scale()))
+            .position(spawn_point);
             card_stack = card_stack.push(img);
-        }
-        for card in self.deck_cards.iter() {
-            let spawn_point = card_area_middle_spawn_point(card.width(), card.height(), self.window_size);
-            card_stack = card_stack.push(card.view_and_move(spawn_point.x + card.offset().x, spawn_point.y + card.offset().y));
         }
         if self.trump_card.is_some() {
             let trump_card = self.trump_card.as_ref().unwrap();
-            let spawn_point = card_area_middle_spawn_point(trump_card.width(), trump_card.height(), self.window_size);
+            let spawn_point = card_area_middle_spawn_point(
+                trump_card.width(),
+                trump_card.height(),
+                self.window_size,
+            );
             card_stack = card_stack.push(trump_card.view_and_move(spawn_point.x, spawn_point.y));
         };
+        for card in self.deck_cards.iter() {
+            let spawn_point =
+                card_area_middle_spawn_point(card.width(), card.height(), self.window_size);
+            card_stack = card_stack.push(card.view_and_move(
+                spawn_point.x + card.offset().x,
+                spawn_point.y + card.offset().y,
+            ));
+        }
         Container::new(card_stack)
             .width(self.width())
             .height(self.height())
