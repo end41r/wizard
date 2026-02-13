@@ -1,10 +1,9 @@
 use crate::{
     animation::{BasicAnimation, Easing},
-    api::{get_card_path, Card},
-    client::AppMessage,
+    api::{Card, get_card_path},
+    client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_heigth_middle, card_img_middle_base_scale, card_width_middle,
-        CARD_AREA_MIDDLE_RELATION,
+        CARD_AREA_MIDDLE_RELATION, card_heigth_middle, card_img_middle_base_scale, card_width_middle,
     },
     ui_element_traits::*,
 };
@@ -12,6 +11,7 @@ use crate::{
 use derive_more::{Deref, DerefMut};
 use iced::{
     widget::{image, Container},
+    ContentFit::Fill,
     Size, Task,
 };
 use rand::Rng;
@@ -32,10 +32,26 @@ impl RevealAnimation {
     }
 }
 
+#[derive(Debug, Clone, Deref, DerefMut)]
+pub struct RemoveAnimation(BasicAnimation);
+
+impl RemoveAnimation {
+    pub fn new(duration: usize) -> Self {
+        Self(BasicAnimation::new(duration))
+    }
+    pub fn get_opacity(&self) -> f32 {
+        1.0 - self.progress(Easing::OutCubic)
+    }
+    pub fn get_contraction(&self) -> f32 {
+        1.0 - self.progress(Easing::OutCubic)
+    }
+}
+
 pub struct ViewableStackCard {
     window_size: Size,
     card: Card,
     reveal_animation: RevealAnimation,
+    pub remove_animation: RemoveAnimation,
     rotation: f32,
 }
 
@@ -45,6 +61,7 @@ impl ViewableStackCard {
             window_size,
             card,
             reveal_animation: RevealAnimation::new(50),
+            remove_animation: RemoveAnimation::new(10),
             rotation: rand::rng().random_range(-0.15..0.15),
         };
         viewable_stack_card.reveal_animation.start();
@@ -54,7 +71,10 @@ impl ViewableStackCard {
 
 impl Animated for ViewableStackCard {
     fn update_animations(&mut self) -> Task<AppMessage> {
-        self.reveal_animation.next_frame()
+        TaskBatcher::instant_batch([
+            self.reveal_animation.next_frame(),
+            self.remove_animation.next_frame()
+        ])
     }
 }
 
@@ -63,7 +83,7 @@ impl Resizable for ViewableStackCard {
         card_heigth_middle(self.window_size) * self.reveal_animation.get_scale()
     }
     fn width(&self) -> f32 {
-        card_width_middle(self.window_size) * self.reveal_animation.get_scale()
+        card_width_middle(self.window_size) * self.reveal_animation.get_scale() * self.remove_animation.get_contraction()
     }
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size
@@ -85,6 +105,8 @@ impl Viewable for ViewableStackCard {
             .width(self.width())
             .height(self.height())
             .scale(card_img_middle_base_scale())
+            .opacity(self.remove_animation.get_opacity())
+            .content_fit(Fill)
             .rotation(self.rotation * self.reveal_animation.get_rotation());
         Container::new(img)
     }

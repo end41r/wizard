@@ -1,13 +1,10 @@
 pub mod stack_card;
 
 use crate::{
-    api::Card,
-    client::{AppMessage, TaskBatcher},
-    gameplay_ui::{
+    animation::AnimationStarter, api::Card, client::{AppMessage, TaskBatcher}, gameplay_ui::{
         card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point,
-        table::middle::{card_stack::stack_card::ViewableStackCard, TableMiddleMessage},
-    },
-    ui_element_traits::*,
+        table::middle::{TableMiddleMessage, card_stack::stack_card::ViewableStackCard},
+    }, ui_element_traits::*
 };
 use iced::{
     widget::{Container, Stack},
@@ -17,6 +14,9 @@ use iced::{
 #[derive(Debug, Clone)]
 pub enum CardStackMessage {
     CardPlayed(Card),
+    HideAllCard,
+    HideCard(usize),
+    RemoveAllCards
 }
 
 impl Message for CardStackMessage {
@@ -25,17 +25,32 @@ impl Message for CardStackMessage {
     }
 }
 
+impl ReplaceUsize for CardStackMessage {
+    fn replace_usize(&self, value: usize) -> Self {
+        match self {
+            CardStackMessage::HideCard(_) => CardStackMessage::HideCard(value),
+            CardStackMessage::HideAllCard => self.clone(),
+            CardStackMessage::CardPlayed(_) => self.clone(),
+            CardStackMessage::RemoveAllCards => self.clone()
+        }
+    }
+}
+
 pub struct ViewableCardStack {
     window_size: Size,
     cards: Vec<ViewableStackCard>,
+    clear_card_stack_animation_starter: AnimationStarter<CardStackMessage, CardStackMessage>
 }
 
 impl ViewableCardStack {
     pub fn new(window_size: Size) -> Self {
-        Self {
+        let mut viewable_stack_card = Self {
             window_size,
             cards: Vec::new(),
-        }
+            clear_card_stack_animation_starter: AnimationStarter::new(10, 20, CardStackMessage::HideCard(0))
+        };
+        viewable_stack_card.clear_card_stack_animation_starter.on_all_ended(CardStackMessage::RemoveAllCards);
+        viewable_stack_card
     }
 }
 
@@ -47,6 +62,17 @@ impl Notifiable for ViewableCardStack {
             CardStackMessage::CardPlayed(card) => self
                 .cards
                 .push(ViewableStackCard::new(self.window_size, card)),
+            CardStackMessage::HideAllCard => {
+                self.clear_card_stack_animation_starter.start(self.cards.len() - 1);
+            },
+            CardStackMessage::HideCard(id) => {
+                let card_count: usize = self.cards.len();
+                println!("{} {}", card_count, id);
+                self.cards[card_count - 1 - id].remove_animation.start();
+            }
+            CardStackMessage::RemoveAllCards => {
+                self.cards.clear();
+            }
         };
         Task::none()
     }
@@ -55,6 +81,7 @@ impl Notifiable for ViewableCardStack {
 impl Animated for ViewableCardStack {
     fn update_animations(&mut self) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
+        tb.push(self.clear_card_stack_animation_starter.next_frame());
         for card in self.cards.iter_mut() {
             tb.push(card.update_animations());
         }

@@ -3,21 +3,19 @@ pub mod trump_card;
 
 use crate::{
     animation::AnimationStarter,
-    api::{Card, CARD_BACK_PATH},
+    api::{CARD_BACK_PATH, Card},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point,
         card_img_middle_base_scale,
         hand::ViewableHand,
         table::{
-            middle::{
-                card_deck::{
+            HandMessage, middle::{
+                TableMiddleMessage, card_deck::{
                     deck_card::ViewableDeckCard,
                     trump_card::{TrumpCardMessage, ViewableTrumpCard},
-                },
-                TableMiddleMessage,
-            },
-            HandMessage,
+                }, card_stack::CardStackMessage
+            }
         },
     },
     ui_element_traits::*,
@@ -82,12 +80,12 @@ impl ViewableCardDeck {
             deck_cards: Vec::new(),
             deal_card_animation_starter: AnimationStarter::new(
                 3,
-                5,
+                10,
                 CardDeckMessage::DealDeckCard(0),
             ),
             clear_card_animation_starter: AnimationStarter::new(
                 3,
-                5,
+                10,
                 CardDeckMessage::AddDeckCard(0),
             ),
         };
@@ -134,7 +132,10 @@ impl Notifiable for ViewableCardDeck {
                         .convert_msg_to_task();
                 } else {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
-                    return CardDeckMessage::Shuffle.convert_msg_to_task()
+                    return TaskBatcher::instant_batch([
+                        CardDeckMessage::Shuffle.convert_msg_to_task(),
+                        CardStackMessage::HideAllCard.convert_msg_to_task()
+                    ])
                 }
             }
             CardDeckMessage::AllDealt => {
@@ -158,7 +159,6 @@ impl Notifiable for ViewableCardDeck {
                 }
             }
             CardDeckMessage::Shuffle => {
-                println!("shuffle");
                 return TrumpCardMessage::RemovePart1.convert_msg_to_task()
             }
         }
