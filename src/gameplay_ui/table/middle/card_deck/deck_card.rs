@@ -3,8 +3,7 @@ use crate::{
     api::CARD_BACK_PATH,
     client::AppMessage,
     gameplay_ui::{
-        card_heigth_hand, card_heigth_middle, card_img_middle_base_scale, card_width_hand,
-        card_width_middle,
+        CARD_AREA_MIDDLE_RELATION, card_width_middle, card_heigth_middle, card_img_middle_base_scale,
     },
     ui_element_traits::*,
 };
@@ -30,10 +29,10 @@ impl DealAnimation {
         Self(ReversableBasicAnimation::new(duration))
     }
     fn get_offset(&self) -> f32 {
-        self.progress(Easing::InSine)
+        self.progress(Easing::OutCubic)
     }
     fn get_opacity(&self) -> f32 {
-        1.0 - self.progress(Easing::InSine)
+        1.0 - self.progress(Easing::OutCubic)
     }
 }
 
@@ -61,8 +60,9 @@ impl ViewableDeckCard {
         if self.add {
             linear_progress = 1.0 - linear_progress;
         }
-        let horizontal_offset: f32 = linear_progress * card_width_hand(self.window_size) / 6.0;
-        let vertical_offset: f32 = linear_progress * card_heigth_hand(self.window_size) / 6.0;
+        let length = ((CARD_AREA_MIDDLE_RELATION - 1.0) / 2.0) * card_width_middle(self.window_size);
+        let horizontal_offset: f32 = length;
+        let vertical_offset: f32 = length;
         match self.direction {
             Direction::Down => Point::new(0.0, linear_progress * horizontal_offset),
             Direction::Left => Point::new(-linear_progress * vertical_offset, 0.0),
