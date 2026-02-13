@@ -40,14 +40,16 @@ impl DealAnimation {
 #[derive(Debug, Clone)]
 pub struct ViewableDeckCard {
     window_size: Size,
+    add: bool,
     direction: Direction,
     deal_animation: DealAnimation,
 }
 
 impl ViewableDeckCard {
-    pub fn new(window_size: Size, cycle: usize) -> Self {
+    pub fn new(window_size: Size, cycle: usize, add: bool) -> Self {
         let mut viewable_deck_card = Self {
             window_size,
+            add,
             direction: Self::choose_direction(cycle),
             deal_animation: DealAnimation::new(10),
         };
@@ -55,7 +57,10 @@ impl ViewableDeckCard {
         viewable_deck_card
     }
     pub fn offset(&self) -> Point {
-        let linear_progress: f32 = self.deal_animation.get_offset();
+        let mut linear_progress: f32 = self.deal_animation.get_offset();
+        if self.add {
+            linear_progress = 1.0 - linear_progress;
+        }
         let horizontal_offset: f32 = linear_progress * card_width_hand(self.window_size) / 6.0;
         let vertical_offset: f32 = linear_progress * card_heigth_hand(self.window_size) / 6.0;
         match self.direction {
@@ -105,11 +110,12 @@ impl SizeFromOutside for ViewableDeckCard {
 
 impl Viewable for ViewableDeckCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
+        let opacity = if self.add {1.0 - self.deal_animation.get_opacity()} else {self.deal_animation.get_opacity()};
         let img = image(CARD_BACK_PATH.to_string())
             .width(self.width())
             .height(self.height())
             .scale(card_img_middle_base_scale())
-            .opacity(self.deal_animation.get_opacity());
+            .opacity(opacity);
         Container::new(img)
     }
 }

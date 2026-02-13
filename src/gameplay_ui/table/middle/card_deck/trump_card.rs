@@ -1,7 +1,7 @@
 use crate::{
     animation::{AutoReversingAnimation, Easing},
     api::{get_card_path, CARD_BACK_PATH},
-    client::AppMessage,
+    client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_heigth_middle, card_img_middle_base_scale, card_width_middle,
         table::middle::card_deck::{Card, CardDeckMessage},
@@ -18,6 +18,8 @@ use iced::{
 pub enum TrumpCardMessage {
     TurnPart1,
     TurnPart2,
+    RemovePart1,
+    RemovePart2,
 }
 
 impl Message for TrumpCardMessage {
@@ -43,7 +45,8 @@ pub struct ViewableTrumpCard {
     window_size: Size,
     trump_card: Card,
     show_back: bool,
-    turn_animation: TurnAnimation,
+    reveal_animation: TurnAnimation,
+    remove_animation: TurnAnimation,
 }
 
 impl ViewableTrumpCard {
@@ -52,11 +55,18 @@ impl ViewableTrumpCard {
             window_size,
             trump_card,
             show_back: true,
-            turn_animation: TurnAnimation::new(10),
+            reveal_animation: TurnAnimation::new(10),
+            remove_animation: TurnAnimation::new(10),
         };
         viewable_trump_card
-            .turn_animation
-            .on_special(TrumpCardMessage::TurnPart2.convert_msg());
+            .reveal_animation
+            .on_end(TrumpCardMessage::TurnPart2.convert_msg());
+        viewable_trump_card
+            .remove_animation
+            .on_end(TrumpCardMessage::RemovePart2.convert_msg());
+        viewable_trump_card
+            .remove_animation
+            .on_start(CardDeckMessage::ClearTrumpCard.convert_msg());
         viewable_trump_card
     }
 }
@@ -66,10 +76,16 @@ impl Notifiable for ViewableTrumpCard {
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
             TrumpCardMessage::TurnPart1 => {
-                self.turn_animation.start();
+                self.reveal_animation.start();
             }
             TrumpCardMessage::TurnPart2 => {
                 self.show_back = false;
+            }
+            TrumpCardMessage::RemovePart1 => {
+                self.remove_animation.start();
+            }
+            TrumpCardMessage::RemovePart2 => {
+                self.show_back = true;
             }
         }
         Task::none()
@@ -78,7 +94,10 @@ impl Notifiable for ViewableTrumpCard {
 
 impl Animated for ViewableTrumpCard {
     fn update_animations(&mut self) -> Task<AppMessage> {
-        self.turn_animation.next_frame()
+        TaskBatcher::instant_batch([
+            self.reveal_animation.next_frame(),
+            self.remove_animation.next_frame(),
+        ])
     }
 }
 
@@ -87,7 +106,9 @@ impl Resizable for ViewableTrumpCard {
         card_heigth_middle(self.window_size)
     }
     fn width(&self) -> f32 {
-        card_width_middle(self.window_size) * self.turn_animation.get_contraction()
+        card_width_middle(self.window_size)
+            * self.reveal_animation.get_contraction()
+            * self.remove_animation.get_contraction()
     }
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size

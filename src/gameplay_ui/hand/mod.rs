@@ -291,7 +291,6 @@ impl Notifiable for ViewableHand {
                 self.hovered_card_id = None;
                 self.top_card_id_lower = None;
                 self.top_card_id_upper = None;
-                self.draw_animation_starter.reset();
                 self.update_size(self.window_size);
                 self.draw_animation_starter.start(self.cards.len());
             }

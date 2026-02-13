@@ -116,10 +116,10 @@ impl ViewableHandCard {
         };
         viewable_card
             .play_animation
-            .on_special(HandMessage::DeleteCard(id).convert_msg());
+            .on_end(HandMessage::DeleteCard(id).convert_msg());
         viewable_card
             .hide_animation
-            .on_special(CardMessage::MakeClickable(id).convert_msg());
+            .on_end(CardMessage::MakeClickable(id).convert_msg());
         viewable_card.playable_animation.start();
         viewable_card
     }
