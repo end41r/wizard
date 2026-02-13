@@ -146,11 +146,11 @@ impl AnimationCore {
         }
     }
     pub fn start(&mut self) {
-        if self.animation_state == AnimationState::NotMoving
-            || self.animation_state == AnimationState::Ended
-        {
-            self.animation_state = AnimationState::MovingForward;
-        }
+        self.animation_state = AnimationState::MovingForward;
+    }
+    pub fn start_force(&mut self) {
+        self.current_frame_number = 0;
+        self.animation_state = AnimationState::MovingForward;
     }
     #[allow(dead_code)]
     pub fn interrupt(&mut self) {
@@ -268,9 +268,9 @@ impl ReversableBasicAnimation {
     pub fn reverse(&mut self) {
         self.animation_state = AnimationState::Reversing;
     }
-    pub fn start_from_reverse(&mut self) {
+    pub fn reverse_force(&mut self) {
+        self.current_frame_number = self.max_frame_number;
         self.animation_state = AnimationState::Reversing;
-        self.current_frame_number = self.max_frame_number
     }
     pub fn next_frame(&mut self) -> Task<AppMessage> {
         match self.animation_state {

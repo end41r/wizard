@@ -14,7 +14,7 @@ use crate::{
                 TableMiddleMessage, card_deck::{
                     deck_card::ViewableDeckCard,
                     trump_card::{TrumpCardMessage, ViewableTrumpCard},
-                }, card_stack::CardStackMessage
+                }, card_stack::{CardStackMessage, glow_card::CardStackGlow}
             }
         },
     },
@@ -37,6 +37,7 @@ pub enum CardDeckMessage {
     AddDeckCard(usize),
     DealDeckCard(usize),
     TrumpCardMessage(TrumpCardMessage),
+    ChangeGlow(Card),
 }
 
 impl Message for CardDeckMessage {
@@ -56,12 +57,14 @@ impl ReplaceUsize for CardDeckMessage {
             CardDeckMessage::TrumpCardMessage(_) => self.clone(),
             CardDeckMessage::ClearTrumpCard => self.clone(),
             CardDeckMessage::Shuffle => self.clone(),
+            CardDeckMessage::ChangeGlow(_) => self.clone(),
         }
     }
 }
 
 pub struct ViewableCardDeck {
     window_size: Size,
+    glow: CardStackGlow,
     show_base_card: bool,
     deal_msg: Option<CardDeckMessage>,
     trump_card: Option<ViewableTrumpCard>,
@@ -74,6 +77,7 @@ impl ViewableCardDeck {
     pub fn new(window_size: Size) -> Self {
         let mut viewable_card_deck = Self {
             window_size,
+            glow: CardStackGlow::new(window_size),
             show_base_card: true,
             deal_msg: None,
             trump_card: None,
@@ -117,6 +121,8 @@ impl Notifiable for ViewableCardDeck {
                 self.clear_card_animation_starter.start(self.deal_card_animation_starter.times());
             }
             CardDeckMessage::Deal(cards, trump_card) => {
+                let mut tb = TaskBatcher::new();
+                self.glow.reveal_animation.start_force();
                 if self.deal_msg.is_none() {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
                     self.deal_card_animation_starter.start(cards);
@@ -128,15 +134,13 @@ impl Notifiable for ViewableCardDeck {
                     } else {
                         self.trump_card = None;
                     }
-                    return HandMessage::DrawCards(ViewableHand::build_test_cards(self.window_size))
-                        .convert_msg_to_task();
+                    tb.push(HandMessage::DrawCards(ViewableHand::build_test_cards(self.window_size)).convert_msg_to_task());
                 } else {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
-                    return TaskBatcher::instant_batch([
-                        CardDeckMessage::Shuffle.convert_msg_to_task(),
-                        CardStackMessage::HideAllCard.convert_msg_to_task()
-                    ])
+                    tb.push(CardDeckMessage::Shuffle.convert_msg_to_task());
+                    tb.push(CardStackMessage::HideAllCard.convert_msg_to_task());
                 }
+                return tb.batch()
             }
             CardDeckMessage::AllDealt => {
                 self.deck_cards.clear();
@@ -159,7 +163,12 @@ impl Notifiable for ViewableCardDeck {
                 }
             }
             CardDeckMessage::Shuffle => {
+                self.glow.reset_color();
+                self.glow.reveal_animation.reverse();
                 return TrumpCardMessage::RemovePart1.convert_msg_to_task()
+            }
+            CardDeckMessage::ChangeGlow(card) => {
+                self.glow.change_color(card);
             }
         }
         Task::none()
@@ -174,6 +183,7 @@ impl Animated for ViewableCardDeck {
         if self.trump_card.is_some() {
             tb.push(self.trump_card.as_mut().unwrap().update_animations());
         }
+        tb.push(self.glow.update_animations());
         for card in self.deck_cards.iter_mut() {
             tb.push(card.update_animations());
         }
@@ -196,6 +206,7 @@ impl Resizable for ViewableCardDeck {
         if self.trump_card.is_some() {
             self.trump_card.as_mut().unwrap().update_size(window_size);
         }
+        self.glow.update_size(window_size);
     }
 }
 
@@ -203,11 +214,12 @@ impl Viewable for ViewableCardDeck {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let mut card_stack = stack!();
 
+        let width: f32 = ViewableDeckCard::width_for(self.window_size);
+        let heigth: f32 = ViewableDeckCard::height_for(self.window_size);
+        let spawn_point: iced::Point = card_area_middle_spawn_point(width, heigth, self.window_size);
+        card_stack = card_stack.push(self.glow.view_and_move(spawn_point.x, spawn_point.y));
         if self.show_base_card {
             // Construct base card template
-            let width = ViewableDeckCard::width_for(self.window_size);
-            let heigth = ViewableDeckCard::height_for(self.window_size);
-            let spawn_point = card_area_middle_spawn_point(width, heigth, self.window_size);
             let base_card = pin(image(CARD_BACK_PATH.to_string())
                 .width(width)
                 .height(heigth)
@@ -233,9 +245,6 @@ impl Viewable for ViewableCardDeck {
             card_stack = card_stack.push(trump_card.view_and_move(spawn_point.x, spawn_point.y));
         } else {
             // Construct base card template
-            let width = ViewableDeckCard::width_for(self.window_size);
-            let heigth = ViewableDeckCard::height_for(self.window_size);
-            let spawn_point = card_area_middle_spawn_point(width, heigth, self.window_size);
             let base_card = pin(image(CARD_BACK_PATH.to_string())
                 .width(width)
                 .height(heigth)

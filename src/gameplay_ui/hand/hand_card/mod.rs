@@ -169,7 +169,7 @@ impl Notifiable for ViewableHandCard {
             }
             CardMessage::Show(id) => {
                 if id == self.id {
-                    self.hide_animation.start_from_reverse();
+                    self.hide_animation.reverse();
                 };
             }
             CardMessage::Draw(id) => {

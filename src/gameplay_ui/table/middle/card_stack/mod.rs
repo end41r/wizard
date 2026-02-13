@@ -1,9 +1,10 @@
 pub mod stack_card;
+pub mod glow_card;
 
 use crate::{
     animation::AnimationStarter, api::Card, client::{AppMessage, TaskBatcher}, gameplay_ui::{
         card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point,
-        table::middle::{TableMiddleMessage, card_stack::stack_card::ViewableStackCard},
+        table::middle::{TableMiddleMessage, card_deck::CardDeckMessage, card_stack::stack_card::ViewableStackCard},
     }, ui_element_traits::*
 };
 use iced::{
@@ -16,7 +17,7 @@ pub enum CardStackMessage {
     CardPlayed(Card),
     HideAllCard,
     HideCard(usize),
-    RemoveAllCards
+    RemoveAllCards,
 }
 
 impl Message for CardStackMessage {
@@ -31,7 +32,7 @@ impl ReplaceUsize for CardStackMessage {
             CardStackMessage::HideCard(_) => CardStackMessage::HideCard(value),
             CardStackMessage::HideAllCard => self.clone(),
             CardStackMessage::CardPlayed(_) => self.clone(),
-            CardStackMessage::RemoveAllCards => self.clone()
+            CardStackMessage::RemoveAllCards => self.clone(),
         }
     }
 }
@@ -46,6 +47,7 @@ impl ViewableCardStack {
     pub fn new(window_size: Size) -> Self {
         let mut viewable_stack_card = Self {
             window_size,
+
             cards: Vec::new(),
             clear_card_stack_animation_starter: AnimationStarter::new(10, 20, CardStackMessage::HideCard(0))
         };
@@ -59,15 +61,17 @@ impl Notifiable for ViewableCardStack {
 
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
-            CardStackMessage::CardPlayed(card) => self
-                .cards
-                .push(ViewableStackCard::new(self.window_size, card)),
+            CardStackMessage::CardPlayed(card) => {
+                self.cards.push(ViewableStackCard::new(self.window_size, card));
+                if self.cards.len() == 1 {
+                    return CardDeckMessage::ChangeGlow(card).convert_msg_to_task();
+                }
+            },
             CardStackMessage::HideAllCard => {
                 self.clear_card_stack_animation_starter.start(self.cards.len() - 1);
             },
             CardStackMessage::HideCard(id) => {
                 let card_count: usize = self.cards.len();
-                println!("{} {}", card_count, id);
                 self.cards[card_count - 1 - id].remove_animation.start();
             }
             CardStackMessage::RemoveAllCards => {
