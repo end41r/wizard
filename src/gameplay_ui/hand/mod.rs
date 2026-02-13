@@ -42,7 +42,7 @@ pub struct ViewableHand {
     top_card_id_lower: Option<usize>,
     // AI-Usage: Claude.ai for the idea of passing a union type for a generic
     //           where the type doesn't matter.
-    draw_animation_starter: AnimationStarter,
+    draw_animation_starter: AnimationStarter<CardMessage, CardMessage>,
 }
 
 impl ViewableHand {
@@ -57,11 +57,7 @@ impl ViewableHand {
             top_card_id_upper: None,
             top_card_id_lower: None,
             // 3 is the delay for the animation start.
-            draw_animation_starter: AnimationStarter::new(
-                3,
-                10,
-                CardMessage::Draw(0).convert_msg(),
-            ),
+            draw_animation_starter: AnimationStarter::new(3, 10, CardMessage::Draw(0)),
         }
     }
 

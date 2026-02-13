@@ -65,3 +65,9 @@ pub trait Message: Clone {
         Task::done(self.convert_msg())
     }
 }
+
+pub trait ReplaceUsize: Message {
+    /// Checks if the message has an usize at the end and replaces it if its exists.
+    /// This is only needed if the Message is used to start an animation in AnimationStarter.
+    fn replace_usize(&self, value: usize) -> Self;
+}

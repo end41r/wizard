@@ -29,7 +29,10 @@ use derive_more::{Deref, DerefMut};
 use iced::Task;
 use std::f32::consts::PI;
 
-use crate::client::AppMessage;
+use crate::{
+    client::AppMessage,
+    ui_element_traits::{Message, ReplaceUsize},
+};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum AnimationState {
@@ -335,24 +338,20 @@ impl CircularAutoReversingAnimation {
 }
 
 #[derive(Clone, Debug)]
-pub struct AnimationStarter {
+pub struct AnimationStarter<MStart: Message + ReplaceUsize, MEnd: Message> {
     state: AnimationState,
     times: Option<usize>,
     animation_delay: usize,
     animation_length: usize,
     tick: usize,
     started: usize,
-    on_start_single: AppMessage,
-    on_all_ended: Option<AppMessage>,
+    on_start_single: MStart,
+    on_all_ended: Option<MEnd>,
 }
 
-impl AnimationStarter {
+impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEnd> {
     /// Check AppMessage::replace_usize
-    pub fn new(
-        animation_delay: usize,
-        animation_duration: usize,
-        first_start_msg: AppMessage,
-    ) -> Self {
+    pub fn new(animation_delay: usize, animation_duration: usize, first_start_msg: MStart) -> Self {
         Self {
             times: None,
             state: AnimationState::NotMoving,
@@ -379,7 +378,7 @@ impl AnimationStarter {
         }
         Task::none()
     }
-    pub fn on_all_ended(&mut self, msg: AppMessage) {
+    pub fn on_all_ended(&mut self, msg: MEnd) {
         self.on_all_ended = Some(msg)
     }
     pub fn reset(&mut self) {
@@ -398,7 +397,7 @@ impl AnimationStarter {
     }
     fn all_ended(&mut self) -> Task<AppMessage> {
         let task: Task<AppMessage> = match &self.on_all_ended {
-            Some(msg) => Task::done(msg.clone()),
+            Some(msg) => Task::done(msg.convert_msg()),
             None => Task::none(),
         };
         self.reset();
@@ -406,6 +405,10 @@ impl AnimationStarter {
     }
     fn start_single(&mut self) -> Task<AppMessage> {
         self.started += 1;
-        Task::done(self.on_start_single.clone().replace_usize(self.started - 1))
+        Task::done(
+            self.on_start_single
+                .replace_usize(self.started - 1)
+                .convert_msg(),
+        )
     }
 }

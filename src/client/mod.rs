@@ -202,25 +202,6 @@ pub enum AppMessage {
     TableMessage(TableMessage),
 }
 
-impl AppMessage {
-    /// Checks if the message has a usize at the end and replaces it if its exists.
-    /// This is only intended for AnimationStarter, so this function only needs to match
-    /// AppMessages used for it.
-    pub fn replace_usize(&self, value: usize) -> AppMessage {
-        match self {
-            AppMessage::HandMessage(HandMessage::CardMessage(CardMessage::Draw(_))) => {
-                AppMessage::HandMessage(HandMessage::CardMessage(CardMessage::Draw(value)))
-            }
-            AppMessage::TableMessage(TableMessage::TableMiddleMessage(
-                TableMiddleMessage::CardDeckMessage(CardDeckMessage::AddDeckCard(_)),
-            )) => AppMessage::TableMessage(TableMessage::TableMiddleMessage(
-                TableMiddleMessage::CardDeckMessage(CardDeckMessage::AddDeckCard(value)),
-            )),
-            _ => self.clone(),
-        }
-    }
-}
-
 pub struct TaskBatcher {
     tasks: Vec<Task<AppMessage>>,
 }

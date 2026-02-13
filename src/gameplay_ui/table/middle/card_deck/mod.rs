@@ -39,12 +39,23 @@ impl Message for CardDeckMessage {
     }
 }
 
+impl ReplaceUsize for CardDeckMessage {
+    fn replace_usize(&self, value: usize) -> Self {
+        match self {
+            CardDeckMessage::AddDeckCard(_) => CardDeckMessage::AddDeckCard(value),
+            CardDeckMessage::Deal(_, trump_card) => CardDeckMessage::Deal(value, *trump_card),
+            CardDeckMessage::ClearDeckCards => self.clone(),
+            CardDeckMessage::Shuffle => self.clone(),
+        }
+    }
+}
+
 pub struct ViewableCardDeck {
     window_size: Size,
     show_base_card: bool,
     trump_card: Option<ViewableTrumpCard>,
     deck_cards: Vec<ViewableDeckCard>,
-    deal_card_animation_starter: AnimationStarter,
+    deal_card_animation_starter: AnimationStarter<CardDeckMessage, CardDeckMessage>,
 }
 
 impl ViewableCardDeck {
@@ -57,12 +68,12 @@ impl ViewableCardDeck {
             deal_card_animation_starter: AnimationStarter::new(
                 3,
                 5,
-                CardDeckMessage::AddDeckCard(0).convert_msg(),
+                CardDeckMessage::AddDeckCard(0),
             ),
         };
         viewable_card_deck
             .deal_card_animation_starter
-            .on_all_ended(CardDeckMessage::ClearDeckCards.convert_msg());
+            .on_all_ended(CardDeckMessage::ClearDeckCards);
         viewable_card_deck
     }
 }

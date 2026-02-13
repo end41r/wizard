@@ -56,6 +56,25 @@ impl Message for CardMessage {
     }
 }
 
+impl ReplaceUsize for CardMessage {
+    fn replace_usize(&self, value: usize) -> Self {
+        match self {
+            CardMessage::Played(_) => CardMessage::Played(value),
+            CardMessage::FalsePlayed(_) => CardMessage::FalsePlayed(value),
+            CardMessage::Hovered(_) => CardMessage::Hovered(value),
+            CardMessage::NotHovered(_) => CardMessage::NotHovered(value),
+            CardMessage::Hide(_) => CardMessage::Hide(value),
+            CardMessage::Show(_) => CardMessage::Show(value),
+            CardMessage::Draw(_) => CardMessage::Draw(value),
+            CardMessage::CursorMoved(_, point) => CardMessage::CursorMoved(value, *point),
+            CardMessage::ShowPlayableStatus(_, bool) => {
+                CardMessage::ShowPlayableStatus(value, *bool)
+            }
+            CardMessage::MakeClickable(_) => CardMessage::MakeClickable(value),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ViewableHandCard {
     id: usize,
