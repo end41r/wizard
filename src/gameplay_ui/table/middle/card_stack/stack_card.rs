@@ -3,7 +3,7 @@ use crate::{
     api::{get_card_path, Card},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_heigth_middle, card_img_middle_base_scale, card_width_middle,
+        card_height_middle, card_img_middle_base_scale, card_width_middle,
         CARD_AREA_MIDDLE_RELATION,
     },
     ui_element_traits::*,
@@ -80,8 +80,8 @@ impl Animated for ViewableStackCard {
 }
 
 impl Resizable for ViewableStackCard {
-    fn heigth(&self) -> f32 {
-        card_heigth_middle(self.window_size) * self.reveal_animation.get_scale()
+    fn height(&self) -> f32 {
+        card_height_middle(self.window_size) * self.reveal_animation.get_scale()
     }
     fn width(&self) -> f32 {
         card_width_middle(self.window_size)
@@ -95,7 +95,7 @@ impl Resizable for ViewableStackCard {
 
 impl SizeFromOutside for ViewableStackCard {
     fn height_for(window_size: Size) -> f32 {
-        card_heigth_middle(window_size)
+        card_height_middle(window_size)
     }
     fn width_for(window_size: Size) -> f32 {
         card_width_middle(window_size)
@@ -106,7 +106,7 @@ impl Viewable for ViewableStackCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let img = image(get_card_path(self.card))
             .width(self.width())
-            .height(self.heigth())
+            .height(self.height())
             .scale(card_img_middle_base_scale())
             .opacity(self.remove_animation.get_opacity())
             .content_fit(Fill)

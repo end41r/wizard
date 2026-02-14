@@ -31,8 +31,8 @@ pub trait Resizable {
     fn update_size(&mut self, window_size: Size);
     /// Uses the window size from self to calculate the total width of the ui element.
     fn width(&self) -> f32;
-    /// Uses the window size from self to calculate the total heigth of the ui element.
-    fn heigth(&self) -> f32;
+    /// Uses the window size from self to calculate the total height of the ui element.
+    fn height(&self) -> f32;
 }
 
 /// Implement this if you want to know the measures of an ui_element from elsewhere.
@@ -40,7 +40,7 @@ pub trait Resizable {
 pub trait SizeFromOutside: Resizable {
     /// Uses a given window size to calculate the width of the total ui element.
     fn width_for(window_size: Size) -> f32;
-    /// Uses a given window size to calculate the heigth of the total ui element.
+    /// Uses a given window size to calculate the height of the total ui element.
     fn height_for(window_size: Size) -> f32;
 }
 

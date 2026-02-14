@@ -7,7 +7,7 @@ use crate::{
     api::{Card, CARD_BACK_PATH},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point,
+        card_area_middle_space_height, card_area_middle_space_width, card_area_middle_spawn_point,
         card_img_middle_base_scale,
         hand::ViewableHand,
         table::{
@@ -202,8 +202,8 @@ impl Animated for ViewableCardDeck {
 }
 
 impl Resizable for ViewableCardDeck {
-    fn heigth(&self) -> f32 {
-        card_area_middle_space_heigth(self.window_size)
+    fn height(&self) -> f32 {
+        card_area_middle_space_height(self.window_size)
     }
     fn width(&self) -> f32 {
         card_area_middle_space_width(self.window_size)
@@ -225,22 +225,22 @@ impl Viewable for ViewableCardDeck {
         let mut card_stack = stack!();
 
         let width: f32 = ViewableDeckCard::width_for(self.window_size);
-        let heigth: f32 = ViewableDeckCard::height_for(self.window_size);
+        let height: f32 = ViewableDeckCard::height_for(self.window_size);
         let spawn_point: iced::Point =
-            card_area_middle_spawn_point(width, heigth, self.window_size);
+            card_area_middle_spawn_point(width, height, self.window_size);
         card_stack = card_stack.push(self.glow.view_and_move(spawn_point.x, spawn_point.y));
         if self.show_base_card {
             // Construct base card template
             let base_card = pin(image(CARD_BACK_PATH.to_string())
                 .width(width)
-                .height(heigth)
+                .height(height)
                 .scale(card_img_middle_base_scale()))
             .position(spawn_point);
             card_stack = card_stack.push(base_card);
         }
         for card in self.deck_cards.iter() {
             let spawn_point =
-                card_area_middle_spawn_point(card.width(), card.heigth(), self.window_size);
+                card_area_middle_spawn_point(card.width(), card.height(), self.window_size);
             card_stack = card_stack.push(card.view_and_move(
                 spawn_point.x + card.offset().x,
                 spawn_point.y + card.offset().y,
@@ -249,7 +249,7 @@ impl Viewable for ViewableCardDeck {
         if let Some(trump_card) = self.trump_card.as_ref() {
             let spawn_point = card_area_middle_spawn_point(
                 trump_card.width(),
-                trump_card.heigth(),
+                trump_card.height(),
                 self.window_size,
             );
             card_stack = card_stack.push(trump_card.view_and_move(spawn_point.x, spawn_point.y));
@@ -257,13 +257,13 @@ impl Viewable for ViewableCardDeck {
             // Construct base card template
             let base_card = pin(image(CARD_BACK_PATH.to_string())
                 .width(width)
-                .height(heigth)
+                .height(height)
                 .scale(card_img_middle_base_scale()))
             .position(spawn_point);
             card_stack = card_stack.push(base_card);
         }
         Container::new(card_stack)
             .width(self.width())
-            .height(self.heigth())
+            .height(self.height())
     }
 }

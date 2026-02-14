@@ -5,7 +5,7 @@ use crate::{
     api::Card,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_area_middle_space_heigth, card_area_middle_space_width, card_area_middle_spawn_point,
+        card_area_middle_space_height, card_area_middle_space_width, card_area_middle_spawn_point,
         table::middle::{
             card_deck::CardDeckMessage, card_stack::stack_card::ViewableStackCard,
             TableMiddleMessage,
@@ -111,8 +111,8 @@ impl Animated for ViewableCardStack {
 }
 
 impl Resizable for ViewableCardStack {
-    fn heigth(&self) -> f32 {
-        card_area_middle_space_heigth(self.window_size)
+    fn height(&self) -> f32 {
+        card_area_middle_space_height(self.window_size)
     }
     fn width(&self) -> f32 {
         card_area_middle_space_width(self.window_size)
@@ -130,11 +130,11 @@ impl Viewable for ViewableCardStack {
         let mut card_stack = Stack::new();
         for card in self.cards.iter() {
             let spawn_point =
-                card_area_middle_spawn_point(card.width(), card.heigth(), self.window_size);
+                card_area_middle_spawn_point(card.width(), card.height(), self.window_size);
             card_stack = card_stack.push(card.view_and_move(spawn_point.x, spawn_point.y))
         }
         Container::new(card_stack)
             .width(self.width())
-            .height(self.heigth())
+            .height(self.height())
     }
 }

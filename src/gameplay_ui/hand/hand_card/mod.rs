@@ -18,7 +18,7 @@ use crate::gameplay_ui::hand::hand_card::{
 };
 use crate::gameplay_ui::hand::HandMessage;
 use crate::gameplay_ui::table::middle::card_stack::CardStackMessage;
-use crate::gameplay_ui::{card_heigth_hand, card_img_base_scale, card_width_hand};
+use crate::gameplay_ui::{card_height_hand, card_img_base_scale, card_width_hand};
 use crate::ui_element_traits::*;
 use iced::Task;
 use iced::{
@@ -226,8 +226,8 @@ impl Resizable for ViewableHandCard {
     fn width(&self) -> f32 {
         card_width_hand(self.window_size)
     }
-    fn heigth(&self) -> f32 {
-        card_heigth_hand(self.window_size)
+    fn height(&self) -> f32 {
+        card_height_hand(self.window_size)
     }
 }
 
@@ -236,7 +236,7 @@ impl SizeFromOutside for ViewableHandCard {
         card_width_hand(window_size)
     }
     fn height_for(window_size: Size) -> f32 {
-        card_heigth_hand(window_size)
+        card_height_hand(window_size)
     }
 }
 
@@ -266,7 +266,7 @@ impl Viewable for ViewableHandCard {
             * self.hide_animation.get_contraction()
             * self.draw_animation.get_contraction();
 
-        let height: f32 = self.heigth() * self.hover_animation.get_expansion();
+        let height: f32 = self.height() * self.hover_animation.get_expansion();
 
         let rotation: f32 = self.rotation;
 

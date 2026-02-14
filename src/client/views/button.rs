@@ -89,106 +89,106 @@ impl Button {
         button
     }
 
-    pub fn new_host_button(id: usize, width: u16, heigth: u16) -> Self {
-        Self::new(id, "Host", BUTTON1_PATH, width, heigth, AppMessage::Host)
+    pub fn new_host_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(id, "Host", BUTTON1_PATH, width, height, AppMessage::Host)
     }
-    pub fn new_join_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_join_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Beitreten",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             AppMessage::Navigate(MenuState::Join),
         )
     }
-    pub fn new_rules_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_rules_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Spielregeln",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             AppMessage::GameRules,
         )
     }
-    pub fn new_close_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_close_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Spiel verlassen",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             AppMessage::CloseGame,
         )
     }
-    pub fn new_create_lobby_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_create_lobby_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Lobby erstellen",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             AppMessage::CreateLobby,
         )
     }
-    pub fn new_ready_owned_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_ready_owned_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Bereit",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             AppMessage::ToggleReady(0 as PlayerId),
         )
     }
-    pub fn new_back_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_back_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Zurück",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             MenuState::Main.convert_msg(),
         )
     }
-    pub fn new_connect_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_connect_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Verbinden",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             AppMessage::Connect,
         )
     }
-    pub fn new_send_chat_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_send_chat_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Senden",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             AppMessage::SendChat,
         )
     }
-    pub fn new_start_game_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_start_game_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Starten",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             AppMessage::StartGame,
         )
     }
-    pub fn new_back_to_menu_button(id: usize, width: u16, heigth: u16) -> Self {
+    pub fn new_back_to_menu_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
             "Zurück zum Menü",
             BUTTON1_PATH,
             width,
-            heigth,
+            height,
             AppMessage::BackToMenu,
         )
     }

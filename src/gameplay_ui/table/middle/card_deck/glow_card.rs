@@ -3,7 +3,7 @@ use crate::{
     api::{get_glow_path, Card},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_heigth_middle, card_width_middle, table::middle::card_deck::CardDeckMessage,
+        card_height_middle, card_width_middle, table::middle::card_deck::CardDeckMessage,
     },
     ui_element_traits::{Animated, Message, Notifiable, Resizable, Viewable},
 };
@@ -96,8 +96,8 @@ impl Animated for CardStackGlow {
 }
 
 impl Resizable for CardStackGlow {
-    fn heigth(&self) -> f32 {
-        card_heigth_middle(self.window_size)
+    fn height(&self) -> f32 {
+        card_height_middle(self.window_size)
     }
     fn width(&self) -> f32 {
         card_width_middle(self.window_size)
@@ -111,7 +111,7 @@ impl Viewable for CardStackGlow {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let img = image(self.img_path.to_string())
             .width(self.width())
-            .height(self.heigth())
+            .height(self.height())
             .opacity(
                 self.glow_animation
                     .get_opacity()

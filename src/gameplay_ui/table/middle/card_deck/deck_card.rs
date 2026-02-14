@@ -3,7 +3,7 @@ use crate::{
     api::CARD_BACK_PATH,
     client::AppMessage,
     gameplay_ui::{
-        card_heigth_middle, card_img_middle_base_scale, card_width_middle,
+        card_height_middle, card_img_middle_base_scale, card_width_middle,
         CARD_AREA_MIDDLE_RELATION,
     },
     ui_element_traits::*,
@@ -90,8 +90,8 @@ impl Animated for ViewableDeckCard {
 }
 
 impl Resizable for ViewableDeckCard {
-    fn heigth(&self) -> f32 {
-        card_heigth_middle(self.window_size)
+    fn height(&self) -> f32 {
+        card_height_middle(self.window_size)
     }
     fn width(&self) -> f32 {
         card_width_middle(self.window_size)
@@ -103,7 +103,7 @@ impl Resizable for ViewableDeckCard {
 
 impl SizeFromOutside for ViewableDeckCard {
     fn height_for(window_size: Size) -> f32 {
-        card_heigth_middle(window_size)
+        card_height_middle(window_size)
     }
     fn width_for(window_size: Size) -> f32 {
         card_width_middle(window_size)
@@ -119,7 +119,7 @@ impl Viewable for ViewableDeckCard {
         };
         let img = image(CARD_BACK_PATH.to_string())
             .width(self.width())
-            .height(self.heigth())
+            .height(self.height())
             .scale(card_img_middle_base_scale())
             .opacity(opacity);
         Container::new(img)

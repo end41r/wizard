@@ -3,7 +3,7 @@ use crate::{
     api::{get_card_path, CARD_BACK_PATH},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_heigth_middle, card_img_middle_base_scale, card_width_middle,
+        card_height_middle, card_img_middle_base_scale, card_width_middle,
         table::middle::card_deck::{Card, CardDeckMessage},
     },
     ui_element_traits::*,
@@ -102,8 +102,8 @@ impl Animated for ViewableTrumpCard {
 }
 
 impl Resizable for ViewableTrumpCard {
-    fn heigth(&self) -> f32 {
-        card_heigth_middle(self.window_size)
+    fn height(&self) -> f32 {
+        card_height_middle(self.window_size)
     }
     fn width(&self) -> f32 {
         card_width_middle(self.window_size)
@@ -127,6 +127,6 @@ impl Viewable for ViewableTrumpCard {
             .content_fit(iced::ContentFit::Fill);
         Container::new(img)
             .width(self.width())
-            .height(self.heigth())
+            .height(self.height())
     }
 }
