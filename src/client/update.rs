@@ -1,4 +1,4 @@
-use iced::{clipboard, Task};
+use iced::Task;
 use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
@@ -34,7 +34,6 @@ fn format_card(card: &Card) -> String {
 }
 
 pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
-    let mut tb = TaskBatcher::new();
     match msg {
         AppMessage::Navigate(menu) => {
             state.menu = menu;
@@ -66,11 +65,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         AppMessage::ServerAddressChanged(addr) => {
             state.ip = addr;
         }
-        AppMessage::CopyToClipboard(addr) => {
-            state.last_msg = "Server address copied to clipboard.".to_string();
-            tb.push(clipboard::write(addr))
-        }
-
         AppMessage::SendChat => {
             if let Ok(guard) = state.ws_tx.lock() {
                 if let Some(ref tx) = *guard {
@@ -135,7 +129,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 if let Some(our_player) = lobby
                     .players
                     .iter()
-                    .find(|player| player.id == player_to_toggle)
+                    .find(|player| player.id == player_to_toggle as u64)
                 {
                     !our_player.ready
                 } else {
@@ -155,10 +149,27 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             }
         }
         AppMessage::StartGame => {
-            if let Ok(guard) = state.ws_tx.lock() {
-                if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::StartGame);
-                    state.last_msg = "Starting game...".to_string();
+            let can_start = if cfg!(feature = "wiz_debug") {
+                true
+            } else {
+                state.lobby.as_ref().is_some_and(|lobby| {
+                    lobby.players.len() == state.host_player_count.to_usize()
+                        && lobby.players.iter().all(|p| p.ready)
+                })
+            };
+            let is_host = state.my_id.is_some()
+                && state.my_id.unwrap()
+                    == state
+                        .lobby
+                        .as_ref()
+                        .and_then(|l| l.players.iter().find(|p| p.is_host).map(|p| p.id))
+                        .unwrap_or_default();
+            if can_start && is_host {
+                if let Ok(guard) = state.ws_tx.lock() {
+                    if let Some(ref tx) = *guard {
+                        let _ = tx.send(C::StartGame);
+                        state.last_msg = "Starting game...".to_string();
+                    }
                 }
             }
         }
@@ -275,14 +286,44 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             handle_tick(state);
         }
         AppMessage::HandMessage(hand_msg) => {
-            tb.push(state.viewable_hand.update_with_msg(hand_msg.clone()));
+            return state.viewable_hand.update_with_msg(hand_msg.clone());
         }
         AppMessage::TableMessage(table_msg) => {
-            tb.push(state.viewable_table.update_with_msg(table_msg.clone()));
+            return state.viewable_table.update_with_msg(table_msg.clone());
+        }
+        AppMessage::ButtonMessage(btn_msg) => {
+            // Route to buttons (each button filters by id internally)
+            return TaskBatcher::instant_batch([
+                state.btn_host.update_with_msg(btn_msg.clone()),
+                state.btn_join.update_with_msg(btn_msg.clone()),
+                state.btn_rules.update_with_msg(btn_msg.clone()),
+                state.btn_close.update_with_msg(btn_msg.clone()),
+                state.btn_create_lobby.update_with_msg(btn_msg.clone()),
+                state.btn_back.update_with_msg(btn_msg.clone()),
+                state.btn_connect.update_with_msg(btn_msg.clone()),
+                state.btn_send_chat.update_with_msg(btn_msg.clone()),
+                state.btn_start_game.update_with_msg(btn_msg.clone()),
+                state.btn_back_to_menu.update_with_msg(btn_msg.clone()),
+                state.btn_ready_owned.update_with_msg(btn_msg),
+            ])
         }
         AppMessage::AnimationTick => {
-            tb.push(state.viewable_hand.update_animations());
-            tb.push(state.viewable_table.update_animations());
+            return TaskBatcher::instant_batch([
+                state.viewable_hand.update_animations(),
+                state.viewable_table.update_animations(),
+                // Update button animations
+                state.btn_host.update_animations(),
+                state.btn_join.update_animations(),
+                state.btn_rules.update_animations(),
+                state.btn_close.update_animations(),
+                state.btn_create_lobby.update_animations(),
+                state.btn_back.update_animations(),
+                state.btn_connect.update_animations(),
+                state.btn_send_chat.update_animations(),
+                state.btn_start_game.update_animations(),
+                state.btn_back_to_menu.update_animations(),
+                state.btn_ready_owned.update_animations(),
+            ])
         }
         AppMessage::WindowResized(window_size) => {
             state.window_size = window_size;
@@ -290,7 +331,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.viewable_table.update_size(window_size);
         }
     }
-    tb.batch()
+    Task::none()
 }
 
 fn handle_tick(state: &mut App) {
@@ -442,7 +483,19 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.menu = MenuState::Playing;
+
+                // Check if the host's name is "wizard_master" to enter debug
+                // Easter egg :)
+                if let Some(ref lobby) = state.lobby {
+                    if let Some(host) = lobby.players.iter().find(|p| p.is_host) {
+                        if host.name == "wizard_master" {
+                            state.menu = MenuState::PlayingTest;
+                        } else {
+                            state.menu = MenuState::Playing;
+                        }
+                    }
+                }
+
                 state.scores.clear();
                 state.bids.clear();
                 state.tricks_won.clear();

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
 pub static CARD_BACK_PATH: &str = "assets/cards/back.png";
+pub static BUTTON1_PATH: &str = "assets/button1.png";
 pub static FRAME_PLAYABLE_PATH: &str = "assets/cards/frame_green.png";
 pub static FRAME_PLAYABLE_FOCUSED_PATH: &str = "assets/cards/frame_yellow.png";
 pub static FALSE_PLAYED_PATH: &str = "assets/cards/false_played.png";

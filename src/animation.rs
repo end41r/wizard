@@ -25,11 +25,11 @@
 /// via the new function.
 /// Keep in mind that if you choose 0 for the animation duration the animation will always
 /// count as finished (the progress function returns 1.0).
-/// 
+///
 /// You can also set a Message to be sent when the animation reaches the highest frame number
 /// via on_end or returns(!) to the first frame number 0 via on start.
 /// Check the source of your animation type for the specific implementation of this.
-/// 
+///
 /// If you want to start multiple animations with a set delay you need to use AnimationStarter.
 /// You give it a message with an usize 0 at its end that will start an animation.
 /// The message needs to implement ReplaceUsize + Message for this.
@@ -278,6 +278,7 @@ impl ReversableBasicAnimation {
     pub fn reverse(&mut self) {
         self.animation_state = AnimationState::Reversing;
     }
+    #[allow(dead_code)]
     pub fn reverse_force(&mut self) {
         self.current_frame_number = self.max_frame_number;
         self.animation_state = AnimationState::Reversing;

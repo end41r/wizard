@@ -3,12 +3,12 @@ mod views;
 mod ws;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
-use crate::gameplay_ui::hand::hand_card::CardMessage;
+use crate::client::views::Button;
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
 use crate::gameplay_ui::table::{
-    middle::{card_deck::CardDeckMessage, TableMiddleMessage},
     TableMessage, ViewableTable,
 };
+use crate::ui_element_traits::Message;
 use iced::{time, window, Size, Subscription, Task};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -25,6 +25,8 @@ pub enum PlayerCount {
     P5,
     P6,
 }
+
+const TITLE_FONT: &[u8] = include_bytes!("../../assets/MagicSchoolOne.ttf");
 
 impl PlayerCount {
     pub fn to_usize(self) -> usize {
@@ -58,6 +60,12 @@ pub enum MenuState {
     Playing,
     #[allow(dead_code)]
     PlayingTest,
+}
+
+impl Message for MenuState {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        AppMessage::Navigate(msg)
+    }
 }
 
 pub struct App {
@@ -105,6 +113,22 @@ pub struct App {
     // Gameplay view state
     pub viewable_hand: ViewableHand,
     pub viewable_table: ViewableTable,
+
+    // UI Buttons (main menu)
+    pub btn_host: crate::client::views::Button,
+    pub btn_join: crate::client::views::Button,
+    pub btn_rules: crate::client::views::Button,
+    pub btn_close: crate::client::views::Button,
+
+    // Buttons for other menus
+    pub btn_create_lobby: crate::client::views::Button,
+    pub btn_back: crate::client::views::Button,
+    pub btn_connect: crate::client::views::Button,
+    pub btn_send_chat: crate::client::views::Button,
+    pub btn_start_game: crate::client::views::Button,
+    pub btn_back_to_menu: crate::client::views::Button,
+
+    pub btn_ready_owned: crate::client::views::Button,
 }
 
 impl Default for App {
@@ -121,7 +145,6 @@ impl Default for App {
             msg: String::new(),
 
             menu: MenuState::Main,
-
             host_name: "".to_string(),
             host_player_count: PlayerCount::P4,
             join_name: "".to_string(),
@@ -159,6 +182,21 @@ impl Default for App {
 
             viewable_hand: ViewableHand::new(window_size),
             viewable_table: ViewableTable::new(window_size),
+
+            //Buttons
+            btn_host: Button::new_host_button(0, 180, 44),
+            btn_join: Button::new_join_button(1, 180, 44),
+            btn_rules: Button::new_rules_button(2, 180, 44),
+            btn_close: Button::new_close_button(3, 180, 44),
+
+            btn_create_lobby: Button::new_create_lobby_button(10, 160, 40),
+            btn_back: Button::new_back_button(11, 100, 36),
+            btn_connect: Button::new_connect_button(12, 140, 40),
+            btn_send_chat: Button::new_send_chat_button(13, 100, 36),
+            btn_start_game: Button::new_start_game_button(14, 140, 40),
+            btn_back_to_menu: Button::new_back_to_menu_button(15, 160, 40),
+
+            btn_ready_owned: Button::new_ready_owned_button(20, 100, 36),
         }
     }
 }
@@ -174,14 +212,13 @@ pub enum AppMessage {
     HostPlayerCountChanged(PlayerCount),
     JoinNameChanged(String),
     ServerAddressChanged(String),
-    CopyToClipboard(String),
 
     SendChat,
     ChatInputChanged(String),
 
     CreateLobby,
     Connect,
-    ToggleReady(u64),
+    ToggleReady(usize),
     StartGame,
 
     ServerTick,
@@ -200,6 +237,15 @@ pub enum AppMessage {
     // Gameplay view messages
     HandMessage(HandMessage),
     TableMessage(TableMessage),
+
+    // Button messages from view widgets
+    ButtonMessage(crate::client::views::ButtonMessage),
+}
+
+impl Message for AppMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        msg
+    }
 }
 
 pub struct TaskBatcher {
@@ -214,6 +260,10 @@ impl TaskBatcher {
         if task.units() != 0 {
             self.tasks.push(task)
         }
+    }
+    pub fn push_mult<const SIZE: usize>(&mut self, tasks: [Task<AppMessage>; SIZE]) {
+        self.tasks
+            .extend(tasks.into_iter().filter(|task| task.units() != 0));
     }
     pub fn batch(self) -> Task<AppMessage> {
         Task::batch(self.tasks)
@@ -235,10 +285,15 @@ fn subscription(state: &App) -> Subscription<AppMessage> {
 }
 
 pub fn main() -> iced::Result {
+    use std::borrow::Cow;
     iced::application(App::default, update, view)
         .title("Wizard")
         .subscription(subscription)
         // Keep this value in sync with the App::default function.
-        .window_size(Size::new(640.0, 480.0))
+        .window_size(Size::new(300.0, 800.0))
+        .settings(iced::Settings {
+            fonts: vec![Cow::Borrowed(TITLE_FONT)],
+            ..Default::default()
+        })
         .run()
 }

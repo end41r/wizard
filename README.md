@@ -18,3 +18,7 @@ We also have a pr check for clippy and fmt, so if it fails, please use
 - `cargo fmt` to fix formatting (automatically)
 - `cargo clippy` to check for the warnings (most of them will be gone if you use `cargo clippy --fix --bin "wizard"`)
 - If you really trust clippy, you can also do `cargo clippy --fix --bin "wizard" --allow-dirty`, but its better not to use it :)
+
+### To run in debug mode with the wiz_debug feature enabled, run
+`cargo run --features wiz_debug`
+This will allow you to start the game with 1 player.
