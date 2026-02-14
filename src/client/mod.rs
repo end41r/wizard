@@ -3,8 +3,11 @@ mod views;
 mod ws;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
+use crate::client::views::Button;
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
-use iced::{time, window, Size, Subscription};
+use crate::gameplay_ui::table::{TableMessage, ViewableTable};
+use crate::ui_element_traits::Message;
+use iced::{time, window, Size, Subscription, Task};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -56,6 +59,13 @@ pub enum MenuState {
     #[allow(dead_code)]
     PlayingTest,
 }
+
+impl Message for MenuState {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        AppMessage::Navigate(msg)
+    }
+}
+
 pub struct App {
     window_size: Size,
 
@@ -100,12 +110,13 @@ pub struct App {
 
     // Gameplay view state
     pub viewable_hand: ViewableHand,
+    pub viewable_table: ViewableTable,
 
     // UI Buttons (main menu)
     pub btn_host: crate::client::views::Button,
     pub btn_join: crate::client::views::Button,
     pub btn_rules: crate::client::views::Button,
-    pub btn_exit: crate::client::views::Button,
+    pub btn_close: crate::client::views::Button,
 
     // Buttons for other menus
     pub btn_create_lobby: crate::client::views::Button,
@@ -168,81 +179,22 @@ impl Default for App {
             winner: None,
 
             viewable_hand: ViewableHand::new(window_size),
+            viewable_table: ViewableTable::new(window_size),
 
             //Buttons
-            btn_host: crate::client::views::Button::new(0, "Host", "assets/button1.png", 180, 44),
-            btn_join: crate::client::views::Button::new(
-                1,
-                "Beitreten",
-                "assets/button1.png",
-                180,
-                44,
-            ),
-            btn_rules: crate::client::views::Button::new(
-                2,
-                "Spielregeln",
-                "assets/button1.png",
-                180,
-                44,
-            ),
-            btn_exit: crate::client::views::Button::new(
-                3,
-                "Spiel verlassen",
-                "assets/button1.png",
-                180,
-                44,
-            ),
+            btn_host: Button::new_host_button(0, 180, 44),
+            btn_join: Button::new_join_button(1, 180, 44),
+            btn_rules: Button::new_rules_button(2, 180, 44),
+            btn_close: Button::new_close_button(3, 180, 44),
 
-            btn_create_lobby: crate::client::views::Button::new(
-                10,
-                "Lobby erstellen",
-                "assets/button1.png",
-                160,
-                40,
-            ),
-            btn_back: crate::client::views::Button::new(
-                11,
-                "zurück",
-                "assets/button1.png",
-                100,
-                36,
-            ),
-            btn_connect: crate::client::views::Button::new(
-                12,
-                "Verbinden",
-                "assets/button1.png",
-                140,
-                40,
-            ),
-            btn_send_chat: crate::client::views::Button::new(
-                13,
-                "Senden",
-                "assets/button1.png",
-                100,
-                36,
-            ),
-            btn_start_game: crate::client::views::Button::new(
-                14,
-                "Starten",
-                "assets/button1.png",
-                140,
-                40,
-            ),
-            btn_back_to_menu: crate::client::views::Button::new(
-                15,
-                "Zurück zum Menü",
-                "assets/button1.png",
-                160,
-                40,
-            ),
+            btn_create_lobby: Button::new_create_lobby_button(10, 160, 40),
+            btn_back: Button::new_back_button(11, 100, 36),
+            btn_connect: Button::new_connect_button(12, 140, 40),
+            btn_send_chat: Button::new_send_chat_button(13, 100, 36),
+            btn_start_game: Button::new_start_game_button(14, 140, 40),
+            btn_back_to_menu: Button::new_back_to_menu_button(15, 160, 40),
 
-            btn_ready_owned: crate::client::views::Button::new(
-                20,
-                "Bereit",
-                "assets/button1.png",
-                100,
-                36,
-            ),
+            btn_ready_owned: Button::new_ready_owned_button(20, 100, 36),
         }
     }
 }
@@ -264,7 +216,7 @@ pub enum AppMessage {
 
     CreateLobby,
     Connect,
-    ToggleReady(u64),
+    ToggleReady(PlayerId),
     StartGame,
 
     ServerTick,
@@ -282,9 +234,43 @@ pub enum AppMessage {
 
     // Gameplay view messages
     HandMessage(HandMessage),
+    TableMessage(TableMessage),
 
     // Button messages from view widgets
     ButtonMessage(crate::client::views::ButtonMessage),
+}
+
+impl Message for AppMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        msg
+    }
+}
+
+pub struct TaskBatcher {
+    tasks: Vec<Task<AppMessage>>,
+}
+
+impl TaskBatcher {
+    pub fn new() -> Self {
+        Self { tasks: vec![] }
+    }
+    pub fn push(&mut self, task: Task<AppMessage>) {
+        if task.units() != 0 {
+            self.tasks.push(task)
+        }
+    }
+    #[allow(dead_code)]
+    pub fn push_mult<const SIZE: usize>(&mut self, tasks: [Task<AppMessage>; SIZE]) {
+        self.tasks
+            .extend(tasks.into_iter().filter(|task| task.units() != 0));
+    }
+    pub fn batch(self) -> Task<AppMessage> {
+        Task::batch(self.tasks)
+    }
+    // AI-Usage: Gemini for learning how to put an array into a function and filter it.
+    pub fn instant_batch<const SIZE: usize>(tasks: [Task<AppMessage>; SIZE]) -> Task<AppMessage> {
+        Task::batch(tasks.into_iter().filter(|task| task.units() != 0))
+    }
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {

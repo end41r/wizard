@@ -1,4 +1,4 @@
-use crate::api::{Lobby, Player, ServerMessage, B, C, S};
+use crate::api::{Lobby, Player, PlayerId, ServerMessage, B, C, S};
 use crate::gamelogic::game::Game;
 use crate::gamelogic::GameEvent;
 
@@ -17,8 +17,8 @@ use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
 use uuid::Uuid;
 
-type Clients = Arc<RwLock<HashMap<u64, mpsc::UnboundedSender<ServerMessage>>>>;
-type PlayerList = Arc<RwLock<HashMap<u64, Player>>>;
+type Clients = Arc<RwLock<HashMap<PlayerId, mpsc::UnboundedSender<ServerMessage>>>>;
+type PlayerList = Arc<RwLock<HashMap<PlayerId, Player>>>;
 type SharedGame = Arc<RwLock<Game>>;
 
 const SVERSION: usize = 1;
@@ -230,14 +230,14 @@ async fn broadcast(clients: &Clients, _players: &PlayerList, msg: B) {
     }
 }
 
-async fn send(clients: &Clients, player_id: u64, msg: S) {
+async fn send(clients: &Clients, player_id: PlayerId, msg: S) {
     if let Some(tx) = clients.read().await.get(&player_id) {
         let _ = tx.send(ServerMessage::Server(msg));
     }
 }
 
 async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList, game: SharedGame) {
-    let id = Uuid::new_v4().as_u128() as u64;
+    let id: PlayerId = Uuid::new_v4().as_u128() as u64;
     println!("New connection: player {id}");
 
     let (mut sender, mut receiver) = socket.split();

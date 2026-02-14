@@ -3,6 +3,12 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
+pub static CARD_BACK_PATH: &str = "assets/cards/back.png";
+pub static BUTTON1_PATH: &str = "assets/button1.png";
+pub static FRAME_PLAYABLE_PATH: &str = "assets/cards/frame_green.png";
+pub static FRAME_PLAYABLE_FOCUSED_PATH: &str = "assets/cards/frame_yellow.png";
+pub static FALSE_PLAYED_PATH: &str = "assets/cards/false_played.png";
+
 pub type PlayerId = u64;
 pub type SessionId = u64;
 
@@ -164,4 +170,57 @@ pub struct Lobby {
     pub players: Vec<Player>,
     /// Contains tuples of (sender, message).
     pub chat: Vec<(String, String)>,
+}
+
+pub fn get_card_path(card: Card) -> String {
+    let mut path: String = "assets/cards/variations/".to_owned();
+    if card.value == Value::Jester {
+        path.push_str("jester");
+    } else if card.value == Value::Wizard {
+        path.push_str("wizard");
+    } else {
+        match card.suit {
+            Suit::Blue => {
+                path.push_str("blue_");
+            }
+            Suit::Green => {
+                path.push_str("green_");
+            }
+            Suit::Red => {
+                path.push_str("red_");
+            }
+            Suit::Yellow => {
+                path.push_str("yellow_");
+            }
+        }
+        if let Value::Number(number) = card.value {
+            path.push_str(number.to_string().as_str());
+        }
+    }
+    path.push_str(".png");
+    path
+}
+
+pub fn get_glow_path(card: Card) -> String {
+    let mut path: String = "assets/cards/".to_owned();
+    if card.value == Value::Jester || card.value == Value::Wizard {
+        path.push_str("");
+    } else {
+        match card.suit {
+            Suit::Blue => {
+                path.push_str("glow_blue");
+            }
+            Suit::Green => {
+                path.push_str("glow_green");
+            }
+            Suit::Red => {
+                path.push_str("glow_red");
+            }
+            Suit::Yellow => {
+                path.push_str("glow_yellow");
+            }
+        }
+    }
+    path.push_str(".png");
+    path
 }

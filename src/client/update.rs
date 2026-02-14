@@ -2,11 +2,12 @@ use iced::Task;
 use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
-use crate::api::{Card, Lobby, ServerMessage, Value, B, C, S};
-use crate::ui_element_traits::{Animated, Message, Resizable};
+use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
+use crate::client::TaskBatcher;
+use crate::ui_element_traits::{Animated, Notifiable, Resizable};
 
-/// Helper function to get player name from ID using lobby data
-fn get_player_name(state: &App, player_id: u64) -> String {
+/// Get player name from ID using lobby data
+fn get_player_name(state: &App, player_id: PlayerId) -> String {
     if state.my_id == Some(player_id) {
         return "You".to_string();
     }
@@ -36,7 +37,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
     match msg {
         AppMessage::Navigate(menu) => {
             state.menu = menu;
-            Task::none()
         }
         AppMessage::Host => {
             let local_ip = crate::server::local_ip();
@@ -44,11 +44,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.ip = local_ip;
 
             state.menu = MenuState::Host;
-            Task::none()
         }
         AppMessage::HostNameChanged(name) => {
             state.host_name = name;
-            Task::none()
         }
         AppMessage::HostPlayerCountChanged(count) => {
             state.host_player_count = count;
@@ -60,15 +58,12 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = format!("Player count set to {count}");
                 }
             }
-            Task::none()
         }
         AppMessage::JoinNameChanged(name) => {
             state.join_name = name;
-            Task::none()
         }
         AppMessage::ServerAddressChanged(addr) => {
             state.ip = addr;
-            Task::none()
         }
         AppMessage::SendChat => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -81,11 +76,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.chat_input.clear();
                 }
             }
-            Task::none()
         }
         AppMessage::ChatInputChanged(input) => {
             state.chat_input = input;
-            Task::none()
         }
         AppMessage::CreateLobby => {
             if !state.connected {
@@ -115,7 +108,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 }
             }
             state.menu = MenuState::Lobby;
-            Task::none()
         }
         AppMessage::Connect => {
             if !state.connected {
@@ -129,7 +121,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 state.msg = "Connecting...".into();
                 state.connecting = true;
             }
-            Task::none()
         }
 
         AppMessage::ToggleReady(player_to_toggle) => {
@@ -156,21 +147,35 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = format!("Set ready: {new_ready_state}");
                 }
             }
-            Task::none()
         }
         AppMessage::StartGame => {
-            if let Ok(guard) = state.ws_tx.lock() {
-                if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::StartGame);
-                    state.last_msg = "Starting game...".to_string();
+            let can_start = if cfg!(feature = "wiz_debug") {
+                true
+            } else {
+                state.lobby.as_ref().is_some_and(|lobby| {
+                    lobby.players.len() == state.host_player_count.to_usize()
+                        && lobby.players.iter().all(|p| p.ready)
+                })
+            };
+            let is_host = state.my_id.is_some()
+                && state.my_id.unwrap()
+                    == state
+                        .lobby
+                        .as_ref()
+                        .and_then(|l| l.players.iter().find(|p| p.is_host).map(|p| p.id))
+                        .unwrap_or_default();
+            if can_start && is_host {
+                if let Ok(guard) = state.ws_tx.lock() {
+                    if let Some(ref tx) = *guard {
+                        let _ = tx.send(C::StartGame);
+                        state.last_msg = "Starting game...".to_string();
+                    }
                 }
             }
-            Task::none()
         }
 
         AppMessage::GameRules => {
             state.menu = MenuState::Rules;
-            Task::none()
         }
         AppMessage::BackToMenu => {
             // Stops the server if the player is the host; otherwise drops the connection.
@@ -231,17 +236,15 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.game_over = false;
             state.winner = None;
             state.menu = MenuState::Main;
-            Task::none()
         }
         AppMessage::CloseGame => {
-            // Calls the Application exit.
+            // Calls the application to exit.
             std::process::exit(0);
         }
 
         // Gameplay message handlers
         AppMessage::BidInputChanged(input) => {
             state.bid_input = input;
-            Task::none()
         }
         AppMessage::SubmitBid => {
             if let Ok(amount) = state.bid_input.parse::<usize>() {
@@ -257,7 +260,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             } else {
                 state.last_msg = "Invalid bid - enter a number".to_string();
             }
-            Task::none()
         }
         AppMessage::PlayCard(card) => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -268,7 +270,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.game_log.push(log);
                 }
             }
-            Task::none()
         }
         AppMessage::SetTrump(suit) => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -280,123 +281,57 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.must_set_trump = false;
                 }
             }
-            Task::none()
         }
         AppMessage::ServerTick => {
             handle_tick(state);
-            Task::none()
         }
         AppMessage::HandMessage(hand_msg) => {
-            state.viewable_hand.update_with_msg(hand_msg);
-            Task::none()
+            return state.viewable_hand.update_with_msg(hand_msg.clone());
+        }
+        AppMessage::TableMessage(table_msg) => {
+            return state.viewable_table.update_with_msg(table_msg.clone());
         }
         AppMessage::ButtonMessage(btn_msg) => {
-            // route to buttons (each button filters by id internally)
-            state.btn_host.update_with_msg(btn_msg.clone());
-            state.btn_join.update_with_msg(btn_msg.clone());
-            state.btn_rules.update_with_msg(btn_msg.clone());
-            state.btn_exit.update_with_msg(btn_msg.clone());
-
-            state.btn_create_lobby.update_with_msg(btn_msg.clone());
-            state.btn_back.update_with_msg(btn_msg.clone());
-            state.btn_connect.update_with_msg(btn_msg.clone());
-            state.btn_send_chat.update_with_msg(btn_msg.clone());
-            state.btn_start_game.update_with_msg(btn_msg.clone());
-            state.btn_back_to_menu.update_with_msg(btn_msg.clone());
-
-            state.btn_ready_owned.update_with_msg(btn_msg);
-            Task::none()
+            // Route to buttons (each button filters by id internally)
+            return TaskBatcher::instant_batch([
+                state.btn_host.update_with_msg(btn_msg.clone()),
+                state.btn_join.update_with_msg(btn_msg.clone()),
+                state.btn_rules.update_with_msg(btn_msg.clone()),
+                state.btn_close.update_with_msg(btn_msg.clone()),
+                state.btn_create_lobby.update_with_msg(btn_msg.clone()),
+                state.btn_back.update_with_msg(btn_msg.clone()),
+                state.btn_connect.update_with_msg(btn_msg.clone()),
+                state.btn_send_chat.update_with_msg(btn_msg.clone()),
+                state.btn_start_game.update_with_msg(btn_msg.clone()),
+                state.btn_back_to_menu.update_with_msg(btn_msg.clone()),
+                state.btn_ready_owned.update_with_msg(btn_msg),
+            ]);
         }
         AppMessage::AnimationTick => {
-            state.viewable_hand.update_animations();
-
-            // Update button animations
-            state.btn_host.update_animations();
-            state.btn_join.update_animations();
-            state.btn_rules.update_animations();
-            state.btn_exit.update_animations();
-
-            state.btn_create_lobby.update_animations();
-            state.btn_back.update_animations();
-            state.btn_connect.update_animations();
-            state.btn_send_chat.update_animations();
-            state.btn_start_game.update_animations();
-            state.btn_back_to_menu.update_animations();
-            state.btn_ready_owned.update_animations();
-
-            let mut pending_msgs: Vec<Task<AppMessage>> = Vec::new();
-
-            state.btn_host.check_click_end(|&_id| {
-                pending_msgs.push(Task::done(AppMessage::Host));
-            });
-
-            state.btn_join.check_click_end(|_| {
-                pending_msgs.push(Task::done(AppMessage::Navigate(MenuState::Join)));
-            });
-
-            state.btn_rules.check_click_end(|_| {
-                pending_msgs.push(Task::done(AppMessage::GameRules));
-            });
-
-            state.btn_exit.check_click_end(|_| {
-                pending_msgs.push(Task::done(AppMessage::CloseGame));
-            });
-
-            state.btn_create_lobby.check_click_end(|&_id| {
-                pending_msgs.push(Task::done(AppMessage::CreateLobby));
-            });
-
-            state.btn_ready_owned.check_click_end(|&_id| {
-                if let Some(my_id) = state.my_id {
-                    pending_msgs.push(Task::done(AppMessage::ToggleReady(my_id)));
-                }
-            });
-
-            state.btn_back.check_click_end(|_| {
-                pending_msgs.push(Task::done(AppMessage::Navigate(MenuState::Main)));
-            });
-
-            state.btn_connect.check_click_end(|_| {
-                pending_msgs.push(Task::done(AppMessage::Connect));
-            });
-
-            state.btn_send_chat.check_click_end(|_| {
-                pending_msgs.push(Task::done(AppMessage::SendChat));
-            });
-
-            state.btn_start_game.check_click_end(|_| {
-                let can_start = if cfg!(feature = "wiz_debug") {
-                    true
-                } else {
-                    state.lobby.as_ref().is_some_and(|lobby| {
-                        lobby.players.len() == state.host_player_count.to_usize()
-                            && lobby.players.iter().all(|p| p.ready)
-                    })
-                };
-                let is_host = state.my_id.is_some()
-                    && state.my_id.unwrap()
-                        == state
-                            .lobby
-                            .as_ref()
-                            .and_then(|l| l.players.iter().find(|p| p.is_host).map(|p| p.id))
-                            .unwrap_or_default();
-                if can_start && is_host {
-                    pending_msgs.push(Task::done(AppMessage::StartGame));
-                }
-            });
-
-            state.btn_back_to_menu.check_click_end(|_| {
-                pending_msgs.push(Task::done(AppMessage::BackToMenu));
-            });
-
-            Task::batch(pending_msgs)
+            return TaskBatcher::instant_batch([
+                state.viewable_hand.update_animations(),
+                state.viewable_table.update_animations(),
+                // Update button animations
+                state.btn_host.update_animations(),
+                state.btn_join.update_animations(),
+                state.btn_rules.update_animations(),
+                state.btn_close.update_animations(),
+                state.btn_create_lobby.update_animations(),
+                state.btn_back.update_animations(),
+                state.btn_connect.update_animations(),
+                state.btn_send_chat.update_animations(),
+                state.btn_start_game.update_animations(),
+                state.btn_back_to_menu.update_animations(),
+                state.btn_ready_owned.update_animations(),
+            ]);
         }
-        AppMessage::WindowResized(size) => {
-            state.window_size = size;
-            state.viewable_hand.update_size(size);
-            Task::none()
+        AppMessage::WindowResized(window_size) => {
+            state.window_size = window_size;
+            state.viewable_hand.update_size(window_size);
+            state.viewable_table.update_size(window_size);
         }
     }
+    Task::none()
 }
 
 fn handle_tick(state: &mut App) {
@@ -450,6 +385,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.last_msg = log;
                 state.my_id = Some(id);
+                state
+                    .btn_ready_owned
+                    .set_on_click(AppMessage::ToggleReady(id));
             }
             S::Error { reason } => {
                 let log = format!("[ERROR] {reason}");

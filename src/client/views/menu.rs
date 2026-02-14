@@ -25,7 +25,7 @@ pub fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
 
     let menu_right: Column<'a, AppMessage> = column![
         state.btn_rules.view().padding(10),
-        state.btn_exit.view().padding(10),
+        state.btn_close.view().padding(10),
     ]
     .spacing(100)
     .align_x(iced::alignment::Horizontal::Right);

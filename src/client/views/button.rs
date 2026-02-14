@@ -1,11 +1,25 @@
 use derive_more::{Deref, DerefMut};
 use iced::widget::{container, stack, text, Image, MouseArea};
+use iced::Task;
 
-use crate::animation::{
-    animation_end_sensor::AnimationEndSensor, BasicAnimation, Easing, ReversableBasicAnimation,
-};
-use crate::client::AppMessage;
-use crate::ui_element_traits::{Animated, Message};
+use crate::animation::{BasicAnimation, Easing, ReversableBasicAnimation};
+use crate::api::{PlayerId, BUTTON1_PATH};
+use crate::client::{AppMessage, MenuState, TaskBatcher};
+use crate::ui_element_traits::{Animated, Message, Notifiable};
+
+#[derive(Debug, Clone)]
+pub enum ButtonMessage {
+    Hovered(usize),
+    NotHovered(usize),
+    Clicked(usize),
+    ClickEnded(usize),
+}
+
+impl Message for ButtonMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        AppMessage::ButtonMessage(msg)
+    }
+}
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct HoverAnim(ReversableBasicAnimation);
@@ -38,63 +52,153 @@ impl ClickAnim {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum ButtonMessage {
-    Hovered(usize),
-    NotHovered(usize),
-    Clicked(usize),
-}
-
 #[derive(Debug)]
 pub struct Button {
     pub id: usize,
-    pub label: &'static str,
+    pub text: &'static str,
     img_path: &'static str,
     width: u16,
     height: u16,
     hover_animation: HoverAnim,
     click_animation: ClickAnim,
-    click_end_sensor: AnimationEndSensor<usize>,
+    on_click: AppMessage,
 }
 
 impl Button {
-    pub fn new(
+    fn new(
         id: usize,
-        label: &'static str,
+        text: &'static str,
         img_path: &'static str,
         width: u16,
         height: u16,
+        on_click: AppMessage,
     ) -> Self {
-        let click_duration: usize = 15;
-        Self {
+        let mut button = Self {
             id,
-            label,
+            text,
             img_path,
             width,
             height,
             hover_animation: HoverAnim::new(12),
-            click_animation: ClickAnim::new(click_duration),
-            click_end_sensor: AnimationEndSensor::new(click_duration),
-        }
+            click_animation: ClickAnim::new(15),
+            on_click,
+        };
+        button
+            .click_animation
+            .on_end(ButtonMessage::ClickEnded(id).convert_msg());
+        button
     }
 
-    pub fn check_click_end<F>(&mut self, action: F) -> bool
-    where
-        F: FnOnce(&usize),
-    {
-        let finished = self.click_end_sensor.check(|h| {
-            if let Some(k) = h.content() {
-                action(k);
-            }
-        });
-        if finished {
-            self.click_animation.reset();
-        }
-        finished
+    pub fn new_host_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(id, "Host", BUTTON1_PATH, width, height, AppMessage::Host)
+    }
+    pub fn new_join_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Beitreten",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::Navigate(MenuState::Join),
+        )
+    }
+    pub fn new_rules_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Spielregeln",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::GameRules,
+        )
+    }
+    pub fn new_close_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Spiel verlassen",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::CloseGame,
+        )
+    }
+    pub fn new_create_lobby_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Lobby erstellen",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::CreateLobby,
+        )
+    }
+    pub fn new_ready_owned_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Bereit",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::ToggleReady(0 as PlayerId),
+        )
+    }
+    pub fn new_back_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Zurück",
+            BUTTON1_PATH,
+            width,
+            height,
+            MenuState::Main.convert_msg(),
+        )
+    }
+    pub fn new_connect_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Verbinden",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::Connect,
+        )
+    }
+    pub fn new_send_chat_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Senden",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::SendChat,
+        )
+    }
+    pub fn new_start_game_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Starten",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::StartGame,
+        )
+    }
+    pub fn new_back_to_menu_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Zurück zum Menü",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::BackToMenu,
+        )
+    }
+
+    pub fn set_on_click(&mut self, on_click: AppMessage) {
+        self.on_click = on_click;
     }
 
     pub fn view(&self) -> container::Container<'_, AppMessage> {
-        self.view_internal(self.label)
+        self.view_internal(self.text)
     }
 
     pub fn view_with_label<'a>(&self, label: &'a str) -> container::Container<'a, AppMessage> {
@@ -137,7 +241,7 @@ impl Button {
     }
 
     pub fn view_disabled(&self) -> container::Container<'_, AppMessage> {
-        self.view_disabled_internal(self.label)
+        self.view_disabled_internal(self.text)
     }
 
     pub fn view_disabled_with_label<'a>(
@@ -174,34 +278,42 @@ impl Button {
     }
 }
 
-/// Implements traits
-impl Message for Button {
+impl Notifiable for Button {
     type OwnMessage = ButtonMessage;
 
-    fn convert_to_app_message(msg: ButtonMessage) -> AppMessage {
-        AppMessage::ButtonMessage(msg)
-    }
-
-    fn update_with_msg(&mut self, msg: ButtonMessage) {
+    fn update_with_msg(&mut self, msg: ButtonMessage) -> Task<AppMessage> {
         match msg {
-            ButtonMessage::Hovered(id) if id == self.id => {
-                self.hover_animation.start();
+            ButtonMessage::Hovered(id) => {
+                if id == self.id {
+                    self.hover_animation.start()
+                }
             }
-            ButtonMessage::NotHovered(id) if id == self.id => {
-                self.hover_animation.reverse();
+            ButtonMessage::NotHovered(id) => {
+                if id == self.id {
+                    self.hover_animation.reverse()
+                }
             }
-            ButtonMessage::Clicked(id) if id == self.id => {
-                self.click_animation.start();
-                self.click_end_sensor.start(Some(id));
+            ButtonMessage::Clicked(id) => {
+                if id == self.id {
+                    self.click_animation.start();
+                }
             }
-            _ => {}
+            ButtonMessage::ClickEnded(id) => {
+                if id == self.id {
+                    self.click_animation.reset();
+                    return self.on_click.convert_msg_to_task();
+                }
+            }
         }
+        Task::none()
     }
 }
 
 impl Animated for Button {
-    fn update_animations(&mut self) {
-        self.hover_animation.next_frame();
-        self.click_animation.next_frame();
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        TaskBatcher::instant_batch([
+            self.hover_animation.next_frame(),
+            self.click_animation.next_frame(),
+        ])
     }
 }
