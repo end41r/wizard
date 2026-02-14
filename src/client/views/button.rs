@@ -3,7 +3,7 @@ use iced::widget::{container, stack, text, Image, MouseArea};
 use iced::Task;
 
 use crate::animation::{BasicAnimation, Easing, ReversableBasicAnimation};
-use crate::api::{BUTTON1_PATH, PlayerId};
+use crate::api::{PlayerId, BUTTON1_PATH};
 use crate::client::{AppMessage, MenuState, TaskBatcher};
 use crate::ui_element_traits::{Animated, Message, Notifiable};
 
