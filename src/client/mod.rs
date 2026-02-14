@@ -216,7 +216,7 @@ pub enum AppMessage {
 
     CreateLobby,
     Connect,
-    ToggleReady(usize),
+    ToggleReady(PlayerId),
     StartGame,
 
     ServerTick,

@@ -3,7 +3,7 @@ use iced::widget::{container, stack, text, Image, MouseArea};
 use iced::Task;
 
 use crate::animation::{BasicAnimation, Easing, ReversableBasicAnimation};
-use crate::api::BUTTON1_PATH;
+use crate::api::{BUTTON1_PATH, PlayerId};
 use crate::client::{AppMessage, MenuState, TaskBatcher};
 use crate::ui_element_traits::{Animated, Message, Notifiable};
 
@@ -139,7 +139,7 @@ impl Button {
             BUTTON1_PATH,
             width,
             heigth,
-            AppMessage::ToggleReady(id),
+            AppMessage::ToggleReady(0 as PlayerId),
         )
     }
     pub fn new_back_button(id: usize, width: u16, heigth: u16) -> Self {
@@ -191,6 +191,10 @@ impl Button {
             heigth,
             AppMessage::BackToMenu,
         )
+    }
+
+    pub fn set_on_click(&mut self, on_click: AppMessage) {
+        self.on_click = on_click;
     }
 
     pub fn view(&self) -> container::Container<'_, AppMessage> {

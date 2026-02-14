@@ -10,7 +10,7 @@ use crate::client::{App, AppMessage};
 
 pub const TITLE_FONT: Font = Font::with_name("Magic School One");
 
-use crate::api::{Card, Value};
+use crate::api::{Card, PlayerId, Value};
 
 /// Format a card for display (e.g., "5 Red", "Wizard", "Jester").
 pub fn format_card(card: &Card) -> String {
@@ -21,7 +21,7 @@ pub fn format_card(card: &Card) -> String {
     }
 }
 
-pub fn get_player_name(state: &App, player_id: u64) -> String {
+pub fn get_player_name(state: &App, player_id: PlayerId) -> String {
     state
         .lobby
         .as_ref()

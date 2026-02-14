@@ -2,12 +2,12 @@ use iced::Task;
 use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
-use crate::api::{Card, Lobby, ServerMessage, Value, B, C, S};
+use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
 use crate::ui_element_traits::{Animated, Notifiable, Resizable};
 
 /// Get player name from ID using lobby data
-fn get_player_name(state: &App, player_id: u64) -> String {
+fn get_player_name(state: &App, player_id: PlayerId) -> String {
     if state.my_id == Some(player_id) {
         return "You".to_string();
     }
@@ -129,7 +129,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 if let Some(our_player) = lobby
                     .players
                     .iter()
-                    .find(|player| player.id == player_to_toggle as u64)
+                    .find(|player| player.id == player_to_toggle)
                 {
                     !our_player.ready
                 } else {
@@ -385,6 +385,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.last_msg = log;
                 state.my_id = Some(id);
+                state
+                    .btn_ready_owned
+                    .set_on_click(AppMessage::ToggleReady(id));
             }
             S::Error { reason } => {
                 let log = format!("[ERROR] {reason}");
