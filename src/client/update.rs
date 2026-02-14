@@ -6,7 +6,7 @@ use crate::api::{Card, Lobby, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
 use crate::ui_element_traits::{Animated, Notifiable, Resizable};
 
-/// Helper function to get player name from ID using lobby data
+/// Get player name from ID using lobby data
 fn get_player_name(state: &App, player_id: u64) -> String {
     if state.my_id == Some(player_id) {
         return "You".to_string();
@@ -238,7 +238,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.menu = MenuState::Main;
         }
         AppMessage::CloseGame => {
-            // Calls the Application exit.
+            // Calls the application to exit.
             std::process::exit(0);
         }
 

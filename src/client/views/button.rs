@@ -7,6 +7,20 @@ use crate::api::BUTTON1_PATH;
 use crate::client::{AppMessage, MenuState, TaskBatcher};
 use crate::ui_element_traits::{Animated, Message, Notifiable};
 
+#[derive(Debug, Clone)]
+pub enum ButtonMessage {
+    Hovered(usize),
+    NotHovered(usize),
+    Clicked(usize),
+    ClickEnded(usize),
+}
+
+impl Message for ButtonMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        AppMessage::ButtonMessage(msg)
+    }
+}
+
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct HoverAnim(ReversableBasicAnimation);
 
@@ -35,20 +49,6 @@ impl ClickAnim {
 
     pub fn get_opacity(&self) -> f32 {
         1.0 - self.progress(Easing::Linear) * 0.4
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ButtonMessage {
-    Hovered(usize),
-    NotHovered(usize),
-    Clicked(usize),
-    ClickEnded(usize),
-}
-
-impl Message for ButtonMessage {
-    fn convert_msg_from(msg: Self) -> AppMessage {
-        AppMessage::ButtonMessage(msg)
     }
 }
 
@@ -274,7 +274,6 @@ impl Button {
     }
 }
 
-/// Implements traits
 impl Notifiable for Button {
     type OwnMessage = ButtonMessage;
 

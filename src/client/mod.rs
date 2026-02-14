@@ -261,6 +261,7 @@ impl TaskBatcher {
             self.tasks.push(task)
         }
     }
+    #[allow(dead_code)]
     pub fn push_mult<const SIZE: usize>(&mut self, tasks: [Task<AppMessage>; SIZE]) {
         self.tasks
             .extend(tasks.into_iter().filter(|task| task.units() != 0));
