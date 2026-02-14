@@ -103,10 +103,6 @@ fn build_player_rows<'a>(state: &'a App, lobby: &'a Lobby) -> Column<'a, AppMess
     let mut player_rows = Column::new().spacing(10);
 
     for p in &lobby.players {
-        println!(
-            "Player in lobby: {} (ready: {}, host: {})",
-            p.name, p.ready, p.is_host
-        );
         let ready_text = if p.ready { "Bereit" } else { "Nicht bereit" };
         let toggle = if Some(p.id) == state.my_id {
             state.btn_ready_owned.view_with_label(ready_text)
