@@ -90,7 +90,7 @@ impl Button {
     }
 
     pub fn new_host_button(id: usize, width: u16, heigth: u16) -> Self {
-        Self::new(id,"Host", BUTTON1_PATH, width, heigth, AppMessage::Host)
+        Self::new(id, "Host", BUTTON1_PATH, width, heigth, AppMessage::Host)
     }
     pub fn new_join_button(id: usize, width: u16, heigth: u16) -> Self {
         Self::new(

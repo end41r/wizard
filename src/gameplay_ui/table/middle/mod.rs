@@ -92,9 +92,7 @@ impl Viewable for ViewableTableMiddle {
 fn f32_max(numbers: Vec<f32>) -> Option<f32> {
     let mut max: Option<f32> = None;
     for number in numbers.iter() {
-        if max.is_none() {
-            max = Some(*number)
-        } else if max.unwrap() < *number {
+        if max.is_none() || max.unwrap() < *number {
             max = Some(*number)
         };
     }

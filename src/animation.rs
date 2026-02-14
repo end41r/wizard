@@ -264,7 +264,7 @@ impl CircularAnimation {
             let frame_number_before = self.current_frame_number;
             self.current_frame_number = (self.current_frame_number + 1) % self.max_frame_number;
             let frame_number_after = self.current_frame_number;
-            if !(frame_number_before < frame_number_after) {
+            if frame_number_before >= frame_number_after {
                 return self.end_task();
             }
         }
@@ -409,7 +409,7 @@ impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEn
         self.times
     }
     fn check_tick(&self) -> bool {
-        self.tick % self.animation_delay == 0
+        self.tick.is_multiple_of(self.animation_delay)
     }
     fn check_all_ended(&self) -> bool {
         (self.tick == self.animation_delay * self.times + self.animation_length)

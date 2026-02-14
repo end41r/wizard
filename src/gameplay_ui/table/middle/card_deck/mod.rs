@@ -135,11 +135,8 @@ impl Notifiable for ViewableCardDeck {
                 if self.deal_msg.is_none() {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
                     self.deal_card_animation_starter.start(cards);
-                    if trump_card.is_some() {
-                        self.trump_card = Some(ViewableTrumpCard::new(
-                            self.window_size,
-                            trump_card.unwrap(),
-                        ));
+                    if let Some(card) = trump_card {
+                        self.trump_card = Some(ViewableTrumpCard::new(self.window_size, card));
                     } else {
                         self.trump_card = None;
                     }

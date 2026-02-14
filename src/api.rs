@@ -193,11 +193,8 @@ pub fn get_card_path(card: Card) -> String {
                 path.push_str("spade ");
             }
         }
-        match card.value {
-            Value::Number(number) => {
-                path.push_str(number.to_string().as_str());
-            }
-            _ => (),
+        if let Value::Number(number) = card.value {
+            path.push_str(number.to_string().as_str());
         }
     }
     path.push_str(".png");
@@ -206,9 +203,7 @@ pub fn get_card_path(card: Card) -> String {
 
 pub fn get_glow_path(card: Card) -> String {
     let mut path: String = "assets/cards/".to_owned();
-    if card.value == Value::Jester {
-        path.push_str("");
-    } else if card.value == Value::Wizard {
+    if card.value == Value::Jester || card.value == Value::Wizard {
         path.push_str("");
     } else {
         match card.suit {

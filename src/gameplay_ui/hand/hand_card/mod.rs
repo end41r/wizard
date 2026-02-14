@@ -151,7 +151,7 @@ impl Notifiable for ViewableHandCard {
                 if id == self.id {
                     self.clickable = false;
                     self.play_animation.start();
-                    tb.push(CardStackMessage::CardPlayed(self.card.clone()).convert_msg_to_task());
+                    tb.push(CardStackMessage::CardPlayed(self.card).convert_msg_to_task());
                 };
             }
             CardMessage::NotHovered(id) => {

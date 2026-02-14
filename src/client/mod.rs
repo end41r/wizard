@@ -5,9 +5,7 @@ mod ws;
 use crate::api::{Card, Lobby, PlayerId, Suit};
 use crate::client::views::Button;
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
-use crate::gameplay_ui::table::{
-    TableMessage, ViewableTable,
-};
+use crate::gameplay_ui::table::{TableMessage, ViewableTable};
 use crate::ui_element_traits::Message;
 use iced::{time, window, Size, Subscription, Task};
 use std::collections::HashMap;
