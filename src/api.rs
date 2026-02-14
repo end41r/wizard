@@ -181,16 +181,16 @@ pub fn get_card_path(card: Card) -> String {
     } else {
         match card.suit {
             Suit::Blue => {
-                path.push_str("diamond ");
+                path.push_str("blue_");
             }
             Suit::Green => {
-                path.push_str("club ");
+                path.push_str("green_");
             }
             Suit::Red => {
-                path.push_str("heart ");
+                path.push_str("red_");
             }
             Suit::Yellow => {
-                path.push_str("spade ");
+                path.push_str("yellow_");
             }
         }
         if let Value::Number(number) = card.value {
