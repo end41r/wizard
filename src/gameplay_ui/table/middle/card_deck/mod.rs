@@ -163,12 +163,8 @@ impl Notifiable for ViewableCardDeck {
                 }
             }
             CardDeckMessage::TrumpCardMessage(trump_card_msg) => {
-                if self.trump_card.is_some() {
-                    return self
-                        .trump_card
-                        .as_mut()
-                        .unwrap()
-                        .update_with_msg(trump_card_msg);
+                if let Some(trump_card) = self.trump_card.as_mut() {
+                    return trump_card.update_with_msg(trump_card_msg);
                 }
             }
             CardDeckMessage::Shuffle => {
@@ -194,8 +190,8 @@ impl Animated for ViewableCardDeck {
         let mut tb = TaskBatcher::new();
         tb.push(self.deal_card_animation_starter.next_frame());
         tb.push(self.clear_card_animation_starter.next_frame());
-        if self.trump_card.is_some() {
-            tb.push(self.trump_card.as_mut().unwrap().update_animations());
+        if let Some(trump_card) = self.trump_card.as_mut() {
+            tb.push(trump_card.update_animations());
         }
         tb.push(self.glow.update_animations());
         for card in self.deck_cards.iter_mut() {
@@ -217,8 +213,8 @@ impl Resizable for ViewableCardDeck {
         for card in self.deck_cards.iter_mut() {
             card.update_size(window_size);
         }
-        if self.trump_card.is_some() {
-            self.trump_card.as_mut().unwrap().update_size(window_size);
+        if let Some(trump_card) = self.trump_card.as_mut() {
+            trump_card.update_size(window_size);
         }
         self.glow.update_size(window_size);
     }
@@ -250,8 +246,7 @@ impl Viewable for ViewableCardDeck {
                 spawn_point.y + card.offset().y,
             ));
         }
-        if self.trump_card.is_some() {
-            let trump_card = self.trump_card.as_ref().unwrap();
+        if let Some(trump_card) = self.trump_card.as_ref() {
             let spawn_point = card_area_middle_spawn_point(
                 trump_card.width(),
                 trump_card.heigth(),
