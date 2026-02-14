@@ -80,7 +80,7 @@ impl Animated for ViewableStackCard {
 }
 
 impl Resizable for ViewableStackCard {
-    fn height(&self) -> f32 {
+    fn heigth(&self) -> f32 {
         card_heigth_middle(self.window_size) * self.reveal_animation.get_scale()
     }
     fn width(&self) -> f32 {
@@ -106,7 +106,7 @@ impl Viewable for ViewableStackCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let img = image(get_card_path(self.card))
             .width(self.width())
-            .height(self.height())
+            .height(self.heigth())
             .scale(card_img_middle_base_scale())
             .opacity(self.remove_animation.get_opacity())
             .content_fit(Fill)

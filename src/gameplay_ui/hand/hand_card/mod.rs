@@ -226,7 +226,7 @@ impl Resizable for ViewableHandCard {
     fn width(&self) -> f32 {
         card_width_hand(self.window_size)
     }
-    fn height(&self) -> f32 {
+    fn heigth(&self) -> f32 {
         card_heigth_hand(self.window_size)
     }
 }
@@ -266,7 +266,7 @@ impl Viewable for ViewableHandCard {
             * self.hide_animation.get_contraction()
             * self.draw_animation.get_contraction();
 
-        let height: f32 = self.height() * self.hover_animation.get_expansion();
+        let height: f32 = self.heigth() * self.hover_animation.get_expansion();
 
         let rotation: f32 = self.rotation;
 

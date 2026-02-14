@@ -96,7 +96,7 @@ impl Animated for CardStackGlow {
 }
 
 impl Resizable for CardStackGlow {
-    fn height(&self) -> f32 {
+    fn heigth(&self) -> f32 {
         card_heigth_middle(self.window_size)
     }
     fn width(&self) -> f32 {
@@ -111,7 +111,7 @@ impl Viewable for CardStackGlow {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let img = image(self.img_path.to_string())
             .width(self.width())
-            .height(self.height())
+            .height(self.heigth())
             .opacity(
                 self.glow_animation
                     .get_opacity()

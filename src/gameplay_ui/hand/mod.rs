@@ -111,7 +111,7 @@ impl ViewableHand {
     /// This function calculates the correct y position for the card.
     /// This takes in consideration the row step and the hover animation offset.
     fn card_y_offset_correction(&self) -> f32 {
-        self.height() - ViewableHandCard::height_for(self.window_size)
+        self.heigth() - ViewableHandCard::height_for(self.window_size)
     }
 
     fn upper_row_card_step(&self) -> f32 {
@@ -326,7 +326,7 @@ impl Resizable for ViewableHand {
     fn width(&self) -> f32 {
         self.width_without_animations() + self.width_overflow()
     }
-    fn height(&self) -> f32 {
+    fn heigth(&self) -> f32 {
         ViewableHandCard::height_for(self.window_size) -  // Upper card height
         self.row_step() +  // Upper card spawn offset
         // The upper card may have an increased size via the hover animation max_offset.
@@ -415,6 +415,6 @@ impl Viewable for ViewableHand {
             hand = hand.push(upper_card_row);
         }
 
-        container(hand).width(self.width()).height(self.height())
+        container(hand).width(self.width()).height(self.heigth())
     }
 }

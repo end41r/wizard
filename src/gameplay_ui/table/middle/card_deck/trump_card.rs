@@ -102,7 +102,7 @@ impl Animated for ViewableTrumpCard {
 }
 
 impl Resizable for ViewableTrumpCard {
-    fn height(&self) -> f32 {
+    fn heigth(&self) -> f32 {
         card_heigth_middle(self.window_size)
     }
     fn width(&self) -> f32 {
@@ -127,6 +127,6 @@ impl Viewable for ViewableTrumpCard {
             .content_fit(iced::ContentFit::Fill);
         Container::new(img)
             .width(self.width())
-            .height(self.height())
+            .height(self.heigth())
     }
 }

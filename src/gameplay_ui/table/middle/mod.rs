@@ -70,8 +70,8 @@ impl Animated for ViewableTableMiddle {
 }
 
 impl Resizable for ViewableTableMiddle {
-    fn height(&self) -> f32 {
-        f32_max(vec![self.card_stack.height(), self.card_deck.height()]).unwrap()
+    fn heigth(&self) -> f32 {
+        f32_max(vec![self.card_stack.heigth(), self.card_deck.heigth()]).unwrap()
     }
     fn width(&self) -> f32 {
         self.card_deck.width() + self.card_stack.width()

@@ -66,7 +66,7 @@ impl ReplaceUsize for CardDeckMessage {
             CardDeckMessage::Shuffle => self.clone(),
             CardDeckMessage::ChangeGlow(_) => self.clone(),
             CardDeckMessage::GlowMessage(_) => self.clone(),
-            CardDeckMessage::ShowGlow => self.clone()
+            CardDeckMessage::ShowGlow => self.clone(),
         }
     }
 }
@@ -209,7 +209,7 @@ impl Animated for ViewableCardDeck {
 }
 
 impl Resizable for ViewableCardDeck {
-    fn height(&self) -> f32 {
+    fn heigth(&self) -> f32 {
         card_area_middle_space_heigth(self.window_size)
     }
     fn width(&self) -> f32 {
@@ -247,7 +247,7 @@ impl Viewable for ViewableCardDeck {
         }
         for card in self.deck_cards.iter() {
             let spawn_point =
-                card_area_middle_spawn_point(card.width(), card.height(), self.window_size);
+                card_area_middle_spawn_point(card.width(), card.heigth(), self.window_size);
             card_stack = card_stack.push(card.view_and_move(
                 spawn_point.x + card.offset().x,
                 spawn_point.y + card.offset().y,
@@ -257,7 +257,7 @@ impl Viewable for ViewableCardDeck {
             let trump_card = self.trump_card.as_ref().unwrap();
             let spawn_point = card_area_middle_spawn_point(
                 trump_card.width(),
-                trump_card.height(),
+                trump_card.heigth(),
                 self.window_size,
             );
             card_stack = card_stack.push(trump_card.view_and_move(spawn_point.x, spawn_point.y));
@@ -272,6 +272,6 @@ impl Viewable for ViewableCardDeck {
         }
         Container::new(card_stack)
             .width(self.width())
-            .height(self.height())
+            .height(self.heigth())
     }
 }

@@ -54,8 +54,8 @@ impl Animated for ViewableTable {
 }
 
 impl Resizable for ViewableTable {
-    fn height(&self) -> f32 {
-        self.middle.height()
+    fn heigth(&self) -> f32 {
+        self.middle.heigth()
     }
     fn width(&self) -> f32 {
         self.middle.width()

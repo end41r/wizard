@@ -79,8 +79,8 @@ impl Notifiable for ViewableCardStack {
                 if self.cards.len() == 1 {
                     return TaskBatcher::instant_batch([
                         CardDeckMessage::ChangeGlow(card).convert_msg_to_task(),
-                        CardDeckMessage::ShowGlow.convert_msg_to_task()
-                    ])
+                        CardDeckMessage::ShowGlow.convert_msg_to_task(),
+                    ]);
                 }
             }
             CardStackMessage::HideAllCard => {
@@ -111,7 +111,7 @@ impl Animated for ViewableCardStack {
 }
 
 impl Resizable for ViewableCardStack {
-    fn height(&self) -> f32 {
+    fn heigth(&self) -> f32 {
         card_area_middle_space_heigth(self.window_size)
     }
     fn width(&self) -> f32 {
@@ -130,11 +130,11 @@ impl Viewable for ViewableCardStack {
         let mut card_stack = Stack::new();
         for card in self.cards.iter() {
             let spawn_point =
-                card_area_middle_spawn_point(card.width(), card.height(), self.window_size);
+                card_area_middle_spawn_point(card.width(), card.heigth(), self.window_size);
             card_stack = card_stack.push(card.view_and_move(spawn_point.x, spawn_point.y))
         }
         Container::new(card_stack)
             .width(self.width())
-            .height(self.height())
+            .height(self.heigth())
     }
 }
