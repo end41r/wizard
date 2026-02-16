@@ -7,10 +7,8 @@ use super::utils::{format_card, get_player_name};
 use crate::api::Suit;
 use crate::client::{App, AppMessage};
 
-/// =======================================
-/// EASTER EGG SECTION: DEBUG GAMEPLAY VIEW
-/// =======================================
-pub fn view_test_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
+/// This view of the gameplay is an easter egg.
+pub fn view_debug_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = column![
         text("WIZARD").size(24),
         build_game_over_section_dbg(state),

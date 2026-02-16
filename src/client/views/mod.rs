@@ -1,5 +1,5 @@
 mod button;
-mod gameplay;
+mod debug_gameplay;
 mod lobby;
 mod menu;
 mod utils;
@@ -20,6 +20,6 @@ pub fn view(state: &App) -> Element<'_, AppMessage> {
         MenuState::Rules => menu::view_rules_menu(state),
         MenuState::Lobby => lobby::view_lobby_menu(state),
         MenuState::Playing => state.game_view.view().into(),
-        MenuState::PlayingTest => gameplay::view_test_gameplay(state),
+        MenuState::PlayingTest => debug_gameplay::view_debug_gameplay(state),
     }
 }
