@@ -5,6 +5,7 @@ mod ws;
 use crate::api::{Card, Lobby, PlayerId, Suit};
 use crate::client::views::Button;
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
+use crate::gameplay_ui::scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage};
 use crate::gameplay_ui::table::{TableMessage, ViewableTable};
 use crate::ui_element_traits::Message;
 use iced::{time, window, Size, Subscription, Task};
@@ -111,6 +112,7 @@ pub struct App {
     // Gameplay view state
     pub viewable_hand: ViewableHand,
     pub viewable_table: ViewableTable,
+    pub scoreboard: ScoreBoard,
 
     // UI Buttons (main menu)
     pub btn_host: crate::client::views::Button,
@@ -127,6 +129,20 @@ pub struct App {
     pub btn_back_to_menu: crate::client::views::Button,
 
     pub btn_ready_owned: crate::client::views::Button,
+}
+
+impl App {
+    pub fn scoreboard_info(&self) -> ScoreBoardInfo {
+        ScoreBoardInfo::new(
+            self.round_number,
+            self.player_order.clone(),
+            self.scores.clone(),
+            self.tricks_won.clone(),
+            self.bids.clone(),
+            self.my_id,
+            self.lobby.clone(),
+        )
+    }
 }
 
 impl Default for App {
@@ -180,6 +196,7 @@ impl Default for App {
 
             viewable_hand: ViewableHand::new(window_size),
             viewable_table: ViewableTable::new(window_size),
+            scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
 
             //Buttons
             btn_host: Button::new_host_button(0, 180, 44),
@@ -235,6 +252,7 @@ pub enum AppMessage {
     // Gameplay view messages
     HandMessage(HandMessage),
     TableMessage(TableMessage),
+    ScoreBoardMessage(ScoreBoardMessage),
 
     // Button messages from view widgets
     ButtonMessage(crate::client::views::ButtonMessage),

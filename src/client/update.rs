@@ -291,6 +291,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         AppMessage::TableMessage(table_msg) => {
             return state.viewable_table.update_with_msg(table_msg.clone());
         }
+        AppMessage::ScoreBoardMessage(sb_msg) => return state.scoreboard.update_with_msg(sb_msg),
         AppMessage::ButtonMessage(btn_msg) => {
             // Route to buttons (each button filters by id internally)
             return TaskBatcher::instant_batch([
