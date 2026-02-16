@@ -5,6 +5,7 @@ use crate::{
     gameplay_ui::{
         hand::HandMessage,
         table::middle::{TableMiddleMessage, ViewableTableMiddle},
+        GameViewMessage,
     },
     ui_element_traits::*,
 };
@@ -17,7 +18,7 @@ pub enum TableMessage {
 
 impl Message for TableMessage {
     fn convert_msg_from(msg: Self) -> AppMessage {
-        AppMessage::TableMessage(msg)
+        GameViewMessage::convert_msg_from(GameViewMessage::TableMessage(msg))
     }
 }
 

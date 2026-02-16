@@ -285,13 +285,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         AppMessage::ServerTick => {
             handle_tick(state);
         }
-        AppMessage::HandMessage(hand_msg) => {
-            return state.viewable_hand.update_with_msg(hand_msg.clone());
+        AppMessage::GameViewMessage(game_view_msg) => {
+            return state.game_view.update_with_msg(game_view_msg);
         }
-        AppMessage::TableMessage(table_msg) => {
-            return state.viewable_table.update_with_msg(table_msg.clone());
-        }
-        AppMessage::ScoreBoardMessage(sb_msg) => return state.scoreboard.update_with_msg(sb_msg),
         AppMessage::ButtonMessage(btn_msg) => {
             // Route to buttons (each button filters by id internally)
             return TaskBatcher::instant_batch([
@@ -310,8 +306,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::AnimationTick => {
             return TaskBatcher::instant_batch([
-                state.viewable_hand.update_animations(),
-                state.viewable_table.update_animations(),
+                state.game_view.update_animations(),
                 // Update button animations
                 state.btn_host.update_animations(),
                 state.btn_join.update_animations(),
@@ -328,8 +323,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::WindowResized(window_size) => {
             state.window_size = window_size;
-            state.viewable_hand.update_size(window_size);
-            state.viewable_table.update_size(window_size);
+            state.game_view.update_size(window_size);
         }
     }
     Task::none()

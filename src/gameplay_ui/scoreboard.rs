@@ -8,6 +8,7 @@ use iced::{
 use crate::{
     api::{Lobby, PlayerId},
     client::AppMessage,
+    gameplay_ui::GameViewMessage,
     ui_element_traits::{Message, Notifiable, Viewable},
 };
 
@@ -43,7 +44,7 @@ pub enum ScoreBoardMessage {
 
 impl Message for ScoreBoardMessage {
     fn convert_msg_from(msg: Self) -> AppMessage {
-        AppMessage::ScoreBoardMessage(msg)
+        GameViewMessage::convert_msg_from(GameViewMessage::ScoreBoardMessage(msg))
     }
 }
 

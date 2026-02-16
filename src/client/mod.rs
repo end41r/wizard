@@ -4,9 +4,8 @@ mod ws;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
 use crate::client::views::Button;
-use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
-use crate::gameplay_ui::scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage};
-use crate::gameplay_ui::table::{TableMessage, ViewableTable};
+use crate::gameplay_ui::scoreboard::ScoreBoardInfo;
+use crate::gameplay_ui::{GameView, GameViewMessage};
 use crate::ui_element_traits::Message;
 use iced::{time, window, Size, Subscription, Task};
 use std::collections::HashMap;
@@ -110,9 +109,7 @@ pub struct App {
     pub winner: Option<PlayerId>,
 
     // Gameplay view state
-    pub viewable_hand: ViewableHand,
-    pub viewable_table: ViewableTable,
-    pub scoreboard: ScoreBoard,
+    pub game_view: GameView,
 
     // UI Buttons (main menu)
     pub btn_host: crate::client::views::Button,
@@ -194,9 +191,7 @@ impl Default for App {
             game_over: false,
             winner: None,
 
-            viewable_hand: ViewableHand::new(window_size),
-            viewable_table: ViewableTable::new(window_size),
-            scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
+            game_view: GameView::new(window_size),
 
             //Buttons
             btn_host: Button::new_host_button(0, 180, 44),
@@ -249,10 +244,8 @@ pub enum AppMessage {
     BackToMenu,
     CloseGame,
 
-    // Gameplay view messages
-    HandMessage(HandMessage),
-    TableMessage(TableMessage),
-    ScoreBoardMessage(ScoreBoardMessage),
+    // Gameview messages
+    GameViewMessage(GameViewMessage),
 
     // Button messages from view widgets
     ButtonMessage(crate::client::views::ButtonMessage),

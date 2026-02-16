@@ -4,7 +4,7 @@ use crate::animation::AnimationStarter;
 use crate::client::{AppMessage, TaskBatcher};
 use crate::gamelogic::round::random_card;
 use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableHandCard};
-use crate::gameplay_ui::{card_column_step_hand, card_row_step_hand};
+use crate::gameplay_ui::{card_column_step_hand, card_row_step_hand, GameViewMessage};
 use crate::ui_element_traits::*;
 
 use iced::{
@@ -25,7 +25,7 @@ pub enum HandMessage {
 
 impl Message for HandMessage {
     fn convert_msg_from(msg: Self) -> AppMessage {
-        AppMessage::HandMessage(msg)
+        GameViewMessage::convert_msg_from(GameViewMessage::HandMessage(msg))
     }
 }
 

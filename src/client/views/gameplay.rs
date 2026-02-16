@@ -1,36 +1,11 @@
 use iced::{
-    widget::{
-        button, column, container, row, scrollable, stack, text, text_input, Column, Image, Row,
-    },
-    ContentFit, Element,
+    widget::{button, column, container, row, scrollable, text, text_input, Column, Row},
+    Element,
 };
 
 use super::utils::{format_card, get_player_name};
+use crate::api::Suit;
 use crate::client::{App, AppMessage};
-use crate::{api::Suit, ui_element_traits::Viewable};
-
-pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
-    let scoreboard = state.scoreboard.view();
-
-    let main_content = column![
-        // Add your main game content here in rows
-    ]
-    .width(iced::Length::Fill)
-    .height(iced::Length::Fill);
-
-    let content = row![main_content, scoreboard,].height(iced::Length::Fill);
-
-    stack![
-        Image::new("assets/ingame_background.png")
-            .width(iced::Length::Fill)
-            .height(iced::Length::Fill)
-            .content_fit(ContentFit::Cover),
-        container(content)
-            .width(iced::Length::Fill)
-            .height(iced::Length::Fill),
-    ]
-    .into()
-}
 
 /// =======================================
 /// EASTER EGG SECTION: DEBUG GAMEPLAY VIEW

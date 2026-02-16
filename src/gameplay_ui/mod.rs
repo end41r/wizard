@@ -3,7 +3,20 @@ pub mod hand;
 pub mod scoreboard;
 pub mod table;
 
-use iced::{Point, Size};
+use iced::{
+    widget::{container, row, stack, Column, Container, Image},
+    ContentFit, Point, Size, Task,
+};
+
+use crate::{
+    client::{AppMessage, TaskBatcher},
+    gameplay_ui::{
+        hand::{HandMessage, ViewableHand},
+        scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage},
+        table::{TableMessage, ViewableTable},
+    },
+    ui_element_traits::{Animated, Message, Notifiable, Resizable, Viewable},
+};
 
 // The hand size is depending on the window size with the factor 0.1.
 static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
@@ -59,4 +72,97 @@ fn card_area_middle_spawn_point(width: f32, height: f32, window_size: Size) -> P
         (card_area_middle_space_width(window_size) - width) / 2.0,
         (card_area_middle_space_height(window_size) - height) / 2.0,
     )
+}
+
+#[derive(Clone, Debug)]
+pub enum GameViewMessage {
+    HandMessage(HandMessage),
+    TableMessage(TableMessage),
+    ScoreBoardMessage(ScoreBoardMessage),
+}
+
+impl Message for GameViewMessage {
+    fn convert_msg_from(msg: Self) -> crate::client::AppMessage {
+        AppMessage::GameViewMessage(msg)
+    }
+}
+
+pub struct GameView {
+    window_size: Size,
+    viewable_hand: ViewableHand,
+    viewable_table: ViewableTable,
+    scoreboard: ScoreBoard,
+}
+
+impl GameView {
+    pub fn new(window_size: Size) -> Self {
+        Self {
+            window_size,
+            viewable_hand: ViewableHand::new(window_size),
+            viewable_table: ViewableTable::new(window_size),
+            scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
+        }
+    }
+}
+
+impl Notifiable for GameView {
+    type OwnMessage = GameViewMessage;
+    fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
+        match msg {
+            GameViewMessage::HandMessage(hand_msg) => {
+                return self.viewable_hand.update_with_msg(hand_msg)
+            }
+            GameViewMessage::TableMessage(table_msg) => {
+                return self.viewable_table.update_with_msg(table_msg)
+            }
+            GameViewMessage::ScoreBoardMessage(sb_msg) => {
+                return self.scoreboard.update_with_msg(sb_msg)
+            }
+        }
+    }
+}
+
+impl Animated for GameView {
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        TaskBatcher::instant_batch([
+            self.viewable_hand.update_animations(),
+            self.viewable_table.update_animations(),
+        ])
+    }
+}
+
+impl Resizable for GameView {
+    fn height(&self) -> f32 {
+        self.window_size.height
+    }
+    fn width(&self) -> f32 {
+        self.window_size.width
+    }
+    fn update_size(&mut self, window_size: Size) {
+        self.window_size = window_size;
+        self.viewable_hand.update_size(window_size);
+        self.viewable_table.update_size(window_size);
+    }
+}
+
+impl Viewable for GameView {
+    fn view<'a>(&self) -> Container<'a, AppMessage> {
+        let scoreboard = self.scoreboard.view();
+
+        let main_content = Column::new()
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill);
+
+        let content = row![main_content, scoreboard,].height(iced::Length::Fill);
+
+        Container::new(stack![
+            Image::new("assets/ingame_background.png")
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .content_fit(ContentFit::Cover),
+            container(content)
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill),
+        ])
+    }
 }
