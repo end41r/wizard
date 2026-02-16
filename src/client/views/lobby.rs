@@ -22,7 +22,7 @@ pub fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
 
 fn view_not_connected<'a>(state: &'a App) -> Element<'a, AppMessage> {
     stack![
-        Image::new("assets/wizard_lobby_menu.png")
+        Image::new("assets/menu/wizard_lobby_menu.png")
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
@@ -40,7 +40,7 @@ fn view_not_connected<'a>(state: &'a App) -> Element<'a, AppMessage> {
 
 fn view_no_lobby<'a>(state: &'a App) -> Element<'a, AppMessage> {
     stack![
-        Image::new("assets/wizard_lobby_menu.png")
+        Image::new("assets/menu/wizard_lobby_menu.png")
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
@@ -86,7 +86,7 @@ fn view_lobby_content<'a>(state: &'a App, lobby: &'a Lobby) -> Element<'a, AppMe
     .padding(20);
 
     stack![
-        Image::new("assets/wizard_lobby_menu.png")
+        Image::new("assets/menu/wizard_lobby_menu.png")
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),

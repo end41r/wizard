@@ -1,6 +1,7 @@
 mod update;
 mod views;
 mod ws;
+mod audio;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
@@ -21,7 +22,7 @@ pub enum PlayerCount {
     P6,
 }
 
-const TITLE_FONT: &[u8] = include_bytes!("../../assets/MagicSchoolOne.ttf");
+const TITLE_FONT: &[u8] = include_bytes!("../../assets/menu/MagicSchoolOne.ttf");
 
 impl PlayerCount {
     pub fn to_usize(self) -> usize {
@@ -116,13 +117,20 @@ pub struct App {
     pub btn_back_to_menu: crate::client::views::Button,
 
     pub btn_ready_owned: crate::client::views::Button,
+
+    // Audio subsystem (may be None if audio initialization fails)
+    pub audio: Option<crate::client::audio::Audio>,
+    // prepared flag for a future mute button
+    pub music_muted: bool,
 }
+
 
 impl Default for App {
     fn default() -> Self {
         // Keep this value ins sync with the window size of the main function.
         let window_size: Size = Size::new(640.0, 480.0);
-        Self {
+        // build the base struct first so we can run fallible audio init
+        let mut app = Self {
             window_size,
 
             connected: false,
@@ -170,25 +178,25 @@ impl Default for App {
             viewable_hand: ViewableHand::new(window_size),
 
             //Buttons
-            btn_host: crate::client::views::Button::new(0, "Host", "assets/button1.png", 180, 44),
+            btn_host: crate::client::views::Button::new(0, "Host", "assets/menu/button1.png", 180, 44),
             btn_join: crate::client::views::Button::new(
                 1,
                 "Beitreten",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 180,
                 44,
             ),
             btn_rules: crate::client::views::Button::new(
                 2,
                 "Spielregeln",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 180,
                 44,
             ),
             btn_exit: crate::client::views::Button::new(
                 3,
                 "Spiel verlassen",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 180,
                 44,
             ),
@@ -196,42 +204,42 @@ impl Default for App {
             btn_create_lobby: crate::client::views::Button::new(
                 10,
                 "Lobby erstellen",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 160,
                 40,
             ),
             btn_back: crate::client::views::Button::new(
                 11,
                 "zurück",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 100,
                 36,
             ),
             btn_connect: crate::client::views::Button::new(
                 12,
                 "Verbinden",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 140,
                 40,
             ),
             btn_send_chat: crate::client::views::Button::new(
                 13,
                 "Senden",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 100,
                 36,
             ),
             btn_start_game: crate::client::views::Button::new(
                 14,
                 "Starten",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 140,
                 40,
             ),
             btn_back_to_menu: crate::client::views::Button::new(
                 15,
                 "Zurück zum Menü",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 160,
                 40,
             ),
@@ -239,10 +247,61 @@ impl Default for App {
             btn_ready_owned: crate::client::views::Button::new(
                 20,
                 "Bereit",
-                "assets/button1.png",
+                "assets/menu/button1.png",
                 100,
                 36,
             ),
+
+            audio: None,
+            music_muted: false,
+        };
+
+        if let Ok(mut a) = crate::client::audio::Audio::new() {
+            let _ = a.load_clip("menu", "assets/audio/wizard_black_shores.mp3");
+            let _ = a.load_clip("lobby", "assets/audio/wizard_clash_of_mages.mp3");
+            let _ = a.load_clip("ingame", "assets/audio/wizard_clash_of_mages.mp3");
+
+            let _ = a.load_clip("click", "assets/audio/click.mp3");
+            let _ = a.load_clip("card_place", "assets/audio/card_place.mp3");
+            let _ = a.load_clip("win", "assets/audio/win.mp3");
+            let _ = a.load_clip("lose", "assets/audio/lose.mp3");
+
+            a.play_music(crate::client::audio::Music::Menu);
+            app.audio = Some(a);
+        }
+
+        app
+    }
+}
+
+impl App {
+    /// Set the current menu and make sure the correct music plays for that screen.
+    pub fn set_menu(&mut self, menu: MenuState) {
+        // decide music first (avoids moving `menu` before we use it)
+        if let Some(a) = &mut self.audio {
+            match menu {
+                MenuState::Main | MenuState::Host | MenuState::Join | MenuState::Rules => {
+                    a.play_music(crate::client::audio::Music::Menu);
+                }
+                MenuState::Lobby => {
+                    a.play_music(crate::client::audio::Music::Lobby);
+                }
+                MenuState::Playing | MenuState::PlayingTest => {
+                    a.play_music(crate::client::audio::Music::InGame);
+                }
+            }
+            if self.music_muted {
+                a.set_music_muted(true);
+            }
+        }
+        self.menu = menu;
+    }
+
+    /// not implemented
+    pub fn toggle_music(&mut self) {
+        self.music_muted = !self.music_muted;
+        if let Some(a) = &mut self.audio {
+            a.set_music_muted(self.music_muted);
         }
     }
 }
@@ -252,6 +311,8 @@ pub enum AppMessage {
     WindowResized(Size),
 
     Navigate(MenuState),
+    /// not yet implemented!!!
+    ToggleMusic,
 
     Host,
     HostNameChanged(String),

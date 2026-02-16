@@ -35,7 +35,11 @@ fn format_card(card: &Card) -> String {
 pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
     match msg {
         AppMessage::Navigate(menu) => {
-            state.menu = menu;
+            state.set_menu(menu);
+            Task::none()
+        }
+        AppMessage::ToggleMusic => {
+            state.toggle_music();
             Task::none()
         }
         AppMessage::Host => {
@@ -43,7 +47,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.msg = format!("Hosting on {local_ip}");
             state.ip = local_ip;
 
-            state.menu = MenuState::Host;
+            state.set_menu(MenuState::Host);
             Task::none()
         }
         AppMessage::HostNameChanged(name) => {
@@ -114,7 +118,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = "Creating lobby...".to_string();
                 }
             }
-            state.menu = MenuState::Lobby;
+            state.set_menu(MenuState::Lobby);
             Task::none()
         }
         AppMessage::Connect => {
@@ -169,7 +173,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         }
 
         AppMessage::GameRules => {
-            state.menu = MenuState::Rules;
+            state.set_menu(MenuState::Rules);
             Task::none()
         }
         AppMessage::BackToMenu => {
@@ -230,7 +234,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.dealer = None;
             state.game_over = false;
             state.winner = None;
-            state.menu = MenuState::Main;
+            state.set_menu(MenuState::Main);
             Task::none()
         }
         AppMessage::CloseGame => {
@@ -406,18 +410,20 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
 fn handle_tick(state: &mut App) {
     if state.connecting && !state.connected {
         state.last_msg = "Connecting".to_string();
+        let mut should_navigate_lobby = false;
         if let Ok(guard) = state.ws_tx.lock() {
             if guard.is_some() {
                 state.connected = true;
                 state.connecting = false;
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::JoinLobby {
-                        name: state.join_name.clone(),
-                    });
+                    let _ = tx.send(C::JoinLobby { name: state.join_name.clone() });
                     state.last_msg = "Joining lobby...".to_string();
-                    state.menu = MenuState::Lobby;
+                    should_navigate_lobby = true;
                 }
             }
+        }
+        if should_navigate_lobby {
+            state.set_menu(MenuState::Lobby);
         }
     }
     // Collects messages first to avoid borrowing issues.
@@ -558,9 +564,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 if let Some(ref lobby) = state.lobby {
                     if let Some(host) = lobby.players.iter().find(|p| p.is_host) {
                         if host.name == "wizard_master" {
-                            state.menu = MenuState::PlayingTest;
+                            state.set_menu(MenuState::PlayingTest);
                         } else {
-                            state.menu = MenuState::Playing;
+                            state.set_menu(MenuState::Playing);
                         }
                     }
                 }
@@ -780,7 +786,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
             B::ServerShutdown => {
                 println!("[SERVER] Server shutdown received");
                 state.last_msg = "Lost connection to host".to_string();
-                state.menu = MenuState::Main;
+                state.set_menu(MenuState::Main);
                 state.connected = false;
                 state.connecting = false;
                 state.my_id = None;

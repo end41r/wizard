@@ -17,6 +17,7 @@ derive_more = { version = "2.1.1", features = ["deref", "deref_mut"] }
 rand = "0.9.2"
 strum = "0.27"
 strum_macros = "0.27"
+rodio = "0.21.1"
 
 [features]
 wiz_debug = []

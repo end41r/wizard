@@ -59,7 +59,7 @@ pub fn menu_panel<'a>(
     body: Element<'a, AppMessage>,
     footer: Option<Element<'a, AppMessage>>,
 ) -> Element<'a, AppMessage> {
-    let (intr_w, intr_h) = png_dimensions("assets/menu_container.png").unwrap_or((560, 440));
+    let (intr_w, intr_h) = png_dimensions("assets/menu/menu_container.png").unwrap_or((560, 440));
     let max_w = (state.window_size.width * 0.9) as u32;
     let max_h = (state.window_size.height * 0.9) as u32;
 
@@ -85,7 +85,7 @@ pub fn menu_panel<'a>(
 
     stack![
         container(
-            Image::new("assets/menu_container.png")
+            Image::new("assets/menu/menu_container.png")
                 .width(menu_w)
                 .height(menu_h)
         )
