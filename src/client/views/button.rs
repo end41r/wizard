@@ -194,7 +194,14 @@ impl Button {
     }
 
     pub fn new_submit_bid_button(id: usize, width: u16, height: u16) -> Self {
-        Self::new(id, "Bet", BUTTON1_PATH, width, height, AppMessage::SubmitBid)
+        Self::new(
+            id,
+            "Bet",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::SubmitBid,
+        )
     }
 
     pub fn set_on_click(&mut self, on_click: AppMessage) {

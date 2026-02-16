@@ -1,8 +1,9 @@
 use iced::{
+    alignment,
     widget::{
         button, column, container, row, scrollable, stack, text, text_input, Column, Image, Row,
     },
-    alignment, Border, Color, ContentFit, Element,
+    Border, Color, ContentFit, Element,
 };
 
 use super::utils::{format_card, get_player_name};
@@ -44,9 +45,7 @@ fn build_bidding_panel<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let max_bid = state.round_number + 1;
 
     let panel = column![
-        text("Bid:")
-            .size(16)
-            .color(Color::from_rgb(1.0, 1.0, 1.0)),
+        text("Bid:").size(16).color(Color::from_rgb(1.0, 1.0, 1.0)),
         row![
             text_input("Enter bid", &state.bid_input)
                 .on_input(AppMessage::BidInputChanged)
