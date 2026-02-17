@@ -15,7 +15,7 @@ use crate::{
         scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage},
         table::{TableMessage, ViewableTable},
     },
-    ui_element_traits::{Animated, Message, Notifiable, Resizable, Viewable},
+    ui_element_traits::{Animated, Message, Notifiable, Resizable, ResizableDynHeight, Viewable},
 };
 
 static SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH: f32 = 0.2;

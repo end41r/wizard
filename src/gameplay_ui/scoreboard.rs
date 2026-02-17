@@ -8,7 +8,7 @@ use crate::{
     api::{Lobby, PlayerId},
     client::AppMessage,
     gameplay_ui::{GameViewMessage, SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH},
-    ui_element_traits::{Message, Notifiable, Resizable, Viewable},
+    ui_element_traits::{Message, Notifiable, ResizableDynHeight, Viewable},
 };
 
 #[derive(Clone, Debug)]
@@ -194,17 +194,12 @@ impl Notifiable for ScoreBoard {
     }
 }
 
-impl Resizable for ScoreBoard {
+impl ResizableDynHeight for ScoreBoard {
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size
     }
     fn width(&self) -> f32 {
         SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH * self.window_size.width
-    }
-    /// The height of this item is dynamically inferenced
-    /// so this function does not make sense for the scoreboard.
-    fn height(&self) -> f32 {
-        0.0
     }
 }
 

@@ -44,6 +44,17 @@ pub trait SizeFromOutside: Resizable {
     fn height_for(window_size: Size) -> f32;
 }
 
+/// Like Resizable, but without the height.
+/// Implmenet this instead if the item can dynamically interference its height.
+pub trait ResizableDynHeight {
+    /// Every time an resize event occures call this function.
+    /// Use it to set self.window_size and to call other update_size functions of ui elements of
+    /// lesser hierarchy
+    fn update_size(&mut self, window_size: Size);
+    /// Uses the window size from self to calculate the total width of the ui element.
+    fn width(&self) -> f32;
+}
+
 pub trait Viewable {
     fn view<'a>(&self) -> Container<'a, AppMessage>;
     fn view_and_move<'a>(&self, x: f32, y: f32) -> Container<'a, AppMessage> {
