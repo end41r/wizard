@@ -1,15 +1,14 @@
 use std::collections::HashMap;
 
 use iced::{
-    widget::{container, row, text, Column, Container},
-    Border, Color, Element, Size, Task,
+    Border, Color, Element, Length::Shrink, Size, Task, widget::{Column, Container, container, row, text}
 };
 
 use crate::{
     api::{Lobby, PlayerId},
     client::AppMessage,
-    gameplay_ui::GameViewMessage,
-    ui_element_traits::{Message, Notifiable, Viewable},
+    gameplay_ui::{GameViewMessage, SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH},
+    ui_element_traits::{Message, Notifiable, Resizable, Viewable},
 };
 
 #[derive(Clone, Debug)]
@@ -37,17 +36,6 @@ impl Default for ScoreBoardInfo {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum ScoreBoardMessage {
-    Update(ScoreBoardInfo),
-}
-
-impl Message for ScoreBoardMessage {
-    fn convert_msg_from(msg: Self) -> AppMessage {
-        GameViewMessage::convert_msg_from(GameViewMessage::ScoreBoardMessage(msg))
-    }
-}
-
 impl ScoreBoardInfo {
     pub fn new(
         round_number: usize,
@@ -70,6 +58,17 @@ impl ScoreBoardInfo {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum ScoreBoardMessage {
+    Update(ScoreBoardInfo),
+}
+
+impl Message for ScoreBoardMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        GameViewMessage::convert_msg_from(GameViewMessage::ScoreBoardMessage(msg))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ScoreBoard {
     window_size: Size,
@@ -82,6 +81,7 @@ impl ScoreBoard {
     }
 
     fn scoreboard_row<'a>(
+        &self,
         name: &str,
         score: &str,
         tricks: &str,
@@ -98,18 +98,17 @@ impl ScoreBoard {
         let cell = |content: String| {
             container(
                 text(content)
-                    .size(if is_header { 10 } else { 11 })
+                    .size(if is_header { self.size_small() } else { self.size_middle() })
                     .color(text_color),
             )
             .width(iced::Length::FillPortion(1))
-            .center_x(iced::Length::Fill)
             .padding(4)
         };
 
         let name_cell = |content: String| {
             container(
                 text(content)
-                    .size(if is_header { 10 } else { 11 })
+                    .size(if is_header { self.size_small() } else { self.size_middle() })
                     .color(text_color),
             )
             .width(iced::Length::FillPortion(2))
@@ -122,10 +121,10 @@ impl ScoreBoard {
             cell(tricks.to_string()),
             cell(bid.to_string()),
         ]
-        .width(iced::Length::Fill);
+        .width(self.width());
 
         container(row_content)
-            .width(iced::Length::Fill)
+            .width(self.width())
             .style(move |_theme| container::Style {
                 background: Some(if is_self {
                     Color::from_rgba(1.0, 0.85, 0.4, 0.15).into()
@@ -168,6 +167,19 @@ impl ScoreBoard {
                 .into(),
         )
     }
+
+    fn size_small(&self) -> f32 {  // 10
+        self.width() / 22.0
+    }
+    fn size_middle(&self) -> f32 {  // 11
+        self.width() / 19.0
+    }
+    fn size_big(&self) -> f32 {  // 12
+        self.width() / 16.0
+    }
+    fn size_huge(&self) -> f32 { // 18
+        self.width() / 10.0
+    }
 }
 
 impl Notifiable for ScoreBoard {
@@ -182,6 +194,20 @@ impl Notifiable for ScoreBoard {
     }
 }
 
+impl Resizable for ScoreBoard {
+    fn update_size(&mut self, window_size: Size) {
+        self.window_size = window_size
+    }
+    fn width(&self) -> f32 {
+        SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH * self.window_size.width
+    }
+    /// The height of this item is dynamically inferenced
+    /// so this function does not make sense for the scoreboard.
+    fn height(&self) -> f32 {
+        0.0
+    }
+}
+
 impl Viewable for ScoreBoard {
     // AI Usage: overwrite the view so that the scoreboard is placed correctly
     // and uses rows+cells instead of rows+format strings
@@ -190,25 +216,21 @@ impl Viewable for ScoreBoard {
 
         // Title
         scores_col = scores_col.push(
-            container(text("Scoreboard").size(18).color(Color::WHITE))
-                .width(iced::Length::Fill)
-                .center_x(iced::Length::Fill)
+            container(text("Scoreboard").size(self.size_huge()).color(Color::WHITE))
                 .padding(5),
         );
 
         scores_col = scores_col.push(
             container(
                 text(format!("Round {}", self.info.round_number + 1))
-                    .size(12)
+                    .size(self.size_big())
                     .color(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
             )
-            .width(iced::Length::Fill)
-            .center_x(iced::Length::Fill)
             .padding([0, 5]),
         );
 
         // Header row
-        scores_col = scores_col.push(Self::scoreboard_row(
+        scores_col = scores_col.push(self.scoreboard_row(
             "Name", "Pkt", "Won", "Bid", true, false,
         ));
 
@@ -223,7 +245,7 @@ impl Viewable for ScoreBoard {
                 player_name = "???".to_string();
             }
 
-            scores_col = scores_col.push(Self::scoreboard_row(
+            scores_col = scores_col.push(self.scoreboard_row(
                 &player_name,
                 &score.to_string(),
                 &tricks.to_string(),
@@ -237,17 +259,16 @@ impl Viewable for ScoreBoard {
         scores_col = scores_col.push(
             container(
                 text("Bids for current round")
-                    .size(10)
+                    .size(self.size_small())
                     .color(Color::from_rgba(1.0, 1.0, 1.0, 0.5)),
             )
-            .width(iced::Length::Fill)
-            .center_x(iced::Length::Fill)
             .padding([8, 0]),
         );
 
         // Wrap in a styled container
         container(scores_col)
-            .width(iced::Length::Fill)
+            .width(self.width())
+            .height(Shrink)
             .padding(10)
             .style(|_theme| container::Style {
                 background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.6).into()),
@@ -258,9 +279,5 @@ impl Viewable for ScoreBoard {
                 },
                 ..Default::default()
             })
-            .width(iced::Length::Fixed(250.0))
-            .height(iced::Length::Fill)
-            .center_y(iced::Length::Fill)
-            .padding(10)
     }
 }

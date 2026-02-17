@@ -18,6 +18,8 @@ use crate::{
     ui_element_traits::{Animated, Message, Notifiable, Resizable, Viewable},
 };
 
+static SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH: f32 = 0.2;
+
 // The hand size is depending on the window size with the factor 0.1.
 static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
 // 1.54 is around 1245 / 806 (height to width ratio of a card image).
@@ -142,6 +144,7 @@ impl Resizable for GameView {
         self.window_size = window_size;
         self.viewable_hand.update_size(window_size);
         self.viewable_table.update_size(window_size);
+        self.scoreboard.update_size(window_size);
     }
 }
 
