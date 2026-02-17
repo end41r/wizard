@@ -168,16 +168,16 @@ impl ScoreBoard {
         )
     }
 
-    fn size_small(&self) -> f32 {  // 10
+    fn size_small(&self) -> f32 {
         self.width() / 22.0
     }
-    fn size_middle(&self) -> f32 {  // 11
+    fn size_middle(&self) -> f32 {
         self.width() / 19.0
     }
-    fn size_big(&self) -> f32 {  // 12
+    fn size_big(&self) -> f32 {
         self.width() / 16.0
     }
-    fn size_huge(&self) -> f32 { // 18
+    fn size_huge(&self) -> f32 {
         self.width() / 10.0
     }
 }
