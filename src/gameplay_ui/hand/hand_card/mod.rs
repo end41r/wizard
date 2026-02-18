@@ -6,9 +6,7 @@ mod animation_hover;
 mod animation_play;
 mod animation_playable;
 
-use crate::api::{
-    get_card_path, Card, FALSE_PLAYED_PATH, FRAME_PLAYABLE_FOCUSED_PATH, FRAME_PLAYABLE_PATH,
-};
+use crate::api::{Card, FALSE_PLAYED_PATH, FRAME_PLAYABLE_FOCUSED_PATH, FRAME_PLAYABLE_PATH};
 use crate::client::{AppMessage, TaskBatcher};
 use crate::gameplay_ui::hand::hand_card::{
     animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
@@ -100,7 +98,7 @@ impl ViewableHandCard {
         let mut viewable_card: ViewableHandCard = Self {
             id,
             card,
-            img_path: get_card_path(card),
+            img_path: card.img_path(),
             window_size,
             clickable: true,
             playable,

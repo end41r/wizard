@@ -140,6 +140,59 @@ impl Card {
     pub fn new(suit: Suit, value: Value) -> Self {
         Self { suit, value }
     }
+
+    pub fn img_path(&self) -> String {
+        let mut path: String = "assets/cards/variations/".to_owned();
+        if self.value == Value::Jester {
+            path.push_str("jester");
+        } else if self.value == Value::Wizard {
+            path.push_str("wizard");
+        } else {
+            match self.suit {
+                Suit::Blue => {
+                    path.push_str("blue_");
+                }
+                Suit::Green => {
+                    path.push_str("green_");
+                }
+                Suit::Red => {
+                    path.push_str("red_");
+                }
+                Suit::Yellow => {
+                    path.push_str("yellow_");
+                }
+            }
+            if let Value::Number(number) = self.value {
+                path.push_str(number.to_string().as_str());
+            }
+        }
+        path.push_str(".png");
+        path
+    }
+
+    pub fn glow_path(&self) -> String {
+        let mut path: String = "assets/cards/".to_owned();
+        if self.value == Value::Jester || self.value == Value::Wizard {
+            path.push_str("");
+        } else {
+            match self.suit {
+                Suit::Blue => {
+                    path.push_str("glow_blue");
+                }
+                Suit::Green => {
+                    path.push_str("glow_green");
+                }
+                Suit::Red => {
+                    path.push_str("glow_red");
+                }
+                Suit::Yellow => {
+                    path.push_str("glow_yellow");
+                }
+            }
+        }
+        path.push_str(".png");
+        path
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, EnumIter)]
@@ -170,57 +223,4 @@ pub struct Lobby {
     pub players: Vec<Player>,
     /// Contains tuples of (sender, message).
     pub chat: Vec<(String, String)>,
-}
-
-pub fn get_card_path(card: Card) -> String {
-    let mut path: String = "assets/cards/variations/".to_owned();
-    if card.value == Value::Jester {
-        path.push_str("jester");
-    } else if card.value == Value::Wizard {
-        path.push_str("wizard");
-    } else {
-        match card.suit {
-            Suit::Blue => {
-                path.push_str("blue_");
-            }
-            Suit::Green => {
-                path.push_str("green_");
-            }
-            Suit::Red => {
-                path.push_str("red_");
-            }
-            Suit::Yellow => {
-                path.push_str("yellow_");
-            }
-        }
-        if let Value::Number(number) = card.value {
-            path.push_str(number.to_string().as_str());
-        }
-    }
-    path.push_str(".png");
-    path
-}
-
-pub fn get_glow_path(card: Card) -> String {
-    let mut path: String = "assets/cards/".to_owned();
-    if card.value == Value::Jester || card.value == Value::Wizard {
-        path.push_str("");
-    } else {
-        match card.suit {
-            Suit::Blue => {
-                path.push_str("glow_blue");
-            }
-            Suit::Green => {
-                path.push_str("glow_green");
-            }
-            Suit::Red => {
-                path.push_str("glow_red");
-            }
-            Suit::Yellow => {
-                path.push_str("glow_yellow");
-            }
-        }
-    }
-    path.push_str(".png");
-    path
 }

@@ -1,6 +1,6 @@
 use crate::{
     animation::{BasicAnimation, Easing},
-    api::{get_card_path, Card},
+    api::Card,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_height_middle, card_img_middle_base_scale, card_width_middle,
@@ -104,7 +104,7 @@ impl SizeFromOutside for ViewableStackCard {
 
 impl Viewable for ViewableStackCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        let img = image(get_card_path(self.card))
+        let img = image(self.card.img_path())
             .width(self.width())
             .height(self.height())
             .scale(card_img_middle_base_scale())

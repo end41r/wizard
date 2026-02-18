@@ -1,6 +1,6 @@
 use crate::{
     animation::{AutoReversingAnimation, Easing},
-    api::{get_card_path, CARD_BACK_PATH},
+    api::CARD_BACK_PATH,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_height_middle, card_img_middle_base_scale, card_width_middle,
@@ -118,7 +118,7 @@ impl Resizable for ViewableTrumpCard {
 impl Viewable for ViewableTrumpCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let img_path = if !self.show_back {
-            get_card_path(self.trump_card)
+            self.trump_card.img_path()
         } else {
             CARD_BACK_PATH.to_string()
         };

@@ -1,6 +1,6 @@
 use crate::{
     animation::{CircularAutoReversingAnimation, Easing, ReversableBasicAnimation},
-    api::{get_glow_path, Card},
+    api::Card,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_height_middle, card_width_middle, table::middle::card_deck::CardDeckMessage,
@@ -70,7 +70,7 @@ impl CardStackGlow {
         card_stack_glow
     }
     pub fn change_color(&mut self, card: Card) {
-        self.img_path = get_glow_path(card);
+        self.img_path = card.glow_path();
     }
 }
 
