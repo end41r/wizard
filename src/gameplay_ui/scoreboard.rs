@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use iced::{
-    Border, Color, Element, Length::Shrink, Size, Task, widget::{Column, Container, container, row, text}
+    widget::{container, row, text, Column, Container},
+    Border, Color, Element,
+    Length::Shrink,
+    Size, Task,
 };
 
 use crate::{
@@ -98,7 +101,11 @@ impl ScoreBoard {
         let cell = |content: String| {
             container(
                 text(content)
-                    .size(if is_header { self.size_small() } else { self.size_middle() })
+                    .size(if is_header {
+                        self.size_small()
+                    } else {
+                        self.size_middle()
+                    })
                     .color(text_color),
             )
             .width(iced::Length::FillPortion(1))
@@ -108,7 +115,11 @@ impl ScoreBoard {
         let name_cell = |content: String| {
             container(
                 text(content)
-                    .size(if is_header { self.size_small() } else { self.size_middle() })
+                    .size(if is_header {
+                        self.size_small()
+                    } else {
+                        self.size_middle()
+                    })
                     .color(text_color),
             )
             .width(iced::Length::FillPortion(2))
@@ -211,8 +222,12 @@ impl Viewable for ScoreBoard {
 
         // Title
         scores_col = scores_col.push(
-            container(text("Scoreboard").size(self.size_huge()).color(Color::WHITE))
-                .padding(5),
+            container(
+                text("Scoreboard")
+                    .size(self.size_huge())
+                    .color(Color::WHITE),
+            )
+            .padding(5),
         );
 
         scores_col = scores_col.push(
@@ -225,9 +240,7 @@ impl Viewable for ScoreBoard {
         );
 
         // Header row
-        scores_col = scores_col.push(self.scoreboard_row(
-            "Name", "Pkt", "Won", "Bid", true, false,
-        ));
+        scores_col = scores_col.push(self.scoreboard_row("Name", "Pkt", "Won", "Bid", true, false));
 
         for player_id in &self.info.player_order {
             let mut player_name = self.get_player_name(*player_id);
