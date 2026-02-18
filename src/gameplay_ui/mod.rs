@@ -9,6 +9,7 @@ use iced::{
 };
 
 use crate::{
+    api::{Card, PlayerId},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         hand::{HandMessage, ViewableHand},
@@ -77,10 +78,35 @@ fn card_area_middle_spawn_point(width: f32, height: f32, window_size: Size) -> P
 }
 
 #[derive(Clone, Debug)]
+pub struct GameViewInfo {}
+
+impl GameViewInfo {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum GameViewMessage {
+    // gui -> gui
     HandMessage(HandMessage),
     TableMessage(TableMessage),
     ScoreBoardMessage(ScoreBoardMessage),
+
+    // server -> gui
+    StartGame(GameViewInfo),
+    EndGame(PlayerId),
+    NewRound(Card, Vec<Card>),
+    NewTrick,
+    ChangeTurn(PlayerId),
+    CardPlayed(PlayerId, Card),
+    StartBid(Vec<usize>),
+    EndBid,
+    UpdateScoreBoard(ScoreBoardInfo),
+
+    // gui -> server
+    TryPlayCard(PlayerId, Card),
+    TryBid(PlayerId, usize),
 }
 
 impl Message for GameViewMessage {
@@ -120,6 +146,7 @@ impl Notifiable for GameView {
             GameViewMessage::ScoreBoardMessage(sb_msg) => {
                 return self.scoreboard.update_with_msg(sb_msg)
             }
+            _ => Task::none(),
         }
     }
 }
