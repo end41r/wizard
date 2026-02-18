@@ -134,12 +134,16 @@ pub enum B {
 pub struct Avatar {
     kind: AvatarKind,
     pose: AvatarPose,
-    continue_casting: bool
+    continue_casting: bool,
 }
 
 impl Avatar {
     pub fn new(type_: AvatarKind) -> Self {
-        Self { kind: type_, pose: AvatarPose::Standing1, continue_casting: false}
+        Self {
+            kind: type_,
+            pose: AvatarPose::Standing1,
+            continue_casting: false,
+        }
     }
     pub fn next_pose(&mut self) {
         match self.pose {
@@ -151,11 +155,11 @@ impl Avatar {
                 } else {
                     self.pose = AvatarPose::Standing1
                 }
-            },
+            }
             AvatarPose::Casting2 => {
                 self.pose = AvatarPose::Casting1;
                 self.continue_casting = false;
-            },
+            }
         }
     }
     pub fn next_pose_casting(&mut self) {
