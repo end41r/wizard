@@ -9,7 +9,7 @@ use crate::{
     gameplay_ui::{
         hand::HandMessage,
         table::{
-            avatar::{Avatar, AvatarMessage},
+            avatar::{AvatarMessage, ViewableAvatar},
             middle::{TableMiddleMessage, ViewableTableMiddle},
         },
         GameViewMessage,
@@ -18,13 +18,13 @@ use crate::{
 };
 use iced::{widget::Container, Size, Task};
 
-pub struct AvatarsManager {
+pub struct ViewableAvatarsManager {
     my_id: Option<PlayerId>,
     current_player: Option<PlayerId>,
-    pub avatars: HashMap<PlayerId, Avatar>,
+    pub viewable_avatars: HashMap<PlayerId, ViewableAvatar>,
 }
 
-impl AvatarsManager {
+impl ViewableAvatarsManager {
     pub fn build_avatars(&mut self, player_ids: Vec<PlayerId>) {}
     pub fn update(&mut self, app: &App) {
         self.my_id = app.my_id;
@@ -32,12 +32,12 @@ impl AvatarsManager {
     }
 }
 
-impl Default for AvatarsManager {
+impl Default for ViewableAvatarsManager {
     fn default() -> Self {
         Self {
             my_id: None,
             current_player: None,
-            avatars: HashMap::new(),
+            viewable_avatars: HashMap::new(),
         }
     }
 }
@@ -57,7 +57,7 @@ impl Message for TableMessage {
 pub struct ViewableTable {
     window_size: Size,
     middle: ViewableTableMiddle,
-    avatars: AvatarsManager,
+    avatars: ViewableAvatarsManager,
 }
 
 impl ViewableTable {
@@ -65,7 +65,7 @@ impl ViewableTable {
         Self {
             window_size,
             middle: ViewableTableMiddle::new(window_size),
-            avatars: AvatarsManager::default(),
+            avatars: ViewableAvatarsManager::default(),
         }
     }
 }
@@ -80,7 +80,7 @@ impl Notifiable for ViewableTable {
             }
             TableMessage::AvatarMessage(avatar_msg) => {
                 let mut tb = TaskBatcher::new();
-                for (_, avatar) in self.avatars.avatars.iter_mut() {
+                for (_, avatar) in self.avatars.viewable_avatars.iter_mut() {
                     tb.push(avatar.update_with_msg(avatar_msg.clone()));
                 }
                 tb.batch()
@@ -93,7 +93,7 @@ impl Animated for ViewableTable {
     fn update_animations(&mut self) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
         tb.push(self.middle.update_animations());
-        for (_, avatar) in self.avatars.avatars.iter_mut() {
+        for (_, avatar) in self.avatars.viewable_avatars.iter_mut() {
             tb.push(avatar.update_animations());
         }
         tb.batch()

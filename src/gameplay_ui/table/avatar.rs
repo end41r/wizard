@@ -16,30 +16,30 @@ impl Message for AvatarMessage {
 }
 
 #[derive(Clone, Debug)]
-pub struct Avatar {
+pub struct ViewableAvatar {
     window_size: Size,
 }
 
-impl Avatar {
+impl ViewableAvatar {
     pub fn new(window_size: Size) -> Self {
         Self { window_size }
     }
 }
 
-impl Notifiable for Avatar {
+impl Notifiable for ViewableAvatar {
     type OwnMessage = AvatarMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         Task::none()
     }
 }
 
-impl Animated for Avatar {
+impl Animated for ViewableAvatar {
     fn update_animations(&mut self) -> Task<AppMessage> {
         Task::none()
     }
 }
 
-impl Resizable for Avatar {
+impl Resizable for ViewableAvatar {
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size;
     }
@@ -51,7 +51,7 @@ impl Resizable for Avatar {
     }
 }
 
-impl Viewable for Avatar {
+impl Viewable for ViewableAvatar {
     fn view<'a>(&self) -> iced::widget::Container<'a, AppMessage> {
         Container::new("placeholder")
     }
