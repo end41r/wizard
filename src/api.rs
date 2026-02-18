@@ -130,6 +130,95 @@ pub enum B {
     ServerShutdown,
 }
 
+#[derive(Clone, Debug)]
+pub struct Avatar {
+    kind: AvatarKind,
+    pose: AvatarPose,
+    continue_casting: bool
+}
+
+impl Avatar {
+    pub fn new(type_: AvatarKind) -> Self {
+        Self { kind: type_, pose: AvatarPose::Standing1, continue_casting: false}
+    }
+    pub fn next_pose(&mut self) {
+        match self.pose {
+            AvatarPose::Standing1 => self.pose = AvatarPose::Standing2,
+            AvatarPose::Standing2 => self.pose = AvatarPose::Standing1,
+            AvatarPose::Casting1 => {
+                if self.continue_casting {
+                    self.pose = AvatarPose::Casting2
+                } else {
+                    self.pose = AvatarPose::Standing1
+                }
+            },
+            AvatarPose::Casting2 => {
+                self.pose = AvatarPose::Casting1;
+                self.continue_casting = false;
+            },
+        }
+    }
+    pub fn next_pose_casting(&mut self) {
+        self.continue_casting = true;
+        self.pose = AvatarPose::Casting1;
+    }
+    pub fn img_path(&self) -> String {
+        let mut path: String = "assets/cards/variations/".to_owned();
+        match &self.kind {
+            AvatarKind::Elf => {
+                path.push_str("elf_");
+            }
+            AvatarKind::Knight => {
+                path.push_str("knight_");
+            }
+            AvatarKind::Mage => {
+                path.push_str("mage_");
+            }
+            AvatarKind::Witch => {
+                path.push_str("witch_");
+            }
+        }
+        match &self.pose {
+            AvatarPose::Standing1 => {
+                path.push_str("standing1");
+            }
+            AvatarPose::Standing2 => {
+                path.push_str("standing2");
+            }
+            AvatarPose::Casting1 => {
+                path.push_str("casting1");
+            }
+            AvatarPose::Casting2 => {
+                path.push_str("casting2");
+            }
+        }
+        path.push_str(".png");
+        path
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum AvatarKind {
+    Elf,
+    Knight,
+    Mage,
+    Witch,
+}
+
+impl AvatarKind {
+    pub fn to_avatar(&self) -> Avatar {
+        Avatar::new(*self)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum AvatarPose {
+    Standing1,
+    Standing2,
+    Casting1,
+    Casting2,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Card {
     pub value: Value,
