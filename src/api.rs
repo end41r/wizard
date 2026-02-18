@@ -308,6 +308,7 @@ pub enum Value {
 pub struct Player {
     pub id: PlayerId,
     pub name: String,
+    pub avatar: AvatarKind,
     pub ready: bool,
     pub is_host: bool,
 }

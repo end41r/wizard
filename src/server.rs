@@ -1,4 +1,4 @@
-use crate::api::{Lobby, Player, PlayerId, ServerMessage, B, C, S};
+use crate::api::{AvatarKind, Lobby, Player, PlayerId, ServerMessage, B, C, S};
 use crate::gamelogic::game::Game;
 use crate::gamelogic::GameEvent;
 
@@ -314,6 +314,7 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList,
                         let player = Player {
                             id,
                             name: name.clone(),
+                            avatar: AvatarKind::Mage,
                             ready: false,
                             is_host,
                         };
