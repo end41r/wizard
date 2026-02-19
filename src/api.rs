@@ -162,9 +162,11 @@ impl Avatar {
             }
         }
     }
-    pub fn next_pose_casting(&mut self) {
+    pub fn start_casting(&mut self) {
         self.continue_casting = true;
-        self.pose = AvatarPose::Casting1;
+    }
+    pub fn is_casting(&self) -> bool {
+        self.continue_casting
     }
     pub fn img_path(&self) -> String {
         let mut path: String = "assets/avatars/".to_owned();
