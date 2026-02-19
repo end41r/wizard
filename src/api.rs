@@ -167,19 +167,19 @@ impl Avatar {
         self.pose = AvatarPose::Casting1;
     }
     pub fn img_path(&self) -> String {
-        let mut path: String = "assets/cards/variations/".to_owned();
+        let mut path: String = "assets/avatars/".to_owned();
         match &self.kind {
             AvatarKind::Elf => {
-                path.push_str("elf_");
+                path.push_str("elf/elf_");
             }
             AvatarKind::Knight => {
-                path.push_str("knight_");
+                path.push_str("knight/knight_");
             }
             AvatarKind::Mage => {
-                path.push_str("mage_");
+                path.push_str("mage/mage_");
             }
             AvatarKind::Witch => {
-                path.push_str("witch_");
+                path.push_str("witch/witch_");
             }
         }
         match &self.pose {

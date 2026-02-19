@@ -45,11 +45,6 @@ impl ViewableTable {
             other_avatars: Vec::new(),
         }
     }
-    pub fn all_avatars(&self) -> Vec<ViewableAvatar> {
-        let mut avatars: Vec<ViewableAvatar> = self.other_avatars.clone();
-        avatars.push(self.my_avatar.clone());
-        avatars
-    }
 }
 
 impl Notifiable for ViewableTable {
@@ -62,9 +57,10 @@ impl Notifiable for ViewableTable {
             }
             TableMessage::AvatarMessage(avatar_msg) => {
                 let mut tb = TaskBatcher::new();
-                for avatar in self.all_avatars().iter_mut() {
+                for avatar in self.other_avatars.iter_mut() {
                     tb.push(avatar.update_with_msg(avatar_msg.clone()));
                 }
+                tb.push(self.my_avatar.update_with_msg(avatar_msg));
                 tb.batch()
             }
             TableMessage::BuildAvatars(my_id, players) => {
@@ -76,8 +72,6 @@ impl Notifiable for ViewableTable {
                             .push(ViewableAvatar::new(self.window_size, player.avatar));
                     }
                 }
-                println!("{:?}", self.my_avatar);
-                println!("{:?}", self.other_avatars);
                 Task::none()
             }
         }
@@ -88,9 +82,10 @@ impl Animated for ViewableTable {
     fn update_animations(&mut self) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
         tb.push(self.middle.update_animations());
-        for avatar in self.all_avatars().iter_mut() {
+        for avatar in self.other_avatars.iter_mut() {
             tb.push(avatar.update_animations());
         }
+        tb.push(self.my_avatar.update_animations());
         tb.batch()
     }
 }
@@ -105,11 +100,16 @@ impl Resizable for ViewableTable {
     fn update_size(&mut self, window_size: iced::Size) {
         self.window_size = window_size;
         self.middle.update_size(window_size);
+        for avatar in self.other_avatars.iter_mut() {
+            avatar.update_size(window_size);
+        }
+        self.my_avatar.update_size(window_size);
     }
 }
 
 impl Viewable for ViewableTable {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        self.middle.view()
+        //self.middle.view()
+        self.my_avatar.view()
     }
 }

@@ -1,9 +1,15 @@
-use iced::{widget::Container, Size, Task};
+use iced::{
+    widget::{image, pin, Container},
+    Point, Size, Task,
+};
 
 use crate::{
     api::{Avatar, AvatarKind},
     client::AppMessage,
-    gameplay_ui::table::TableMessage,
+    gameplay_ui::{
+        table::TableMessage, AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH,
+        AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH,
+    },
     ui_element_traits::{Animated, Message, Notifiable, Resizable, Viewable},
 };
 
@@ -29,6 +35,12 @@ impl ViewableAvatar {
             avatar: avatar_kind.to_avatar(),
         }
     }
+    fn avatar_img_position(&self) -> Point {
+        let size: f32 = self.width()
+            * (AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH / AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH - 1.0)
+            / 2.0;
+        Point::new(size, size)
+    }
 }
 
 impl Notifiable for ViewableAvatar {
@@ -49,7 +61,7 @@ impl Resizable for ViewableAvatar {
         self.window_size = window_size;
     }
     fn width(&self) -> f32 {
-        0.0
+        self.window_size.width * AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH
     }
     fn height(&self) -> f32 {
         self.width()
@@ -58,6 +70,13 @@ impl Resizable for ViewableAvatar {
 
 impl Viewable for ViewableAvatar {
     fn view<'a>(&self) -> iced::widget::Container<'a, AppMessage> {
-        Container::new("placeholder")
+        Container::new(
+            pin(image(self.avatar.img_path())
+                .width(AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width)
+                .height(AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width))
+            .position(self.avatar_img_position()),
+        )
+        .width(self.width())
+        .height(self.height())
     }
 }

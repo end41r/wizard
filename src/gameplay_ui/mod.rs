@@ -4,7 +4,7 @@ pub mod scoreboard;
 pub mod table;
 
 use iced::{
-    widget::{container, row, stack, Column, Container, Image},
+    widget::{container, row, stack, Container, Image},
     ContentFit, Point, Size, Task,
 };
 
@@ -20,6 +20,9 @@ use crate::{
 };
 
 static SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH: f32 = 0.2;
+
+static AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH: f32 = 0.11;
+static AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH: f32 = AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH * 0.75;
 
 // The hand size is depending on the window size with the factor 0.1.
 static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
@@ -209,8 +212,7 @@ impl Resizable for GameView {
 impl Viewable for GameView {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let scoreboard = self.scoreboard.view();
-
-        let main_content = Column::new()
+        let main_content = row!(self.viewable_table.view())
             .width(iced::Length::Fill)
             .height(iced::Length::Fill);
 
