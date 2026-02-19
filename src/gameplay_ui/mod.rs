@@ -9,8 +9,8 @@ use iced::{
 };
 
 use crate::{
-    api::{Card, PlayerId, Suit},
-    client::{AppMessage, TaskBatcher},
+    api::{Card, Player, PlayerId, Suit},
+    client::{App, AppMessage, TaskBatcher},
     gameplay_ui::{
         hand::{HandMessage, ViewableHand},
         scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage},
@@ -78,11 +78,21 @@ fn card_area_middle_spawn_point(width: f32, height: f32, window_size: Size) -> P
 }
 
 #[derive(Clone, Debug)]
-pub struct GameViewInfo {}
+pub struct GameStartInfo {
+    players: Vec<Player>,
+    my_id: PlayerId,
+    current_player: Option<PlayerId>,
+    sb_info: ScoreBoardInfo,
+}
 
-impl GameViewInfo {
-    pub fn new() -> Self {
-        Self {}
+impl GameStartInfo {
+    pub fn new(app: &App) -> Self {
+        Self {
+            players: app.lobby.as_ref().unwrap().players.clone(),
+            my_id: app.my_id.as_ref().unwrap().clone(),
+            current_player: app.current_player.clone(),
+            sb_info: app.scoreboard_info(),
+        }
     }
 }
 
@@ -94,7 +104,7 @@ pub enum GameViewMessage {
     ScoreBoardMessage(ScoreBoardMessage),
 
     // server -> gui
-    StartGame(GameViewInfo),
+    StartGame(GameStartInfo),
     EndGame(PlayerId),
     NewRound(Card, Vec<Card>),
     NewTrick,
@@ -120,6 +130,12 @@ impl Message for GameViewMessage {
 
 pub struct GameView {
     window_size: Size,
+
+    // game data
+    my_id: Option<PlayerId>,
+    current_player: Option<PlayerId>,
+
+    // gui elements
     viewable_hand: ViewableHand,
     viewable_table: ViewableTable,
     scoreboard: ScoreBoard,
@@ -129,6 +145,8 @@ impl GameView {
     pub fn new(window_size: Size) -> Self {
         Self {
             window_size,
+            my_id: None,
+            current_player: None,
             viewable_hand: ViewableHand::new(window_size),
             viewable_table: ViewableTable::new(window_size),
             scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
@@ -148,6 +166,16 @@ impl Notifiable for GameView {
             }
             GameViewMessage::ScoreBoardMessage(sb_msg) => {
                 return self.scoreboard.update_with_msg(sb_msg)
+            }
+            GameViewMessage::StartGame(info) => {
+                let mut tb = TaskBatcher::new();
+                self.my_id = Some(info.my_id);
+                tb.push(
+                    self.scoreboard
+                        .update_with_msg(ScoreBoardMessage::Update(info.sb_info)),
+                );
+                tb.push(TableMessage::BuildAvatars(info.my_id, info.players).convert_msg_to_task());
+                tb.batch()
             }
             _ => Task::none(),
         }

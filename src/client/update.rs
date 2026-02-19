@@ -4,7 +4,8 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
-use crate::ui_element_traits::{Animated, Notifiable, Resizable};
+use crate::gameplay_ui::GameViewMessage;
+use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
 
 /// Get player name from ID using lobby data
 fn get_player_name(state: &App, player_id: PlayerId) -> String {
@@ -172,6 +173,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     }
                 }
             }
+            return GameViewMessage::StartGame(state.game_start_info()).convert_msg_to_task();
         }
 
         AppMessage::GameRules => {

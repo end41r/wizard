@@ -5,7 +5,7 @@ mod ws;
 use crate::api::{Card, Lobby, PlayerId, Suit};
 use crate::client::views::Button;
 use crate::gameplay_ui::scoreboard::ScoreBoardInfo;
-use crate::gameplay_ui::{GameView, GameViewInfo, GameViewMessage};
+use crate::gameplay_ui::{GameStartInfo, GameView, GameViewMessage};
 use crate::ui_element_traits::Message;
 use iced::{time, window, Size, Subscription, Task};
 use std::collections::HashMap;
@@ -141,8 +141,8 @@ impl App {
         )
     }
 
-    pub fn game_view_info(&self) -> GameViewInfo {
-        GameViewInfo::new()
+    pub fn game_start_info(&self) -> GameStartInfo {
+        GameStartInfo::new(self)
     }
 }
 

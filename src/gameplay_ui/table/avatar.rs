@@ -1,6 +1,7 @@
 use iced::{widget::Container, Size, Task};
 
 use crate::{
+    api::{Avatar, AvatarKind},
     client::AppMessage,
     gameplay_ui::table::TableMessage,
     ui_element_traits::{Animated, Message, Notifiable, Resizable, Viewable},
@@ -18,11 +19,15 @@ impl Message for AvatarMessage {
 #[derive(Clone, Debug)]
 pub struct ViewableAvatar {
     window_size: Size,
+    avatar: Avatar,
 }
 
 impl ViewableAvatar {
-    pub fn new(window_size: Size) -> Self {
-        Self { window_size }
+    pub fn new(window_size: Size, avatar_kind: AvatarKind) -> Self {
+        Self {
+            window_size,
+            avatar: avatar_kind.to_avatar(),
+        }
     }
 }
 
