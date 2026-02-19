@@ -9,7 +9,7 @@ use iced::{
 };
 
 use crate::{
-    api::{Card, PlayerId},
+    api::{Card, PlayerId, Suit},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         hand::{HandMessage, ViewableHand},
@@ -102,11 +102,14 @@ pub enum GameViewMessage {
     CardPlayed(PlayerId, Card),
     StartBid(Vec<usize>),
     EndBid,
+    StartChooseSuit,
+    EndChooseSuit,
     UpdateScoreBoard(ScoreBoardInfo),
 
     // gui -> server
     TryPlayCard(PlayerId, Card),
     TryBid(PlayerId, usize),
+    TryChooseSuit(Suit),
 }
 
 impl Message for GameViewMessage {
