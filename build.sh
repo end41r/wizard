@@ -56,4 +56,4 @@ fi
 
 $BUILD_CMD && \
     cp "target/$TARGET_NAME/$BUILD_TYPE/wizard$EXE_EXT" "$DEST_PATH/" && \
-    cp assets/ "$DEST_PATH/" -r && \
+    cp assets/ "$DEST_PATH/" -r
