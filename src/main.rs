@@ -1,4 +1,3 @@
-// Enable only in release before the final build.
 // Disables the console window on Windows.
 #![cfg_attr(not(feature = "wiz_debug"), windows_subsystem = "windows")]
 
