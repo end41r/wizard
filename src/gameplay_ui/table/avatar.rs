@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use iced::{
-    widget::{image, pin, stack, Container},
+    widget::{image, image::FilterMethod, pin, stack, Container},
     Point, Size, Task,
 };
 
@@ -232,6 +232,8 @@ impl Viewable for ViewableAvatar {
         let mut avatar = stack!();
         let sprite_size = AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width;
         let sprite = pin(image(self.avatar.img_path())
+            // AI-Usage: Claude for learning filter_method to achieve non blurred pixel art.
+            .filter_method(FilterMethod::Nearest)
             .width(sprite_size)
             .height(sprite_size))
         .position(self.avatar_img_position());
