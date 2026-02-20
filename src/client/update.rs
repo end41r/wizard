@@ -4,6 +4,7 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
+use crate::gameplay_ui::hand::ViewableHand;
 use crate::ui_element_traits::{Animated, Notifiable, Resizable};
 
 /// Get player name from ID using lobby data
@@ -403,7 +404,15 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 }
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.hand = cards;
+                state.hand = cards.clone();
+                
+                // Create viewable cards with preloaded images
+                let viewable_cards = ViewableHand::create_viewable_cards_static(
+                    &cards,
+                    &state.valid_cards,
+                    state.viewable_hand.window_size,
+                );
+                state.viewable_hand.set_cards(viewable_cards);
             }
             S::TrumpRequest => {
                 let log = "[SERVER] You must set the trump suit!".to_string();

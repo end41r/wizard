@@ -11,6 +11,7 @@ use iced::{time, widget::image, window, Size, Subscription, Task};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use strum::IntoEnumIterator;
 
 pub use update::update;
 pub use views::view;
@@ -133,6 +134,8 @@ pub struct App {
     pub img_background: image::Handle,
     pub img_ingame_background: image::Handle,
     pub img_menu_container: image::Handle,
+
+    pub card_images: HashMap<Card, image::Handle>,
 }
 
 impl Default for App {
@@ -207,7 +210,43 @@ impl Default for App {
             img_background: image::Handle::from_path("assets/background_forall.png"),
             img_ingame_background: image::Handle::from_path("assets/ingame_background.png"),
             img_menu_container: image::Handle::from_path("assets/menu_container.png"),
+
+            card_images: Self::preload_card_images(),
         }
+    }
+}
+
+impl App {
+    fn preload_card_images() -> HashMap<Card, image::Handle> {
+        let mut map = HashMap::new();
+        
+        map.insert(
+            Card::new(Suit::Red, crate::api::Value::Jester),
+            image::Handle::from_path("assets/cards/variations/jester.png"),
+        );
+        map.insert(
+            Card::new(Suit::Red, crate::api::Value::Wizard),
+            image::Handle::from_path("assets/cards/variations/wizard.png"),
+        );
+        
+        for suit in Suit::iter() {
+            for num in 1..=13 {
+                let card = Card::new(suit, crate::api::Value::Number(num));
+                let path = crate::api::get_card_path(card);
+                map.insert(card, image::Handle::from_path(path));
+            }
+        }
+        
+        map
+    }
+
+    pub fn get_card_image(&self, card: Card) -> image::Handle {
+        self.card_images
+            .get(&card)
+            .cloned()
+            .unwrap_or_else(|| { //just in case
+                image::Handle::from_path(crate::api::get_card_path(card))
+            })
     }
 }
 

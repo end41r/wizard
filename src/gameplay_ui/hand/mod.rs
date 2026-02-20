@@ -31,7 +31,7 @@ impl Message for HandMessage {
 
 #[derive(Debug)]
 pub struct ViewableHand {
-    window_size: Size,
+    pub window_size: Size,
 
     pub cards: IndexMap<usize, ViewableHandCard>,
     hovered_card_row_low: bool,
@@ -92,6 +92,22 @@ impl ViewableHand {
         for card in cards.iter() {
             self.cards.insert(card.id(), card.clone());
         }
+    }
+
+    /// Create ViewableHandCards from game cards (static version for use in update functions)
+    pub fn create_viewable_cards_static(
+        game_cards: &[crate::api::Card],
+        valid_cards: &[crate::api::Card],
+        window_size: Size,
+    ) -> Vec<ViewableHandCard> {
+        game_cards
+            .iter()
+            .enumerate()
+            .map(|(id, &card)| {
+                let playable = valid_cards.contains(&card);
+                ViewableHandCard::new(id, card, window_size, playable)
+            })
+            .collect()
     }
 
     pub fn card_ids(&self) -> Vec<usize> {
