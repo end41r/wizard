@@ -31,7 +31,7 @@ pub fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .align_x(iced::alignment::Horizontal::Right);
 
     stack![
-        Image::new("assets/wizard_main_menu.png")
+        Image::new(state.img_main_menu.clone())
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
@@ -88,7 +88,7 @@ pub fn view_host_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .align_x(iced::alignment::Horizontal::Left);
 
     stack![
-        background_image("assets/background_forall.png"),
+        background_image(&state.img_background),
         menu_panel(
             state,
             "Spiel hosten:",
@@ -120,7 +120,7 @@ pub fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .align_x(iced::alignment::Horizontal::Left);
 
     stack![
-        background_image("assets/background_forall.png"),
+        background_image(&state.img_background),
         menu_panel(
             state,
             "Spiel beitreten:",
@@ -188,7 +188,7 @@ pub fn view_rules_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
         .width(iced::Length::Fill);
 
     stack![
-        background_image("assets/background_forall.png"),
+        background_image(&state.img_background),
         menu_panel(
             state,
             "SPIELREGELN:",

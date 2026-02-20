@@ -7,7 +7,7 @@ use crate::client::views::Button;
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
 use crate::gameplay_ui::table::{TableMessage, ViewableTable};
 use crate::ui_element_traits::Message;
-use iced::{time, window, Size, Subscription, Task};
+use iced::{time, widget::image, window, Size, Subscription, Task};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -127,6 +127,12 @@ pub struct App {
     pub btn_back_to_menu: crate::client::views::Button,
 
     pub btn_ready_owned: crate::client::views::Button,
+
+    pub img_main_menu: image::Handle,
+    pub img_lobby_menu: image::Handle,
+    pub img_background: image::Handle,
+    pub img_ingame_background: image::Handle,
+    pub img_menu_container: image::Handle,
 }
 
 impl Default for App {
@@ -195,6 +201,12 @@ impl Default for App {
             btn_back_to_menu: Button::new_back_to_menu_button(15, 160, 40),
 
             btn_ready_owned: Button::new_ready_owned_button(20, 100, 36),
+
+            img_main_menu: image::Handle::from_path("assets/wizard_main_menu.png"),
+            img_lobby_menu: image::Handle::from_path("assets/wizard_lobby_menu.png"),
+            img_background: image::Handle::from_path("assets/background_forall.png"),
+            img_ingame_background: image::Handle::from_path("assets/ingame_background.png"),
+            img_menu_container: image::Handle::from_path("assets/menu_container.png"),
         }
     }
 }

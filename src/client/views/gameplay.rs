@@ -25,7 +25,7 @@ pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = row![main_content, scoreboard,].height(iced::Length::Fill);
 
     stack![
-        Image::new("assets/ingame_background.png")
+        Image::new(state.img_ingame_background.clone())
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),

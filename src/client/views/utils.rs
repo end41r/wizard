@@ -45,9 +45,10 @@ pub fn png_dimensions(path: &str) -> Option<(u32, u32)> {
     Some((width, height))
 }
 
-/// Creates a full-screen background with the specified image.
-pub fn background_image(path: &'static str) -> Image<iced::widget::image::Handle> {
-    Image::new(path)
+pub fn background_image(
+    handle: &iced::widget::image::Handle,
+) -> Image<iced::widget::image::Handle> {
+    Image::new(handle.clone())
         .width(iced::Length::Fill)
         .height(iced::Length::Fill)
         .content_fit(ContentFit::Cover)
@@ -85,7 +86,7 @@ pub fn menu_panel<'a>(
 
     stack![
         container(
-            Image::new("assets/menu_container.png")
+            Image::new(state.img_menu_container.clone())
                 .width(menu_w)
                 .height(menu_h)
         )
