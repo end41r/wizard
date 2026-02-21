@@ -13,7 +13,8 @@ use crate::{
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         table::TableMessage, AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH,
-        AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH, AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH,
+        AVATAR_FRAME_WIDTH_HEIGHT_RATIO, AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH,
+        AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH,
     },
     ui_element_traits::{Animated, Message, Notifiable, Resizable, SizeFromOutside, Viewable},
 };
@@ -233,25 +234,28 @@ impl Resizable for ViewableAvatar {
         self.window_size = window_size;
     }
     fn width(&self) -> f32 {
-        self.window_size.width * AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH
+        self.window_size.width * AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH
     }
     fn height(&self) -> f32 {
-        self.width()
+        self.width() * AVATAR_FRAME_WIDTH_HEIGHT_RATIO
     }
 }
 
 impl SizeFromOutside for ViewableAvatar {
     fn width_for(window_size: Size) -> f32 {
-        window_size.width * AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH
+        window_size.width * AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH
     }
     fn height_for(window_size: Size) -> f32 {
-        Self::width_for(window_size)
+        Self::width_for(window_size) * AVATAR_FRAME_WIDTH_HEIGHT_RATIO
     }
 }
 
 impl Viewable for ViewableAvatar {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        let mut avatar = stack!();
+        let mut avatar = stack!().width(self.width()).height(self.height());
+        avatar = avatar.push(
+            image("assets/avatars/avatar_frame_idle.png").filter_method(FilterMethod::Nearest),
+        );
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting1));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting2));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Standing1));

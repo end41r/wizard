@@ -19,14 +19,15 @@ use crate::{
     ui_element_traits::{Animated, Message, Notifiable, Resizable, ResizableDynHeight, Viewable},
 };
 
-static TABLE_Y_POSITION_MULT_WIDTH_WINDOW_HEIGHT: f32 = 0.1;
+static TABLE_Y_POSITION_MULT_WITH_WINDOW_HEIGHT: f32 = 0.1;
 
 static SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH: f32 = 0.2;
 
-static AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH: f32 = 0.1;
-static AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH: f32 = AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH * 0.75;
+static AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
+static AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH: f32 = AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH * 0.75;
 static AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH: f32 =
-    (AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH - AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH) / 2.0;
+    (AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH - AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH) / 2.0;
+static AVATAR_FRAME_WIDTH_HEIGHT_RATIO: f32 = 1.2;
 
 // The hand size is depending on the window size with the factor 0.1.
 static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
@@ -227,7 +228,7 @@ impl Viewable for GameView {
         // Card Table
         content = content.push(self.viewable_table.view_and_move(
             (self.width() - self.viewable_table.width()) / 2.0,
-            self.height() * TABLE_Y_POSITION_MULT_WIDTH_WINDOW_HEIGHT,
+            self.height() * TABLE_Y_POSITION_MULT_WITH_WINDOW_HEIGHT,
         ));
         // Card Hand
         content = content.push(self.viewable_hand.view_and_move(
