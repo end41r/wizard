@@ -68,6 +68,9 @@ impl ViewableStackCard {
         viewable_stack_card.reveal_animation.start();
         viewable_stack_card
     }
+    pub fn card(&self) -> Card {
+        self.card
+    }
 }
 
 impl Animated for ViewableStackCard {

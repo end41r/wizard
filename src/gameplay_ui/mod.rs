@@ -32,6 +32,7 @@ static AVATAR_FRAME_WIDTH_HEIGHT_RATIO: f32 = 1.2;
 // The hand size is depending on the window size with the factor 0.1.
 static CARD_WIDTH_MULT_WITH_WINDOW_WIDTH: f32 = 0.1;
 // 1.54 is around 1245 / 806 (height to width ratio of a card image).
+static CARD_WIDTH_HEIGHT_RATIO: f32 = 1.54;
 pub static CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH: f32 = CARD_WIDTH_MULT_WITH_WINDOW_WIDTH * 1.54;
 
 // Adjust this arbitrary value to manipulate the width of the hand relative to its size,
