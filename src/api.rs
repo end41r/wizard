@@ -138,12 +138,18 @@ pub struct Avatar {
 }
 
 impl Avatar {
-    pub fn new(type_: AvatarKind) -> Self {
+    pub fn new(kind: AvatarKind) -> Self {
         Self {
-            kind: type_,
+            kind,
             pose: AvatarPose::Standing1,
             continue_casting: false,
         }
+    }
+    pub fn kind(&self) -> AvatarKind {
+        self.kind
+    }
+    pub fn pose(&self) -> AvatarPose {
+        self.pose
     }
     pub fn next_pose(&mut self) {
         match self.pose {
@@ -215,9 +221,42 @@ impl AvatarKind {
     pub fn to_avatar(&self) -> Avatar {
         Avatar::new(*self)
     }
+    pub fn img_path(&self, pose: AvatarPose) -> String {
+        let mut path: String = "assets/avatars/".to_owned();
+        match &self {
+            AvatarKind::Elf => {
+                path.push_str("elf/elf_");
+            }
+            AvatarKind::Knight => {
+                path.push_str("knight/knight_");
+            }
+            AvatarKind::Mage => {
+                path.push_str("mage/mage_");
+            }
+            AvatarKind::Witch => {
+                path.push_str("witch/witch_");
+            }
+        }
+        match pose {
+            AvatarPose::Standing1 => {
+                path.push_str("standing1");
+            }
+            AvatarPose::Standing2 => {
+                path.push_str("standing2");
+            }
+            AvatarPose::Casting1 => {
+                path.push_str("casting1");
+            }
+            AvatarPose::Casting2 => {
+                path.push_str("casting2");
+            }
+        }
+        path.push_str(".png");
+        path
+    }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AvatarPose {
     Standing1,
     Standing2,

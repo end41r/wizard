@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use iced::{
-    widget::{image, image::FilterMethod, pin, stack, Container},
+    widget::{image, image::FilterMethod, pin, stack, Container, Pin},
     Point, Size, Task,
 };
 
@@ -9,7 +9,7 @@ use derive_more::{Deref, DerefMut};
 
 use crate::{
     animation::{BasicAnimation, CircularAnimation, Easing, ReversableBasicAnimation},
-    api::{Avatar, AvatarKind, CARD_BACK_PATH},
+    api::{Avatar, AvatarKind, AvatarPose, CARD_BACK_PATH},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         table::TableMessage, AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH,
@@ -169,6 +169,19 @@ impl ViewableAvatar {
         (card_number as f32 / self.cards as f32) * 2.0 * PI
             + self.card_rotation_animation.get_rotation()
     }
+    fn sprite<'a>(&self, pose: AvatarPose, compare_pose: AvatarPose) -> Pin<'a, AppMessage> {
+        let sprite_size = AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width;
+        let opacity = if pose == compare_pose { 1.0 } else { 0.0 };
+        pin(
+            iced::widget::image(self.avatar.kind().img_path(compare_pose))
+                // AI-Usage: Claude for learning filter_method to achieve non blurred pixel art.
+                .filter_method(FilterMethod::Nearest)
+                .opacity(opacity)
+                .width(sprite_size)
+                .height(sprite_size),
+        )
+        .position(self.avatar_img_position())
+    }
 }
 
 impl Notifiable for ViewableAvatar {
@@ -239,14 +252,10 @@ impl SizeFromOutside for ViewableAvatar {
 impl Viewable for ViewableAvatar {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let mut avatar = stack!();
-        let sprite_size = AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width;
-        let sprite = pin(image(self.avatar.img_path())
-            // AI-Usage: Claude for learning filter_method to achieve non blurred pixel art.
-            .filter_method(FilterMethod::Nearest)
-            .width(sprite_size)
-            .height(sprite_size))
-        .position(self.avatar_img_position());
-        avatar = avatar.push(sprite);
+        avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting1));
+        avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting2));
+        avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Standing1));
+        avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Standing2));
         if self.cards > 0 {
             let play_opacity: f32 = self.play_card_animation.get_opacity();
             let card_size: f32 = self.window_size.width * AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH;
