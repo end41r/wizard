@@ -254,6 +254,25 @@ impl AvatarKind {
         path.push_str(".png");
         path
     }
+    pub fn shard_path(&self) -> String {
+        let mut path: String = "assets/avatars/".to_owned();
+        match &self {
+            AvatarKind::Elf => {
+                path.push_str("elf/");
+            }
+            AvatarKind::Knight => {
+                path.push_str("knight/");
+            }
+            AvatarKind::Mage => {
+                path.push_str("mage/");
+            }
+            AvatarKind::Witch => {
+                path.push_str("witch/");
+            }
+        }
+        path.push_str("shard.png");
+        path
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

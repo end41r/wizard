@@ -9,11 +9,11 @@ use derive_more::{Deref, DerefMut};
 
 use crate::{
     animation::{BasicAnimation, CircularAnimation, Easing, ReversableBasicAnimation},
-    api::{Avatar, AvatarKind, AvatarPose, CARD_BACK_PATH},
+    api::{Avatar, AvatarKind, AvatarPose},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        table::TableMessage, AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH,
-        AVATAR_FRAME_WIDTH_HEIGHT_RATIO, AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH,
+        table::TableMessage, AVATAR_FRAME_WIDTH_HEIGHT_RATIO,
+        AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH, AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH,
         AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH,
     },
     ui_element_traits::{Animated, Message, Notifiable, Resizable, SizeFromOutside, Viewable},
@@ -21,8 +21,8 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub enum AvatarMessage {
-    AddCards(usize),
-    PlayCard,
+    AddShards(usize),
+    PlayShard,
 }
 
 impl Message for AvatarMessage {
@@ -62,9 +62,9 @@ impl RevealAnimation {
 }
 
 #[derive(Clone, Debug, Deref, DerefMut)]
-pub struct PlayCardAnimation(BasicAnimation);
+pub struct PlayShardAnimation(BasicAnimation);
 
-impl PlayCardAnimation {
+impl PlayShardAnimation {
     fn new() -> Self {
         Self(BasicAnimation::new(100))
     }
@@ -74,9 +74,9 @@ impl PlayCardAnimation {
 }
 
 #[derive(Clone, Debug, Deref, DerefMut)]
-pub struct CardRotationAnimation(CircularAnimation);
+pub struct ShardRotationAnimation(CircularAnimation);
 
-impl CardRotationAnimation {
+impl ShardRotationAnimation {
     fn new() -> Self {
         Self(CircularAnimation::new(400))
     }
@@ -102,12 +102,12 @@ impl InterferenceAnimation {
 pub struct ViewableAvatar {
     window_size: Size,
     avatar: Avatar,
-    cards: usize,
+    shards: usize,
     interference: bool,
     sprite_animation: SpriteAnimation,
     reveal_animation: RevealAnimation,
-    play_card_animation: PlayCardAnimation,
-    card_rotation_animation: CardRotationAnimation,
+    play_shard_animation: PlayShardAnimation,
+    shard_rotation_animation: ShardRotationAnimation,
     interference_animation: InterferenceAnimation,
 }
 
@@ -116,26 +116,26 @@ impl ViewableAvatar {
         let mut viewable_avatar = Self {
             window_size,
             avatar: avatar_kind.to_avatar(),
-            cards: 20,
+            shards: 20,
             interference: false,
             sprite_animation: SpriteAnimation::new(),
             reveal_animation: RevealAnimation::new(),
-            play_card_animation: PlayCardAnimation::new(),
-            card_rotation_animation: CardRotationAnimation::new(),
+            play_shard_animation: PlayShardAnimation::new(),
+            shard_rotation_animation: ShardRotationAnimation::new(),
             interference_animation: InterferenceAnimation::new(),
         };
         viewable_avatar.sprite_animation.start();
-        viewable_avatar.card_rotation_animation.start();
+        viewable_avatar.shard_rotation_animation.start();
         viewable_avatar
     }
     fn avatar_img_position(&self) -> Point {
-        let size: f32 = self.window_size.width * AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH;
+        let size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
         Point::new(size, size)
     }
-    fn card_position(&self, card_number: usize) -> Point {
-        let position: Point = self.card_position_helper(card_number);
+    fn shard_position(&self, shard_number: usize) -> Point {
+        let position: Point = self.shard_position_helper(shard_number);
         if self.interference {
-            let position_with_less: Point = self.card_position_helper(card_number - 1);
+            let position_with_less: Point = self.shard_position_helper(shard_number - 1);
             let position_offset: f32 = self.interference_animation.get_progress()
                 * (position.x - position_with_less.x).abs();
             Point::new(position.x + position_offset, position.y + position_offset)
@@ -143,32 +143,32 @@ impl ViewableAvatar {
             position
         }
     }
-    fn card_position_helper(&self, card_number: usize) -> Point {
-        let card_size: f32 = self.window_size.width * AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH;
+    fn shard_position_helper(&self, shard_number: usize) -> Point {
+        let shard_size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
         let circle_radius: f32 = self.width() / 2.0;
-        let mut x: f32 = circle_radius - card_size / 2.0;
+        let mut x: f32 = circle_radius - shard_size / 2.0;
         let mut y: f32 = x;
         // The angle is scaled from 0.0 to PI, not from 0.0 to 1.0.
-        let rotation_angle: f32 = ((card_number as f32 / self.cards as f32) * 2.0 * PI
-            + self.card_rotation_animation.get_rotation())
+        let rotation_angle: f32 = ((shard_number as f32 / self.shards as f32) * 2.0 * PI
+            + self.shard_rotation_animation.get_rotation())
             - (PI / 2.0); // To start on top of the circle.
         x += x * rotation_angle.cos();
         y += y * rotation_angle.sin();
         Point::new(x, y)
     }
-    fn card_rotation(&self, card_number: usize) -> f32 {
-        let rotation = self.card_rotation_helper(card_number);
+    fn shard_rotation(&self, shard_number: usize) -> f32 {
+        let rotation = self.shard_rotation_helper(shard_number);
         if self.interference {
-            let rotation_with_less: f32 = self.card_rotation_helper(card_number - 1);
+            let rotation_with_less: f32 = self.shard_rotation_helper(shard_number - 1);
             rotation
                 + self.interference_animation.get_progress() * (rotation - rotation_with_less).abs()
         } else {
             rotation
         }
     }
-    fn card_rotation_helper(&self, card_number: usize) -> f32 {
-        (card_number as f32 / self.cards as f32) * 2.0 * PI
-            + self.card_rotation_animation.get_rotation()
+    fn shard_rotation_helper(&self, shard_number: usize) -> f32 {
+        (shard_number as f32 / self.shards as f32) * 2.0 * PI
+            + self.shard_rotation_animation.get_rotation()
     }
     fn sprite<'a>(&self, pose: AvatarPose, compare_pose: AvatarPose) -> Pin<'a, AppMessage> {
         let sprite_size = AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width;
@@ -189,18 +189,18 @@ impl Notifiable for ViewableAvatar {
     type OwnMessage = AvatarMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
-            AvatarMessage::AddCards(cards) => {
-                self.cards = cards;
+            AvatarMessage::AddShards(cards) => {
+                self.shards = cards;
                 self.reveal_animation.start_force();
             }
-            AvatarMessage::PlayCard => {
-                if self.cards > 0 {
-                    self.cards -= 1;
-                    self.play_card_animation.start_force();
+            AvatarMessage::PlayShard => {
+                if self.shards > 0 {
+                    self.shards -= 1;
+                    self.play_shard_animation.start_force();
                     self.sprite_animation.start_force();
                     self.avatar.start_casting();
                 }
-                if self.cards > 1 {
+                if self.shards > 1 {
                     self.interference = true;
                     self.interference_animation.start_force();
                 }
@@ -222,8 +222,8 @@ impl Animated for ViewableAvatar {
         };
 
         tb.push(self.reveal_animation.next_frame());
-        tb.push(self.play_card_animation.next_frame());
-        tb.push(self.card_rotation_animation.next_frame());
+        tb.push(self.play_shard_animation.next_frame());
+        tb.push(self.shard_rotation_animation.next_frame());
         tb.push(self.interference_animation.next_frame());
         tb.batch()
     }
@@ -260,23 +260,23 @@ impl Viewable for ViewableAvatar {
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting2));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Standing1));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Standing2));
-        if self.cards > 0 {
-            let play_opacity: f32 = self.play_card_animation.get_opacity();
-            let card_size: f32 = self.window_size.width * AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH;
-            for card in 0..self.cards {
-                let opacity: f32 = if card == self.cards {
+        if self.shards > 0 {
+            let play_opacity: f32 = self.play_shard_animation.get_opacity();
+            let shard_size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
+            for shard in 0..self.shards {
+                let opacity: f32 = if shard == self.shards {
                     self.reveal_animation.get_opacity().min(play_opacity)
                 } else {
                     self.reveal_animation.get_opacity()
                 };
                 avatar = avatar.push(
-                    pin(image(CARD_BACK_PATH)
-                        .rotation(self.card_rotation(card))
+                    pin(image(self.avatar.kind().shard_path())
+                        .rotation(self.shard_rotation(shard))
                         .scale(0.8)
                         .opacity(opacity)
-                        .width(card_size)
-                        .height(card_size))
-                    .position(self.card_position(card)),
+                        .width(shard_size)
+                        .height(shard_size))
+                    .position(self.shard_position(shard)),
                 );
             }
         }
