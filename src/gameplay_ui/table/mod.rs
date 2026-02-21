@@ -14,7 +14,10 @@ use crate::{
     },
     ui_element_traits::*,
 };
-use iced::{widget::Container, Size, Task};
+use iced::{
+    widget::{container, stack, Container},
+    Size, Task,
+};
 
 #[derive(Debug, Clone)]
 pub enum TableMessage {
@@ -42,8 +45,18 @@ impl ViewableTable {
             window_size,
             middle: ViewableTableMiddle::new(window_size),
             my_avatar: ViewableAvatar::new(window_size, AvatarKind::Mage),
-            other_avatars: Vec::new(),
+            other_avatars: Self::build_test_avatars(window_size),
         }
+    }
+
+    pub fn build_test_avatars(window_size: Size) -> Vec<ViewableAvatar> {
+        vec![
+            ViewableAvatar::new(window_size, AvatarKind::Elf),
+            ViewableAvatar::new(window_size, AvatarKind::Knight),
+            ViewableAvatar::new(window_size, AvatarKind::Mage),
+            ViewableAvatar::new(window_size, AvatarKind::Witch),
+            ViewableAvatar::new(window_size, AvatarKind::Elf),
+        ]
     }
 }
 
@@ -92,10 +105,10 @@ impl Animated for ViewableTable {
 
 impl Resizable for ViewableTable {
     fn height(&self) -> f32 {
-        self.middle.height()
+        self.middle.height() * 2.0
     }
     fn width(&self) -> f32 {
-        self.middle.width()
+        self.middle.width() * 2.0
     }
     fn update_size(&mut self, window_size: iced::Size) {
         self.window_size = window_size;
@@ -109,7 +122,29 @@ impl Resizable for ViewableTable {
 
 impl Viewable for ViewableTable {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        //self.middle.view()
-        self.my_avatar.view()
+        let mut content = stack!().width(self.width()).height(self.height());
+        // Table Middle
+        content = content.push(
+            self.middle
+                .view_and_move(self.middle.width() * 0.5, self.middle.height() * 0.15),
+        );
+        // Player Avatars
+        let avatar_size: f32 = ViewableAvatar::width_for(self.window_size);
+        let sec_col_x_spawn: f32 = self.width() - avatar_size;
+        content = content.push(self.my_avatar.view());
+        content = content.push(self.other_avatars[0].view_and_move(sec_col_x_spawn, 0.0));
+        content = content.push(self.other_avatars[1].view_and_move(0.0, avatar_size * 1.5));
+        if self.other_avatars.len() > 2 {
+            content = content
+                .push(self.other_avatars[2].view_and_move(sec_col_x_spawn, avatar_size * 1.5))
+        }
+        if self.other_avatars.len() > 3 {
+            content = content.push(self.other_avatars[3].view_and_move(0.0, avatar_size * 3.0))
+        }
+        if self.other_avatars.len() > 4 {
+            content = content
+                .push(self.other_avatars[4].view_and_move(sec_col_x_spawn, avatar_size * 3.0))
+        }
+        container(content)
     }
 }

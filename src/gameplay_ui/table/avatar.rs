@@ -15,7 +15,7 @@ use crate::{
         table::TableMessage, AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH,
         AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH, AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH,
     },
-    ui_element_traits::{Animated, Message, Notifiable, Resizable, Viewable},
+    ui_element_traits::{Animated, Message, Notifiable, Resizable, SizeFromOutside, Viewable},
 };
 
 #[derive(Clone, Debug)]
@@ -224,6 +224,15 @@ impl Resizable for ViewableAvatar {
     }
     fn height(&self) -> f32 {
         self.width()
+    }
+}
+
+impl SizeFromOutside for ViewableAvatar {
+    fn width_for(window_size: Size) -> f32 {
+        window_size.width * AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH
+    }
+    fn height_for(window_size: Size) -> f32 {
+        Self::width_for(window_size)
     }
 }
 

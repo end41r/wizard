@@ -4,24 +4,26 @@ pub mod scoreboard;
 pub mod table;
 
 use iced::{
-    widget::{container, row, stack, Container, Image},
+    widget::{button, container, image, stack, Container},
     ContentFit, Point, Size, Task,
 };
 
 use crate::{
-    api::{Card, Player, PlayerId, Suit},
+    api::{Card, Player, PlayerId, Suit, Value},
     client::{App, AppMessage, TaskBatcher},
     gameplay_ui::{
         hand::{HandMessage, ViewableHand},
         scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage},
-        table::{TableMessage, ViewableTable},
+        table::{middle::card_deck::CardDeckMessage, TableMessage, ViewableTable},
     },
     ui_element_traits::{Animated, Message, Notifiable, Resizable, ResizableDynHeight, Viewable},
 };
 
+static TABLE_Y_POSITION_MULT_WIDTH_WINDOW_HEIGHT: f32 = 0.1;
+
 static SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH: f32 = 0.2;
 
-static AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH: f32 = 0.11;
+static AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH: f32 = 0.1;
 static AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH: f32 = AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH * 0.75;
 static AVATAR_CARD_SIZE_MULT_WITH_WINDOW_WIDTH: f32 =
     (AVATAR_SIZE_MULT_WTIH_WINDOW_WIDTH - AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH) / 2.0;
@@ -213,21 +215,29 @@ impl Resizable for GameView {
 
 impl Viewable for GameView {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        let scoreboard = self.scoreboard.view();
-        let main_content = row!(self.viewable_table.view())
-            .width(iced::Length::Fill)
-            .height(iced::Length::Fill);
-
-        let content = row![main_content, scoreboard,].height(iced::Length::Fill);
-
-        Container::new(stack![
-            Image::new("assets/ingame_background.png")
-                .width(iced::Length::Fill)
-                .height(iced::Length::Fill)
-                .content_fit(ContentFit::Cover),
-            container(content)
-                .width(iced::Length::Fill)
-                .height(iced::Length::Fill),
-        ])
+        let mut content = stack!().width(self.width()).height(self.height());
+        // Background
+        content =
+            content.push(image("assets/ingame_background.png").content_fit(ContentFit::Cover));
+        // Scoreboard
+        content = content.push(
+            self.scoreboard
+                .view_and_move(self.width() - self.scoreboard.width(), 0.0),
+        );
+        // Card Table
+        content = content.push(self.viewable_table.view_and_move(
+            (self.width() - self.viewable_table.width()) / 2.0,
+            self.height() * TABLE_Y_POSITION_MULT_WIDTH_WINDOW_HEIGHT,
+        ));
+        // Card Hand
+        content = content.push(self.viewable_hand.view_and_move(
+            (self.width() - self.viewable_hand.width()) / 2.0,
+            self.height() - self.viewable_hand.height(),
+        ));
+        // Draw Cards Button
+        content = content.push(button("Draw Cards").on_press(
+            CardDeckMessage::Deal(15, Some(Card::new(Suit::Blue, Value::Number(8)))).convert_msg(),
+        ));
+        container(content)
     }
 }
