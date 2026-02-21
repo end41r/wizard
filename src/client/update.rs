@@ -405,7 +405,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.game_log.push(log.clone());
                 state.last_msg = log;
                 state.hand = cards.clone();
-                
+
                 // Create viewable cards with preloaded images
                 let viewable_cards = ViewableHand::create_viewable_cards_static(
                     &cards,
