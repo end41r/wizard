@@ -320,13 +320,18 @@ impl Viewable for ViewableHandCard {
             move |position: Point| CardMessage::CursorMoved(card_id, position).convert_msg();
         let msg_played = CardMessage::Played(self.id).convert_msg();
         let msg_false_played = CardMessage::FalsePlayed(self.id).convert_msg();
+        let interaction: Interaction = if self.playable {
+            Interaction::Pointer
+        } else {
+            Interaction::NotAllowed
+        };
 
         let mut mouse_area = MouseArea::new(card)
             .on_enter(msg_hovered)
             .on_exit(msg_not_hoverd)
             .on_right_press(msg_show_playable_status)
             .on_move(msg_cursor_moved)
-            .interaction(Interaction::Pointer);
+            .interaction(interaction);
         if self.playable {
             mouse_area = mouse_area.on_double_click(msg_played)
         } else {
