@@ -177,17 +177,6 @@ fn scoreboard_row(
         .into()
 }
 
-// bid_panel_footer is no longer needed for gameplay view
-#[allow(dead_code)]
-fn bid_panel_footer<'a>() -> Option<Element<'a, AppMessage>> {
-    Some(
-        text("Bids are shown for the current round only.")
-            .size(11)
-            .color(Color::from_rgba(1.0, 1.0, 1.0, 0.7))
-            .into(),
-    )
-}
-
 /// =======================================
 /// EASTER EGG SECTION: DEBUG GAMEPLAY VIEW
 /// =======================================
