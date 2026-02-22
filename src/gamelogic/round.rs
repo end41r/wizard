@@ -69,7 +69,6 @@ impl Round {
         if !deck.is_empty() {
             let trump_card = draw_random_card(&mut deck);
             if trump_card.value != Value::Jester && trump_card.value != Value::Wizard {
-                // trump = Some(trump_card);
                 trump = None;
             }
             dealer_needs_to_set_trump = trump_card.value == Value::Wizard;
