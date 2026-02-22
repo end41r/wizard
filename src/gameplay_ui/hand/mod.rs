@@ -31,7 +31,7 @@ impl Message for HandMessage {
 
 #[derive(Debug)]
 pub struct ViewableHand {
-    pub window_size: Size,
+    window_size: Size,
 
     pub cards: IndexMap<usize, ViewableHandCard>,
     hovered_card_row_low: bool,

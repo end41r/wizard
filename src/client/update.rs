@@ -412,7 +412,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 let viewable_cards = ViewableHand::create_viewable_cards_static(
                     &cards,
                     &state.valid_cards,
-                    state.viewable_hand.window_size,
+                    state.window_size,
                 );
                 state.viewable_hand.set_cards(viewable_cards);
             }
