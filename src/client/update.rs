@@ -305,7 +305,8 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 state.btn_send_chat.update_with_msg(btn_msg.clone()),
                 state.btn_start_game.update_with_msg(btn_msg.clone()),
                 state.btn_back_to_menu.update_with_msg(btn_msg.clone()),
-                state.btn_ready_owned.update_with_msg(btn_msg),
+                state.btn_ready_owned.update_with_msg(btn_msg.clone()),
+                state.btn_submit_bid.update_with_msg(btn_msg.clone()),
             ]);
         }
         AppMessage::AnimationTick => {
@@ -324,6 +325,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 state.btn_start_game.update_animations(),
                 state.btn_back_to_menu.update_animations(),
                 state.btn_ready_owned.update_animations(),
+                state.btn_submit_bid.update_animations(),
             ]);
         }
         AppMessage::WindowResized(window_size) => {

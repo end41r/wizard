@@ -128,6 +128,7 @@ pub struct App {
     pub btn_back_to_menu: crate::client::views::Button,
 
     pub btn_ready_owned: crate::client::views::Button,
+    pub btn_submit_bid: crate::client::views::Button,
 
     pub img_main_menu: image::Handle,
     pub img_lobby_menu: image::Handle,
@@ -205,6 +206,7 @@ impl Default for App {
             btn_back_to_menu: Button::new_back_to_menu_button(15, 160, 40),
 
             btn_ready_owned: Button::new_ready_owned_button(20, 100, 36),
+            btn_submit_bid: Button::new_submit_bid_button(21, 110, 36),
 
             img_main_menu: image::Handle::from_path("assets/wizard_main_menu.png"),
             img_lobby_menu: image::Handle::from_path("assets/wizard_lobby_menu.png"),

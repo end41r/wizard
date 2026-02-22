@@ -1,4 +1,5 @@
 use iced::{
+    alignment,
     widget::{
         button, column, container, row, scrollable, stack, text, text_input, Column, Image, Row,
     },
@@ -13,14 +14,14 @@ pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let scoreboard = container(view_scoreboard(state))
         .width(iced::Length::Fixed(250.0))
         .height(iced::Length::Fill)
-        .center_y(iced::Length::Fill)
-        .padding(10);
+        .align_y(alignment::Vertical::Center)
+        .padding([24.0, 24.0]);
 
-    let main_content = column![
-        // Add your main game content here in rows
-    ]
-    .width(iced::Length::Fill)
-    .height(iced::Length::Fill);
+    let main_content = container(Column::new())
+        .width(iced::Length::Fill)
+        .height(iced::Length::Fill)
+        .align_x(alignment::Horizontal::Left)
+        .align_y(alignment::Vertical::Top);
 
     let content = row![main_content, scoreboard,].height(iced::Length::Fill);
 
@@ -36,12 +37,36 @@ pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .into()
 }
 
+fn build_bidding_panel<'a>(state: &'a App) -> Element<'a, AppMessage> {
+    if !state.is_bidding_phase || !state.is_my_turn || state.must_set_trump {
+        return text("").into();
+    }
+
+    let max_bid = state.round_number + 1;
+
+    let panel = column![
+        text("Bid:").size(16).color(Color::from_rgb(1.0, 1.0, 1.0)),
+        row![
+            text_input("Enter bid", &state.bid_input)
+                .on_input(AppMessage::BidInputChanged)
+                .width(80),
+            state.btn_submit_bid.view().padding(0),
+        ]
+        .spacing(6),
+        text(format!("(0 to {max_bid})"))
+            .size(12)
+            .color(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+    ]
+    .spacing(6);
+
+    container(panel).padding([8, 0]).into()
+}
+
 // AI Usage: overwrite the view so that the scoreboard is placed correctly
 // and uses rows+cells instead of rows+format strings
 pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let mut scores_col = Column::new().spacing(2);
 
-    // Title
     scores_col = scores_col.push(
         container(text("Scoreboard").size(18).color(Color::WHITE))
             .width(iced::Length::Fill)
@@ -60,7 +85,6 @@ pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
         .padding([0, 5]),
     );
 
-    // Header row
     scores_col = scores_col.push(scoreboard_row("Name", "Pkt", "Won", "Bid", true, false));
 
     for player_id in &state.player_order {
@@ -84,7 +108,6 @@ pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
         ));
     }
 
-    // Footer note
     scores_col = scores_col.push(
         container(
             text("Bids for current round")
@@ -96,7 +119,8 @@ pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
         .padding([8, 0]),
     );
 
-    // Wrap in a styled container
+    scores_col = scores_col.push(build_bidding_panel(state));
+
     container(scores_col)
         .width(iced::Length::Fill)
         .padding(10)
