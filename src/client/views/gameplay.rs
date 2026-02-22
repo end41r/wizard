@@ -1,3 +1,6 @@
+use super::utils::{format_card, get_player_name};
+use crate::api::Suit;
+use crate::client::{App, AppMessage};
 use iced::{
     alignment,
     widget::{
@@ -5,36 +8,25 @@ use iced::{
     },
     Border, Color, ContentFit, Element,
 };
-use super::utils::{format_card, get_player_name};
-use crate::api::{Suit};
-use crate::client::{App, AppMessage};
 
 // AI usage: write this function for testing purposes as a placeholder
 pub fn display_trump_card<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if let Some(trump) = state.trump {
         let img_path = state.get_card_image(trump);
-        container(
-            Image::new(img_path)
-                .width(100)
-                .height(150)
-        )
-        .width(iced::Length::Fill)
-        .center_x(iced::Length::Fill)
-        .align_x(alignment::Horizontal::Center)
-        .padding([8, 0])
-        .into()
+        container(Image::new(img_path).width(100).height(150))
+            .width(iced::Length::Fill)
+            .center_x(iced::Length::Fill)
+            .align_x(alignment::Horizontal::Center)
+            .padding([8, 0])
+            .into()
     } else {
         let img_path = "assets/cards/variations/back.png";
-        container(
-            Image::new(img_path)
-                .width(100)
-                .height(150)
-        )
-        .width(iced::Length::Fill)
-        .center_x(iced::Length::Fill)
-        .align_x(alignment::Horizontal::Center)
-        .padding([8, 0])
-        .into()
+        container(Image::new(img_path).width(100).height(150))
+            .width(iced::Length::Fill)
+            .center_x(iced::Length::Fill)
+            .align_x(alignment::Horizontal::Center)
+            .padding([8, 0])
+            .into()
     }
 }
 
@@ -104,7 +96,6 @@ fn build_bidding_panel<'a>(state: &'a App) -> Element<'a, AppMessage> {
     container(panel).padding([8, 0]).into()
 }
 
-
 fn build_trump_panel<'a>(state: &'a App) -> Element<'a, AppMessage> {
     // Show only if dealer and must_set_trump
     if !state.must_set_trump || state.dealer != state.my_id {
@@ -112,7 +103,9 @@ fn build_trump_panel<'a>(state: &'a App) -> Element<'a, AppMessage> {
     }
 
     let panel = column![
-        text("Select Trump Suit:").size(16).color(Color::from_rgb(1.0, 1.0, 1.0)),
+        text("Select Trump Suit:")
+            .size(16)
+            .color(Color::from_rgb(1.0, 1.0, 1.0)),
         row![
             button(Image::new("assets/cards/variations/red_1.png"))
                 .width(80)
@@ -199,9 +192,13 @@ pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
     );
 
     if state.must_set_trump && state.dealer == state.my_id {
-        scores_col = scores_col.push(build_trump_panel(state)).align_x(iced::Center);
+        scores_col = scores_col
+            .push(build_trump_panel(state))
+            .align_x(iced::Center);
     } else if !state.must_set_trump {
-        scores_col = scores_col.push(build_bidding_panel(state)).align_x(iced::Center);
+        scores_col = scores_col
+            .push(build_bidding_panel(state))
+            .align_x(iced::Center);
     }
 
     container(scores_col)
@@ -453,7 +450,12 @@ fn build_hand_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
         let can_play =
             state.is_my_turn && !state.is_bidding_phase && !state.must_set_trump && is_valid;
 
-        println!("Card: {}, Valid: {}, Can Play: {}", format_card(card), is_valid, can_play);
+        println!(
+            "Card: {}, Valid: {}, Can Play: {}",
+            format_card(card),
+            is_valid,
+            can_play
+        );
         let img_handle = state.get_card_image(*card).clone();
 
         let card_btn = if can_play {
@@ -463,15 +465,10 @@ fn build_hand_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
                     .padding(8)
                     .width(80)
                     .height(120),
-                Image::new(img_handle)
-                    .width(80)
-                    .height(120),
+                Image::new(img_handle).width(80).height(120),
             ]
         } else {
-            stack![Image::new(img_handle)
-                .width(80)
-                .height(120)
-                .opacity(0.5),]
+            stack![Image::new(img_handle).width(80).height(120).opacity(0.5),]
         };
         card_row = card_row.push(card_btn);
     }

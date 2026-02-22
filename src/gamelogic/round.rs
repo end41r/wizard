@@ -134,7 +134,10 @@ impl Round {
         if !self.dealer_needs_to_set_trump {
             return Err("Trump has already been set for this round");
         }
-        self.trump = Some(Card { suit, value: Value::Number(1) });
+        self.trump = Some(Card {
+            suit,
+            value: Value::Number(1),
+        });
         self.dealer_needs_to_set_trump = false;
         Ok(())
     }
