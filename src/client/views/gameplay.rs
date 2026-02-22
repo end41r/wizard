@@ -5,14 +5,42 @@ use iced::{
     },
     Border, Color, ContentFit, Element,
 };
-
 use super::utils::{format_card, get_player_name};
-use crate::api::Suit;
+use crate::api::{Suit};
 use crate::client::{App, AppMessage};
+
+// AI usage: write this function for testing purposes as a placeholder
+pub fn display_trump_card<'a>(state: &'a App) -> Element<'a, AppMessage> {
+    if let Some(trump) = state.trump {
+        let img_path = state.get_card_image(trump);
+        container(
+            Image::new(img_path)
+                .width(100)
+                .height(150)
+        )
+        .width(iced::Length::Fill)
+        .center_x(iced::Length::Fill)
+        .align_x(alignment::Horizontal::Center)
+        .padding([8, 0])
+        .into()
+    } else {
+        let img_path = "assets/cards/variations/back.png";
+        container(
+            Image::new(img_path)
+                .width(100)
+                .height(150)
+        )
+        .width(iced::Length::Fill)
+        .center_x(iced::Length::Fill)
+        .align_x(alignment::Horizontal::Center)
+        .padding([8, 0])
+        .into()
+    }
+}
 
 pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let scoreboard = container(view_scoreboard(state))
-        .width(iced::Length::Fixed(250.0))
+        .width(iced::Length::Fixed(350.0))
         .height(iced::Length::Fill)
         .align_y(alignment::Vertical::Center)
         .padding([24.0, 24.0]);
@@ -23,7 +51,21 @@ pub fn view_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
         .align_x(alignment::Horizontal::Left)
         .align_y(alignment::Vertical::Top);
 
-    let content = row![main_content, scoreboard,].height(iced::Length::Fill);
+    let trump_card = display_trump_card(state);
+    let hand_display = container(build_hand_section_dbg(state))
+        .width(iced::Length::Fill)
+        .height(iced::Length::Shrink)
+        .align_x(alignment::Horizontal::Center)
+        .padding([24.0, 24.0]);
+
+    let left_panel = Column::new()
+        .push(main_content)
+        .push(trump_card)
+        .push(hand_display)
+        .width(iced::Length::Fill)
+        .height(iced::Length::Fill);
+
+    let content = row![left_panel, scoreboard].height(iced::Length::Fill);
 
     stack![
         Image::new(state.img_ingame_background.clone())
@@ -62,6 +104,43 @@ fn build_bidding_panel<'a>(state: &'a App) -> Element<'a, AppMessage> {
     container(panel).padding([8, 0]).into()
 }
 
+
+fn build_trump_panel<'a>(state: &'a App) -> Element<'a, AppMessage> {
+    // Show only if dealer and must_set_trump
+    if !state.must_set_trump || state.dealer != state.my_id {
+        return text("").into();
+    }
+
+    let panel = column![
+        text("Select Trump Suit:").size(16).color(Color::from_rgb(1.0, 1.0, 1.0)),
+        row![
+            button(Image::new("assets/cards/variations/red_1.png"))
+                .width(80)
+                .height(120)
+                .on_press(AppMessage::SetTrump(Suit::Red))
+                .padding(0),
+            button(Image::new("assets/cards/variations/green_1.png"))
+                .width(80)
+                .height(120)
+                .on_press(AppMessage::SetTrump(Suit::Green))
+                .padding(0),
+            button(Image::new("assets/cards/variations/blue_1.png"))
+                .width(80)
+                .height(120)
+                .on_press(AppMessage::SetTrump(Suit::Blue))
+                .padding(0),
+            button(Image::new("assets/cards/variations/yellow_1.png"))
+                .width(80)
+                .height(120)
+                .on_press(AppMessage::SetTrump(Suit::Yellow))
+                .padding(0),
+        ]
+        .spacing(6),
+    ]
+    .spacing(6);
+
+    container(panel).padding([8, 0]).into()
+}
 // AI Usage: overwrite the view so that the scoreboard is placed correctly
 // and uses rows+cells instead of rows+format strings
 pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
@@ -119,7 +198,11 @@ pub fn view_scoreboard<'a>(state: &'a App) -> Element<'a, AppMessage> {
         .padding([8, 0]),
     );
 
-    scores_col = scores_col.push(build_bidding_panel(state));
+    if state.must_set_trump && state.dealer == state.my_id {
+        scores_col = scores_col.push(build_trump_panel(state)).align_x(iced::Center);
+    } else if !state.must_set_trump {
+        scores_col = scores_col.push(build_bidding_panel(state)).align_x(iced::Center);
+    }
 
     container(scores_col)
         .width(iced::Length::Fill)
@@ -366,17 +449,29 @@ fn build_hand_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
 
     let mut card_row = Row::new().spacing(5);
     for card in &state.hand {
-        let card_text = format_card(card);
         let is_valid = state.valid_cards.is_empty() || state.valid_cards.contains(card);
         let can_play =
             state.is_my_turn && !state.is_bidding_phase && !state.must_set_trump && is_valid;
 
+        println!("Card: {}, Valid: {}, Can Play: {}", format_card(card), is_valid, can_play);
+        let img_handle = state.get_card_image(*card).clone();
+
         let card_btn = if can_play {
-            button(text(card_text).size(11))
-                .on_press(AppMessage::PlayCard(*card))
-                .padding(8)
+            stack![
+                button(text("").size(11))
+                    .on_press(AppMessage::PlayCard(*card))
+                    .padding(8)
+                    .width(80)
+                    .height(120),
+                Image::new(img_handle)
+                    .width(80)
+                    .height(120),
+            ]
         } else {
-            button(text(card_text).size(11)).padding(8)
+            stack![Image::new(img_handle)
+                .width(80)
+                .height(120)
+                .opacity(0.5),]
         };
         card_row = card_row.push(card_btn);
     }

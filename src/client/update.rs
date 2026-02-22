@@ -559,7 +559,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.trump = Some(suit);
+                state.trump = Some(Card { suit, value: Value::Number(1) });
                 state.must_set_trump = false;
             }
             B::BiddingStarted {

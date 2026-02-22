@@ -93,7 +93,7 @@ pub struct App {
     pub game_log: Vec<String>,
     pub hand: Vec<Card>,
     pub current_trick: Vec<(PlayerId, Card)>,
-    pub trump: Option<Suit>,
+    pub trump: Option<Card>,
     pub round_number: usize,
     pub is_my_turn: bool,
     pub is_bidding_phase: bool,

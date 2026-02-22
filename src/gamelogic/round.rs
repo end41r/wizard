@@ -25,7 +25,7 @@ pub struct Round {
     pub current_trick: Vec<(PlayerId, Card)>,
     pub dealer: PlayerId,
     pub current_player: PlayerId,
-    pub trump: Option<Suit>,
+    pub trump: Option<Card>,
     pub dealer_needs_to_set_trump: bool,
     pub is_over: bool,
     pub bidding_phase: bool,
@@ -69,7 +69,8 @@ impl Round {
         if !deck.is_empty() {
             let trump_card = draw_random_card(&mut deck);
             if trump_card.value != Value::Jester && trump_card.value != Value::Wizard {
-                trump = Some(trump_card.suit);
+                // trump = Some(trump_card);
+                trump = None;
             }
             dealer_needs_to_set_trump = trump_card.value == Value::Wizard;
         }
@@ -133,7 +134,7 @@ impl Round {
         if !self.dealer_needs_to_set_trump {
             return Err("Trump has already been set for this round");
         }
-        self.trump = Some(suit);
+        self.trump = Some(Card { suit, value: Value::Number(1) });
         self.dealer_needs_to_set_trump = false;
         Ok(())
     }
@@ -252,7 +253,7 @@ impl Round {
             Value::Wizard => 100, // Wizard always highest
         };
 
-        let is_trump = self.trump.map(|t| card.suit == t).unwrap_or(false);
+        let is_trump = self.trump.map(|t| card.suit == t.suit).unwrap_or(false);
         let is_lead = lead_suit.map(|l| card.suit == l).unwrap_or(false);
 
         // just to be sure :)

@@ -77,7 +77,7 @@ pub enum B {
     RoundStarted {
         round: usize,
         cards_per_player: usize,
-        trump: Option<Suit>,
+        trump: Option<Card>,
     },
     DealerMustSetTrump {
         dealer: PlayerId,
