@@ -4,6 +4,7 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
+use crate::gameplay_ui::hand::ViewableHand;
 use crate::ui_element_traits::{Animated, Notifiable, Resizable};
 
 /// Get player name from ID using lobby data
@@ -304,7 +305,8 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 state.btn_send_chat.update_with_msg(btn_msg.clone()),
                 state.btn_start_game.update_with_msg(btn_msg.clone()),
                 state.btn_back_to_menu.update_with_msg(btn_msg.clone()),
-                state.btn_ready_owned.update_with_msg(btn_msg),
+                state.btn_ready_owned.update_with_msg(btn_msg.clone()),
+                state.btn_submit_bid.update_with_msg(btn_msg.clone()),
             ]);
         }
         AppMessage::AnimationTick => {
@@ -323,6 +325,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 state.btn_start_game.update_animations(),
                 state.btn_back_to_menu.update_animations(),
                 state.btn_ready_owned.update_animations(),
+                state.btn_submit_bid.update_animations(),
             ]);
         }
         AppMessage::WindowResized(window_size) => {
@@ -403,7 +406,15 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 }
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.hand = cards;
+                state.hand = cards.clone();
+
+                // Create viewable cards with preloaded images
+                let viewable_cards = ViewableHand::create_viewable_cards_static(
+                    &cards,
+                    &state.valid_cards,
+                    state.window_size,
+                );
+                state.viewable_hand.set_cards(viewable_cards);
             }
             S::TrumpRequest => {
                 let log = "[SERVER] You must set the trump suit!".to_string();
@@ -548,7 +559,10 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.trump = Some(suit);
+                state.trump = Some(Card {
+                    suit,
+                    value: Value::Number(1),
+                });
                 state.must_set_trump = false;
             }
             B::BiddingStarted {

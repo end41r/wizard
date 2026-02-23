@@ -77,7 +77,7 @@ pub enum B {
     RoundStarted {
         round: usize,
         cards_per_player: usize,
-        trump: Option<Suit>,
+        trump: Option<Card>,
     },
     DealerMustSetTrump {
         dealer: PlayerId,
@@ -130,7 +130,7 @@ pub enum B {
     ServerShutdown,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct Card {
     pub value: Value,
     pub suit: Suit,
@@ -142,7 +142,7 @@ impl Card {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, EnumIter)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Hash, EnumIter)]
 pub enum Suit {
     Red,
     Yellow,
@@ -150,7 +150,7 @@ pub enum Suit {
     Blue,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, EnumIter)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Hash, EnumIter)]
 pub enum Value {
     Jester,
     Number(u8), // 1-13

@@ -94,6 +94,22 @@ impl ViewableHand {
         }
     }
 
+    /// Create ViewableHandCards from game cards (static version for use in update functions)
+    pub fn create_viewable_cards_static(
+        game_cards: &[crate::api::Card],
+        valid_cards: &[crate::api::Card],
+        window_size: Size,
+    ) -> Vec<ViewableHandCard> {
+        game_cards
+            .iter()
+            .enumerate()
+            .map(|(id, &card)| {
+                let playable = valid_cards.contains(&card);
+                ViewableHandCard::new(id, card, window_size, playable)
+            })
+            .collect()
+    }
+
     pub fn card_ids(&self) -> Vec<usize> {
         let mut card_ids: Vec<usize> = vec![];
         for (id, _) in self.cards.iter() {

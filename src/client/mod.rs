@@ -7,10 +7,11 @@ use crate::client::views::Button;
 use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
 use crate::gameplay_ui::table::{TableMessage, ViewableTable};
 use crate::ui_element_traits::Message;
-use iced::{time, window, Size, Subscription, Task};
+use iced::{time, widget::image, window, Size, Subscription, Task};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use strum::IntoEnumIterator;
 
 pub use update::update;
 pub use views::view;
@@ -92,7 +93,7 @@ pub struct App {
     pub game_log: Vec<String>,
     pub hand: Vec<Card>,
     pub current_trick: Vec<(PlayerId, Card)>,
-    pub trump: Option<Suit>,
+    pub trump: Option<Card>,
     pub round_number: usize,
     pub is_my_turn: bool,
     pub is_bidding_phase: bool,
@@ -127,6 +128,16 @@ pub struct App {
     pub btn_back_to_menu: crate::client::views::Button,
 
     pub btn_ready_owned: crate::client::views::Button,
+    pub btn_submit_bid: crate::client::views::Button,
+
+    pub img_main_menu: image::Handle,
+    pub img_lobby_menu: image::Handle,
+    pub img_background: image::Handle,
+    pub img_ingame_background: image::Handle,
+    pub img_menu_container: image::Handle,
+
+    #[allow(dead_code)]
+    pub card_images: HashMap<Card, image::Handle>,
 }
 
 impl Default for App {
@@ -195,7 +206,49 @@ impl Default for App {
             btn_back_to_menu: Button::new_back_to_menu_button(15, 160, 40),
 
             btn_ready_owned: Button::new_ready_owned_button(20, 100, 36),
+            btn_submit_bid: Button::new_submit_bid_button(21, 110, 36),
+
+            img_main_menu: image::Handle::from_path("assets/wizard_main_menu.png"),
+            img_lobby_menu: image::Handle::from_path("assets/wizard_lobby_menu.png"),
+            img_background: image::Handle::from_path("assets/background_forall.png"),
+            img_ingame_background: image::Handle::from_path("assets/ingame_background.png"),
+            img_menu_container: image::Handle::from_path("assets/menu_container.png"),
+
+            card_images: Self::preload_card_images(),
         }
+    }
+}
+
+impl App {
+    fn preload_card_images() -> HashMap<Card, image::Handle> {
+        let mut map = HashMap::new();
+
+        map.insert(
+            Card::new(Suit::Red, crate::api::Value::Jester),
+            image::Handle::from_path("assets/cards/variations/jester.png"),
+        );
+        map.insert(
+            Card::new(Suit::Red, crate::api::Value::Wizard),
+            image::Handle::from_path("assets/cards/variations/wizard.png"),
+        );
+
+        for suit in Suit::iter() {
+            for num in 1..=13 {
+                let card = Card::new(suit, crate::api::Value::Number(num));
+                let path = crate::api::get_card_path(card);
+                map.insert(card, image::Handle::from_path(path));
+            }
+        }
+
+        map
+    }
+
+    #[allow(dead_code)]
+    pub fn get_card_image(&self, card: Card) -> image::Handle {
+        self.card_images.get(&card).cloned().unwrap_or_else(|| {
+            //just in case
+            image::Handle::from_path(crate::api::get_card_path(card))
+        })
     }
 }
 
