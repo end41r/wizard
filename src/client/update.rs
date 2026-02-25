@@ -4,6 +4,7 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Suit, Value, B, C, S};
 use crate::client::TaskBatcher;
+use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
 
@@ -308,7 +309,8 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 }
                 _ => (),
             }
-            return state.game_view.update_with_msg(game_view_msg);
+            tb.push(ScoreBoardMessage::Update(state.scoreboard_info()).convert_msg_to_task());
+            tb.push(state.game_view.update_with_msg(game_view_msg));
         }
         AppMessage::ButtonMessage(btn_msg) => {
             // Route to buttons (each button filters by id internally)
