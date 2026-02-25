@@ -4,7 +4,6 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
-use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
 
@@ -269,7 +268,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             } else {
                 state.last_msg = "Invalid bid - enter a number".to_string();
             }
-            tb.push(ScoreBoardMessage::Update(state.scoreboard_info()).convert_msg_to_task());
+            tb.push(
+                GameViewMessage::UpdateScoreBoard(state.scoreboard_info()).convert_msg_to_task(),
+            );
         }
         AppMessage::PlayCard(card) => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -310,7 +311,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 }
                 _ => (),
             }
-            tb.push(ScoreBoardMessage::Update(state.scoreboard_info()).convert_msg_to_task());
+            tb.push(
+                GameViewMessage::UpdateScoreBoard(state.scoreboard_info()).convert_msg_to_task(),
+            );
             tb.push(state.game_view.update_with_msg(game_view_msg));
         }
         AppMessage::ButtonMessage(btn_msg) => {

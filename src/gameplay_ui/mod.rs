@@ -122,10 +122,6 @@ pub enum GameViewMessage {
     NewTrick,
     ChangeTurn(PlayerId),
     CardPlayed(PlayerId, Card),
-    StartBid(Vec<usize>),
-    EndBid,
-    StartChooseSuit,
-    EndChooseSuit,
     UpdateScoreBoard(ScoreBoardInfo),
 
     // gui -> server
