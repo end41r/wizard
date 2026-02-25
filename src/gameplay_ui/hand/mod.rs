@@ -3,7 +3,6 @@ pub mod hand_card;
 use crate::animation::AnimationStarter;
 use crate::api::{Card, PlayerId};
 use crate::client::{AppMessage, TaskBatcher};
-use crate::gamelogic::round::random_card;
 use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableHandCard};
 use crate::gameplay_ui::{card_column_step_hand, card_row_step_hand, GameViewMessage};
 use crate::ui_element_traits::*;
@@ -19,7 +18,7 @@ pub enum HandMessage {
     CardMessage(CardMessage),
     PlayedCard(Card),
     DeleteCard(usize),
-    DrawCards(Vec<Card>),
+    DrawCards(Vec<Card>, Vec<Card>),
     HideCards,
     ShowCards,
     ShowPlayableStatus(bool),
@@ -66,40 +65,31 @@ impl ViewableHand {
         }
     }
 
-    /// This function is only for testing and may return impossible dupes of cards.
-    pub fn build_test_cards(window_size: Size) -> Vec<ViewableHandCard> {
-        vec![
-            ViewableHandCard::new(0, random_card(), window_size, true),
-            ViewableHandCard::new(1, random_card(), window_size, false),
-            ViewableHandCard::new(2, random_card(), window_size, true),
-            ViewableHandCard::new(3, random_card(), window_size, true),
-            ViewableHandCard::new(4, random_card(), window_size, true),
-            ViewableHandCard::new(5, random_card(), window_size, true),
-            ViewableHandCard::new(6, random_card(), window_size, true),
-            ViewableHandCard::new(7, random_card(), window_size, false),
-            ViewableHandCard::new(8, random_card(), window_size, true),
-            ViewableHandCard::new(9, random_card(), window_size, true),
-            ViewableHandCard::new(10, random_card(), window_size, true),
-            ViewableHandCard::new(11, random_card(), window_size, true),
-            ViewableHandCard::new(12, random_card(), window_size, true),
-            ViewableHandCard::new(13, random_card(), window_size, false),
-            ViewableHandCard::new(14, random_card(), window_size, true),
-            ViewableHandCard::new(15, random_card(), window_size, true),
-            ViewableHandCard::new(16, random_card(), window_size, true),
-            ViewableHandCard::new(17, random_card(), window_size, true),
-            ViewableHandCard::new(18, random_card(), window_size, true),
-            ViewableHandCard::new(19, random_card(), window_size, true),
-        ]
+    pub fn set_cards(&mut self, cards: Vec<Card>, valid_cards: Vec<Card>) {
+        self.cards.clear();
+        for (id, card) in self
+            .create_viewable_cards_static(cards, valid_cards)
+            .iter()
+            .enumerate()
+        {
+            self.cards.insert(id, card.clone());
+        }
     }
 
-    pub fn set_cards(&mut self, cards: Vec<Card>) {
-        self.cards.clear();
-        for (id, card) in cards.iter().enumerate() {
-            self.cards.insert(
-                id,
-                ViewableHandCard::new(id, card.clone(), self.window_size, false),
-            );
-        }
+    /// Create ViewableHandCards from game cards (static version for use in update functions)
+    pub fn create_viewable_cards_static(
+        &self,
+        game_cards: Vec<Card>,
+        valid_cards: Vec<Card>,
+    ) -> Vec<ViewableHandCard> {
+        game_cards
+            .iter()
+            .enumerate()
+            .map(|(id, &card)| {
+                let playable = valid_cards.contains(&card);
+                ViewableHandCard::new(id, card, self.window_size, playable)
+            })
+            .collect()
     }
 
     pub fn card_ids(&self) -> Vec<usize> {
@@ -296,8 +286,8 @@ impl Notifiable for ViewableHand {
                     tb.push(card.update_with_msg(CardMessage::Show(*id)));
                 }
             }
-            HandMessage::DrawCards(cards) => {
-                self.set_cards(cards.clone());
+            HandMessage::DrawCards(cards, valid_cards) => {
+                self.set_cards(cards, valid_cards);
                 self.hovered_card_row_low = true;
                 self.hovered_card_id = None;
                 self.top_card_id_lower = None;

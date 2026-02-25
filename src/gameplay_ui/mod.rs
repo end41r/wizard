@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 pub mod hand;
 pub mod scoreboard;
 pub mod table;
@@ -10,7 +9,7 @@ use iced::{
 
 use crate::{
     api::{Card, Player, PlayerId, Suit},
-    client::{App, AppMessage, TaskBatcher},
+    client::{views::ButtonMessage, App, AppMessage, TaskBatcher},
     gameplay_ui::{
         hand::{HandMessage, ViewableHand},
         scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage},
@@ -119,7 +118,7 @@ pub enum GameViewMessage {
     // server -> gui
     StartGame(GameStartInfo),
     EndGame(PlayerId),
-    NewRound(Option<Card>, Vec<Card>),
+    NewRound(Option<Card>, Vec<Card>, Vec<Card>),
     NewTrick,
     ChangeTurn(PlayerId),
     CardPlayed(PlayerId, Card),
@@ -143,6 +142,7 @@ impl Message for GameViewMessage {
 
 pub struct GameView {
     window_size: Size,
+    img_ingame_background: image::Handle,
 
     // game data
     my_id: Option<PlayerId>,
@@ -158,12 +158,16 @@ impl GameView {
     pub fn new(window_size: Size) -> Self {
         Self {
             window_size,
+            img_ingame_background: image::Handle::from_path("assets/ingame_background.png"),
             my_id: None,
             current_player: None,
             viewable_hand: ViewableHand::new(window_size),
             viewable_table: ViewableTable::new(window_size),
             scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
         }
+    }
+    pub fn update_buttons_with_msg(&mut self, btn_msg: ButtonMessage) -> Task<AppMessage> {
+        self.scoreboard.btn_submit_bid.update_with_msg(btn_msg)
     }
 }
 
@@ -200,10 +204,10 @@ impl Notifiable for GameView {
                 };
                 tb.batch()
             }
-            GameViewMessage::NewRound(trump_card, hand_cards) => {
+            GameViewMessage::NewRound(trump_card, hand_cards, valid_cards) => {
                 let mut tb = TaskBatcher::new();
                 let hand_cards_len = hand_cards.len();
-                tb.push(HandMessage::DrawCards(hand_cards).convert_msg_to_task());
+                tb.push(HandMessage::DrawCards(hand_cards, valid_cards).convert_msg_to_task());
                 tb.push(CardStackMessage::HideAllCards.convert_msg_to_task());
                 tb.push(CardDeckMessage::Deal(hand_cards_len, trump_card).convert_msg_to_task());
                 tb.push(TableMessage::DrawShards(hand_cards_len).convert_msg_to_task());
@@ -226,6 +230,7 @@ impl Animated for GameView {
         TaskBatcher::instant_batch([
             self.viewable_hand.update_animations(),
             self.viewable_table.update_animations(),
+            self.scoreboard.update_animations(),
         ])
     }
 }
@@ -250,7 +255,7 @@ impl Viewable for GameView {
         let mut content = stack!().width(self.width()).height(self.height());
         // Background
         content =
-            content.push(image("assets/ingame_background.png").content_fit(ContentFit::Cover));
+            content.push(image(self.img_ingame_background.clone()).content_fit(ContentFit::Cover));
         // Scoreboard
         content = content.push(
             self.scoreboard

@@ -2,7 +2,7 @@ use iced::Task;
 use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
-use crate::api::{Card, Lobby, PlayerId, ServerMessage, Suit, Value, B, C, S};
+use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
 use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
 use crate::gameplay_ui::GameViewMessage;
@@ -269,6 +269,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             } else {
                 state.last_msg = "Invalid bid - enter a number".to_string();
             }
+            tb.push(ScoreBoardMessage::Update(state.scoreboard_info()).convert_msg_to_task());
         }
         AppMessage::PlayCard(card) => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -325,7 +326,8 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 state.btn_send_chat.update_with_msg(btn_msg.clone()),
                 state.btn_start_game.update_with_msg(btn_msg.clone()),
                 state.btn_back_to_menu.update_with_msg(btn_msg.clone()),
-                state.btn_ready_owned.update_with_msg(btn_msg),
+                state.btn_ready_owned.update_with_msg(btn_msg.clone()),
+                state.game_view.update_buttons_with_msg(btn_msg.clone()),
             ]);
         }
         AppMessage::AnimationTick => {
@@ -423,11 +425,11 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.game_log.push(log.clone());
                 state.last_msg = log;
                 state.hand = cards.clone();
-                // THE TRUMP CARD IS ONLY A PLACEHOLDER WHICH CAN BE REPLACED AFTER MERGE.
+
                 state.msg_queue.push(
-                    GameViewMessage::NewRound(Some(Card::new(Suit::Red, Value::Number(1))), cards)
+                    GameViewMessage::NewRound(state.trump, cards, state.valid_cards.clone())
                         .convert_msg(),
-                )
+                );
             }
             S::TrumpRequest => {
                 let log = "[SERVER] You must set the trump suit!".to_string();
@@ -572,7 +574,10 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.trump = Some(suit);
+                state.trump = Some(Card {
+                    suit,
+                    value: Value::Number(1),
+                });
                 state.must_set_trump = false;
             }
             B::BiddingStarted {

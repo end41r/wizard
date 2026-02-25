@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
 use iced::{
-    widget::{container, row, text, Column, Container},
-    Border, Color, Element,
+    widget::{button, column, container, row, text, text_input, Column, Container, Image},
+    Border, Color,
     Length::Shrink,
     Size, Task,
 };
 
 use crate::{
-    api::{Lobby, PlayerId},
-    client::AppMessage,
+    api::{Lobby, PlayerId, Suit},
+    client::{views::Button, AppMessage},
     gameplay_ui::{GameViewMessage, SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH},
-    ui_element_traits::{Message, Notifiable, ResizableDynHeight, Viewable},
+    ui_element_traits::{Animated, Message, Notifiable, ResizableDynHeight, Viewable},
 };
 
 #[derive(Clone, Debug)]
@@ -23,6 +23,11 @@ pub struct ScoreBoardInfo {
     bids: HashMap<PlayerId, usize>,
     my_id: Option<PlayerId>,
     lobby: Option<Lobby>,
+    must_set_trump: bool,
+    dealer: Option<PlayerId>,
+    is_bidding_phase: bool,
+    is_my_turn: bool,
+    bid_input: String,
 }
 
 impl Default for ScoreBoardInfo {
@@ -35,6 +40,11 @@ impl Default for ScoreBoardInfo {
             bids: HashMap::new(),
             my_id: None,
             lobby: None,
+            must_set_trump: false,
+            dealer: None,
+            is_bidding_phase: false,
+            is_my_turn: false,
+            bid_input: String::new(),
         }
     }
 }
@@ -48,6 +58,11 @@ impl ScoreBoardInfo {
         bids: HashMap<PlayerId, usize>,
         my_id: Option<PlayerId>,
         lobby: Option<Lobby>,
+        must_set_trump: bool,
+        dealer: Option<PlayerId>,
+        is_bidding_phase: bool,
+        is_my_turn: bool,
+        bid_input: String,
     ) -> Self {
         Self {
             round_number,
@@ -57,6 +72,11 @@ impl ScoreBoardInfo {
             bids,
             my_id,
             lobby,
+            must_set_trump,
+            dealer,
+            is_bidding_phase,
+            is_my_turn,
+            bid_input,
         }
     }
 }
@@ -75,12 +95,17 @@ impl Message for ScoreBoardMessage {
 #[derive(Debug, Clone)]
 pub struct ScoreBoard {
     window_size: Size,
+    pub btn_submit_bid: Button,
     info: ScoreBoardInfo,
 }
 
 impl ScoreBoard {
     pub fn new(window_size: Size, info: ScoreBoardInfo) -> Self {
-        Self { window_size, info }
+        Self {
+            window_size,
+            btn_submit_bid: Button::new_submit_bid_button(21, 110, 36),
+            info,
+        }
     }
 
     fn scoreboard_row<'a>(
@@ -155,6 +180,70 @@ impl ScoreBoard {
             })
     }
 
+    fn build_bidding_panel<'a>(&self) -> Container<'a, AppMessage> {
+        if !self.info.is_bidding_phase || !self.info.is_my_turn || self.info.must_set_trump {
+            return container(None::<&str>);
+        }
+
+        let max_bid = self.info.round_number + 1;
+
+        let panel = column![
+            text("Bid:").size(16).color(Color::from_rgb(1.0, 1.0, 1.0)),
+            row![
+                text_input("Enter bid", &self.info.bid_input)
+                    .on_input(AppMessage::BidInputChanged)
+                    .width(80),
+                self.btn_submit_bid.view(),
+            ]
+            .spacing(6),
+            text(format!("(0 to {max_bid})"))
+                .size(12)
+                .color(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+        ]
+        .spacing(6);
+
+        container(panel).padding([8, 0])
+    }
+
+    fn build_trump_panel<'a>(&self) -> Container<'a, AppMessage> {
+        // Show only if dealer and must_set_trump
+        if !self.info.must_set_trump || self.info.dealer != self.info.my_id {
+            return container(None::<&str>);
+        }
+
+        let panel = column![
+            text("Select Trump Suit:")
+                .size(16)
+                .color(Color::from_rgb(1.0, 1.0, 1.0)),
+            row![
+                button(Image::new("assets/cards/variations/red_1.png"))
+                    .width(80)
+                    .height(120)
+                    .on_press(AppMessage::SetTrump(Suit::Red))
+                    .padding(0),
+                button(Image::new("assets/cards/variations/green_1.png"))
+                    .width(80)
+                    .height(120)
+                    .on_press(AppMessage::SetTrump(Suit::Green))
+                    .padding(0),
+                button(Image::new("assets/cards/variations/blue_1.png"))
+                    .width(80)
+                    .height(120)
+                    .on_press(AppMessage::SetTrump(Suit::Blue))
+                    .padding(0),
+                button(Image::new("assets/cards/variations/yellow_1.png"))
+                    .width(80)
+                    .height(120)
+                    .on_press(AppMessage::SetTrump(Suit::Yellow))
+                    .padding(0),
+            ]
+            .spacing(6),
+        ]
+        .spacing(6);
+
+        container(panel).padding([8, 0])
+    }
+
     /// Get player name from ID using lobby data
     pub fn get_player_name(&self, player_id: PlayerId) -> String {
         if self.info.my_id == Some(player_id) {
@@ -166,17 +255,6 @@ impl ScoreBoard {
             }
         }
         format!("Player {}", player_id)
-    }
-
-    // bid_panel_footer is no longer needed for gameplay view
-    #[allow(dead_code)]
-    fn bid_panel_footer<'a>() -> Option<Element<'a, AppMessage>> {
-        Some(
-            text("Bids are shown for the current round only.")
-                .size(11)
-                .color(Color::from_rgba(1.0, 1.0, 1.0, 0.7))
-                .into(),
-        )
     }
 
     fn size_small(&self) -> f32 {
@@ -214,13 +292,18 @@ impl ResizableDynHeight for ScoreBoard {
     }
 }
 
+impl Animated for ScoreBoard {
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        self.btn_submit_bid.update_animations()
+    }
+}
+
 impl Viewable for ScoreBoard {
     // AI Usage: overwrite the view so that the scoreboard is placed correctly
     // and uses rows+cells instead of rows+format strings
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let mut scores_col = Column::new().spacing(2);
 
-        // Title
         scores_col = scores_col.push(
             container(
                 text("Scoreboard")
@@ -263,7 +346,6 @@ impl Viewable for ScoreBoard {
             ));
         }
 
-        // Footer note
         scores_col = scores_col.push(
             container(
                 text("Bids for current round")
@@ -273,11 +355,21 @@ impl Viewable for ScoreBoard {
             .padding([8, 0]),
         );
 
+        if self.info.must_set_trump && self.info.dealer == self.info.my_id {
+            scores_col = scores_col
+                .push(self.build_trump_panel())
+                .align_x(iced::Center);
+        } else if !self.info.must_set_trump {
+            scores_col = scores_col
+                .push(self.build_bidding_panel())
+                .align_x(iced::Center);
+        }
+
         // Wrap in a styled container
         container(scores_col)
             .width(self.width())
             .height(Shrink)
-            .padding(10)
+            .padding([24.0, 24.0])
             .style(|_theme| container::Style {
                 background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.6).into()),
                 border: Border {

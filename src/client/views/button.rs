@@ -52,7 +52,7 @@ impl ClickAnim {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Button {
     pub id: usize,
     pub text: &'static str,
@@ -193,11 +193,22 @@ impl Button {
         )
     }
 
+    pub fn new_submit_bid_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Bet",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::SubmitBid,
+        )
+    }
+
     pub fn set_on_click(&mut self, on_click: AppMessage) {
         self.on_click = on_click;
     }
 
-    pub fn view(&self) -> container::Container<'_, AppMessage> {
+    pub fn view<'a>(&self) -> container::Container<'a, AppMessage> {
         self.view_internal(self.text)
     }
 

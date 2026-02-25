@@ -71,12 +71,12 @@ pub struct ViewableHandCard {
     id: usize,
     pub my_turn: bool,
     card: Card,
-    img_path: String,
     window_size: Size,
     clickable: bool,
     playable: bool,
     show_playable_status: bool,
     rotation: f32,
+
     draw_animation: DrawAnimation,
     hover_animation: HoverAnimation,
     play_animation: PlayAnimation,
@@ -84,6 +84,11 @@ pub struct ViewableHandCard {
     false_played_animation: FalsePlayedAnimation,
     focus_animation: FocusAnimation,
     hide_animation: HideAnimation,
+
+    img_handle: iced::widget::image::Handle,
+    img_frame_playable: iced::widget::image::Handle,
+    img_frame_playable_focused: iced::widget::image::Handle,
+    img_false_played: iced::widget::image::Handle,
 }
 
 impl ViewableHandCard {
@@ -93,12 +98,12 @@ impl ViewableHandCard {
             id,
             my_turn: false,
             card,
-            img_path: card.img_path(),
             window_size,
             clickable: true,
             playable,
             show_playable_status: false,
             rotation: 0.0,
+
             draw_animation: DrawAnimation::new(10),
             hover_animation: HoverAnimation::new(5),
             play_animation: PlayAnimation::new(play_duration),
@@ -106,6 +111,13 @@ impl ViewableHandCard {
             false_played_animation: FalsePlayedAnimation::new(25),
             focus_animation: FocusAnimation::new(70),
             hide_animation: HideAnimation::new(play_duration),
+
+            img_handle: iced::widget::image::Handle::from_path(card.img_path()),
+            img_frame_playable: iced::widget::image::Handle::from_path(FRAME_PLAYABLE_PATH),
+            img_frame_playable_focused: iced::widget::image::Handle::from_path(
+                FRAME_PLAYABLE_FOCUSED_PATH,
+            ),
+            img_false_played: iced::widget::image::Handle::from_path(FALSE_PLAYED_PATH),
         };
         viewable_card
             .play_animation
@@ -115,9 +127,6 @@ impl ViewableHandCard {
             .on_end(CardMessage::MakeClickable(id).convert_msg());
         viewable_card.playable_animation.start();
         viewable_card
-    }
-    pub fn id(&self) -> usize {
-        self.id
     }
     pub fn card(&self) -> Card {
         self.card
@@ -271,7 +280,7 @@ impl Viewable for ViewableHandCard {
             * self.draw_animation.get_scale();
 
         let mut card = stack!();
-        let img = image(self.img_path.clone())
+        let img = image(self.img_handle.clone())
             .content_fit(Fill)
             .width(width)
             .height(height)
@@ -287,7 +296,7 @@ impl Viewable for ViewableHandCard {
                 self.false_played_animation.get_opacity().min(img_opacity);
             if self.playable {
                 if self.show_playable_status {
-                    let playable_effect = image(FRAME_PLAYABLE_PATH)
+                    let playable_effect = image(self.img_frame_playable.clone())
                         .content_fit(Fill)
                         .width(width)
                         .height(height)
@@ -296,7 +305,7 @@ impl Viewable for ViewableHandCard {
                         .opacity(playable_opacity);
                     card = card.push(playable_effect);
                 }
-                let hover_effect = image(FRAME_PLAYABLE_FOCUSED_PATH)
+                let hover_effect = image(self.img_frame_playable_focused.clone())
                     .content_fit(Fill)
                     .width(width)
                     .height(height)
@@ -305,7 +314,7 @@ impl Viewable for ViewableHandCard {
                     .opacity(hover_effect_opacity);
                 card = card.push(hover_effect);
             } else {
-                let false_played_effect = image(FALSE_PLAYED_PATH)
+                let false_played_effect = image(self.img_false_played.clone())
                     .content_fit(Fill)
                     .width(width)
                     .height(height)

@@ -1,11 +1,12 @@
-use iced::{
-    widget::{button, column, container, row, scrollable, text, text_input, Column, Row},
-    Element,
-};
-
 use super::utils::{format_card, get_player_name};
 use crate::api::Suit;
 use crate::client::{App, AppMessage};
+use iced::{
+    widget::{
+        button, column, container, row, scrollable, stack, text, text_input, Column, Image, Row,
+    },
+    Element,
+};
 
 /// This view of the gameplay is an easter egg.
 pub fn view_debug_gameplay<'a>(state: &'a App) -> Element<'a, AppMessage> {
@@ -170,17 +171,29 @@ fn build_hand_section_dbg<'a>(state: &'a App) -> Element<'a, AppMessage> {
 
     let mut card_row = Row::new().spacing(5);
     for card in &state.hand {
-        let card_text = format_card(card);
         let is_valid = state.valid_cards.is_empty() || state.valid_cards.contains(card);
         let can_play =
             state.is_my_turn && !state.is_bidding_phase && !state.must_set_trump && is_valid;
 
+        println!(
+            "Card: {}, Valid: {}, Can Play: {}",
+            format_card(card),
+            is_valid,
+            can_play
+        );
+        let img_handle = state.get_card_image(*card).clone();
+
         let card_btn = if can_play {
-            button(text(card_text).size(11))
-                .on_press(AppMessage::PlayCard(*card))
-                .padding(8)
+            stack![
+                button(text("").size(11))
+                    .on_press(AppMessage::PlayCard(*card))
+                    .padding(8)
+                    .width(80)
+                    .height(120),
+                Image::new(img_handle).width(80).height(120),
+            ]
         } else {
-            button(text(card_text).size(11)).padding(8)
+            stack![Image::new(img_handle).width(80).height(120).opacity(0.5),]
         };
         card_row = card_row.push(card_btn);
     }
