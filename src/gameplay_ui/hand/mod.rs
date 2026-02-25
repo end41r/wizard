@@ -1,6 +1,7 @@
 pub mod hand_card;
 
 use crate::animation::AnimationStarter;
+use crate::api::Card;
 use crate::client::{AppMessage, TaskBatcher};
 use crate::gamelogic::round::random_card;
 use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableHandCard};
@@ -16,6 +17,7 @@ use indexmap::{map::MutableKeys, IndexMap};
 #[derive(Debug, Clone)]
 pub enum HandMessage {
     CardMessage(CardMessage),
+    PlayedCard(Card),
     DeleteCard(usize),
     DrawCards(Vec<ViewableHandCard>),
     HideCards,
@@ -32,7 +34,6 @@ impl Message for HandMessage {
 #[derive(Debug)]
 pub struct ViewableHand {
     window_size: Size,
-
     pub cards: IndexMap<usize, ViewableHandCard>,
     hovered_card_row_low: bool,
     allow_hover: bool,
@@ -256,13 +257,16 @@ impl Notifiable for ViewableHand {
                             }
                         }
                     }
-                    CardMessage::Played(id) => {
-                        self.played_card_id = Some(id);
-                        tb.push(self.update_cards_with_msg(card_msg));
-                        tb.push(HandMessage::HideCards.convert_msg_to_task());
-                    }
                     _ => {
                         tb.push(self.update_cards_with_msg(card_msg));
+                    }
+                }
+            }
+            HandMessage::PlayedCard(played_card) => {
+                for (id, card) in self.cards.iter() {
+                    if played_card == card.card() {
+                        tb.push(CardMessage::Played(*id).convert_msg_to_task());
+                        tb.push(HandMessage::HideCards.convert_msg_to_task());
                     }
                 }
             }

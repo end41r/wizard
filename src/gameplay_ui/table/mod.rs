@@ -44,18 +44,18 @@ impl ViewableTable {
         Self {
             window_size,
             middle: ViewableTableMiddle::new(window_size),
-            my_avatar: ViewableAvatar::new(window_size, AvatarKind::Mage),
+            my_avatar: ViewableAvatar::new(window_size, AvatarKind::Mage, 0),
             other_avatars: Self::build_test_avatars(window_size),
         }
     }
 
     pub fn build_test_avatars(window_size: Size) -> Vec<ViewableAvatar> {
         vec![
-            ViewableAvatar::new(window_size, AvatarKind::Elf),
-            ViewableAvatar::new(window_size, AvatarKind::Knight),
-            ViewableAvatar::new(window_size, AvatarKind::Mage),
-            ViewableAvatar::new(window_size, AvatarKind::Witch),
-            ViewableAvatar::new(window_size, AvatarKind::Elf),
+            ViewableAvatar::new(window_size, AvatarKind::Elf, 1),
+            ViewableAvatar::new(window_size, AvatarKind::Knight, 2),
+            ViewableAvatar::new(window_size, AvatarKind::Mage, 3),
+            ViewableAvatar::new(window_size, AvatarKind::Witch, 4),
+            ViewableAvatar::new(window_size, AvatarKind::Elf, 5),
         ]
     }
 }
@@ -79,10 +79,13 @@ impl Notifiable for ViewableTable {
             TableMessage::BuildAvatars(my_id, players) => {
                 for player in players.iter() {
                     if player.id == my_id {
-                        self.my_avatar = ViewableAvatar::new(self.window_size, player.avatar)
+                        self.my_avatar = ViewableAvatar::new(self.window_size, player.avatar, my_id)
                     } else {
-                        self.other_avatars
-                            .push(ViewableAvatar::new(self.window_size, player.avatar));
+                        self.other_avatars.push(ViewableAvatar::new(
+                            self.window_size,
+                            player.avatar,
+                            player.id,
+                        ));
                     }
                 }
                 Task::none()

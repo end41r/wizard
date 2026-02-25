@@ -134,6 +134,7 @@ pub enum B {
 pub struct Avatar {
     kind: AvatarKind,
     pose: AvatarPose,
+    casting_finished: bool,
     continue_casting: bool,
 }
 
@@ -142,6 +143,7 @@ impl Avatar {
         Self {
             kind,
             pose: AvatarPose::Standing1,
+            casting_finished: false,
             continue_casting: false,
         }
     }
@@ -153,18 +155,32 @@ impl Avatar {
     }
     pub fn next_pose(&mut self) {
         match self.pose {
-            AvatarPose::Standing1 => self.pose = AvatarPose::Standing2,
-            AvatarPose::Standing2 => self.pose = AvatarPose::Standing1,
-            AvatarPose::Casting1 => {
+            AvatarPose::Standing1 => {
                 if self.continue_casting {
-                    self.pose = AvatarPose::Casting2
+                    self.pose = AvatarPose::Casting1
+                } else {
+                    self.pose = AvatarPose::Standing2
+                }
+            }
+            AvatarPose::Standing2 => {
+                if self.continue_casting {
+                    self.pose = AvatarPose::Casting1
                 } else {
                     self.pose = AvatarPose::Standing1
                 }
             }
+            AvatarPose::Casting1 => {
+                if self.continue_casting && !self.casting_finished {
+                    self.pose = AvatarPose::Casting2
+                } else {
+                    self.pose = AvatarPose::Standing1;
+                    self.casting_finished = false;
+                    self.continue_casting = false;
+                }
+            }
             AvatarPose::Casting2 => {
                 self.pose = AvatarPose::Casting1;
-                self.continue_casting = false;
+                self.casting_finished = true;
             }
         }
     }

@@ -16,7 +16,7 @@ use crate::gameplay_ui::hand::hand_card::{
 };
 use crate::gameplay_ui::hand::HandMessage;
 use crate::gameplay_ui::table::middle::card_stack::CardStackMessage;
-use crate::gameplay_ui::{card_height_hand, card_img_base_scale, card_width_hand};
+use crate::gameplay_ui::{card_height_hand, card_img_base_scale, card_width_hand, GameViewMessage};
 use crate::ui_element_traits::*;
 use iced::Task;
 use iced::{
@@ -37,7 +37,7 @@ pub fn f32_min_2(v1: f32, v2: f32) -> f32 {
 #[derive(Debug, Clone)]
 pub enum CardMessage {
     Played(usize),
-    FalsePlayed(usize),
+    Clicked(usize),
     Hovered(usize),
     NotHovered(usize),
     Hide(usize),
@@ -58,7 +58,7 @@ impl ReplaceUsize for CardMessage {
     fn replace_usize(&self, value: usize) -> Self {
         match self {
             CardMessage::Played(_) => CardMessage::Played(value),
-            CardMessage::FalsePlayed(_) => CardMessage::FalsePlayed(value),
+            CardMessage::Clicked(_) => CardMessage::Clicked(value),
             CardMessage::Hovered(_) => CardMessage::Hovered(value),
             CardMessage::NotHovered(_) => CardMessage::NotHovered(value),
             CardMessage::Hide(_) => CardMessage::Hide(value),
@@ -121,9 +121,11 @@ impl ViewableHandCard {
         viewable_card.playable_animation.start();
         viewable_card
     }
-
     pub fn id(&self) -> usize {
         self.id
+    }
+    pub fn card(&self) -> Card {
+        self.card
     }
 }
 
@@ -147,10 +149,23 @@ impl Notifiable for ViewableHandCard {
             }
             CardMessage::Played(id) => {
                 if id == self.id {
-                    self.clickable = false;
-                    self.play_animation.start();
-                    tb.push(CardStackMessage::CardPlayed(self.card).convert_msg_to_task());
+                    if self.playable {
+                        self.clickable = false;
+                        self.play_animation.start();
+                        tb.push(CardStackMessage::CardPlayed(self.card).convert_msg_to_task());
+                    } else {
+                        self.false_played_animation.start();
+                    }
                 };
+            }
+            CardMessage::Clicked(id) => {
+                if id == self.id {
+                    if self.playable {
+                        tb.push(GameViewMessage::TryPlayCard(self.card).convert_msg_to_task())
+                    } else {
+                        self.false_played_animation.start();
+                    }
+                }
             }
             CardMessage::NotHovered(id) => {
                 if id == self.id {
@@ -181,11 +196,6 @@ impl Notifiable for ViewableHandCard {
                     let factor_width: f32 = (point.x - halve_card_width) / halve_card_width;
                     // The factor 0.05 is representing a 5% rotation offset on maximum.
                     self.rotation = 0.05 * factor_width;
-                };
-            }
-            CardMessage::FalsePlayed(id) => {
-                if id == self.id {
-                    self.false_played_animation.start();
                 };
             }
             CardMessage::ShowPlayableStatus(id, do_show) => {
@@ -318,25 +328,20 @@ impl Viewable for ViewableHandCard {
         let card_id: usize = self.id;
         let msg_cursor_moved =
             move |position: Point| CardMessage::CursorMoved(card_id, position).convert_msg();
-        let msg_played = CardMessage::Played(self.id).convert_msg();
-        let msg_false_played = CardMessage::FalsePlayed(self.id).convert_msg();
+        let msg_double_clicked = CardMessage::Clicked(self.id).convert_msg();
         let interaction: Interaction = if self.playable {
             Interaction::Pointer
         } else {
             Interaction::NotAllowed
         };
 
-        let mut mouse_area = MouseArea::new(card)
+        let mouse_area = MouseArea::new(card)
             .on_enter(msg_hovered)
             .on_exit(msg_not_hoverd)
             .on_right_press(msg_show_playable_status)
             .on_move(msg_cursor_moved)
+            .on_double_click(msg_double_clicked)
             .interaction(interaction);
-        if self.playable {
-            mouse_area = mouse_area.on_double_click(msg_played)
-        } else {
-            mouse_area = mouse_area.on_double_click(msg_false_played)
-        }
 
         container(mouse_area)
     }

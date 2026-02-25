@@ -35,6 +35,12 @@ fn format_card(card: &Card) -> String {
 }
 
 pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
+    let mut tb = TaskBatcher::new();
+    for queue_msg in state.msg_queue.iter() {
+        println!("GAMEVIEW {:?}", queue_msg);
+        tb.push(queue_msg.convert_msg_to_task())
+    }
+    state.msg_queue.clear();
     match msg {
         AppMessage::Navigate(menu) => {
             state.menu = menu;
@@ -288,6 +294,20 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             handle_tick(state);
         }
         AppMessage::GameViewMessage(game_view_msg) => {
+            match game_view_msg {
+                GameViewMessage::TryPlayCard(card) => {
+                    if let Ok(guard) = state.ws_tx.lock() {
+                        if let Some(ref tx) = *guard {
+                            let _ = tx.send(C::PlayCard { card });
+                            let log =
+                                format!("[YOU] Playing card: {:?} of {:?}", card.value, card.suit);
+                            println!("{}", log);
+                            state.game_log.push(log);
+                        }
+                    }
+                }
+                _ => (),
+            }
             return state.game_view.update_with_msg(game_view_msg);
         }
         AppMessage::ButtonMessage(btn_msg) => {
@@ -328,7 +348,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.game_view.update_size(window_size);
         }
     }
-    Task::none()
+    tb.batch()
 }
 
 fn handle_tick(state: &mut App) {
@@ -641,6 +661,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 if state.my_id == Some(player) {
                     state.hand.retain(|c| *c != card);
                 }
+                state
+                    .msg_queue
+                    .push(GameViewMessage::CardPlayed(player, card).convert_msg());
             }
             B::PoolFinished { winner, cards } => {
                 let is_me = state.my_id == Some(winner);

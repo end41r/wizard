@@ -4,17 +4,20 @@ pub mod scoreboard;
 pub mod table;
 
 use iced::{
-    widget::{button, container, image, stack, Container},
+    widget::{container, image, stack, Container},
     ContentFit, Point, Size, Task,
 };
 
 use crate::{
-    api::{Card, Player, PlayerId, Suit, Value},
+    api::{Card, Player, PlayerId, Suit},
     client::{App, AppMessage, TaskBatcher},
     gameplay_ui::{
         hand::{HandMessage, ViewableHand},
         scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage},
-        table::{middle::card_deck::CardDeckMessage, TableMessage, ViewableTable},
+        table::{
+            avatar::AvatarMessage, middle::card_stack::CardStackMessage, TableMessage,
+            ViewableTable,
+        },
     },
     ui_element_traits::{Animated, Message, Notifiable, Resizable, ResizableDynHeight, Viewable},
 };
@@ -126,8 +129,8 @@ pub enum GameViewMessage {
     UpdateScoreBoard(ScoreBoardInfo),
 
     // gui -> server
-    TryPlayCard(PlayerId, Card),
-    TryBid(PlayerId, usize),
+    TryPlayCard(Card),
+    TryBid(usize),
     TryChooseSuit(Suit),
 }
 
@@ -186,6 +189,15 @@ impl Notifiable for GameView {
                 tb.push(TableMessage::BuildAvatars(info.my_id, info.players).convert_msg_to_task());
                 tb.batch()
             }
+            GameViewMessage::CardPlayed(played_by, card) => {
+                let mut tb = TaskBatcher::new();
+                tb.push(CardStackMessage::CardPlayed(card).convert_msg_to_task());
+                tb.push(AvatarMessage::PlayShard(played_by).convert_msg_to_task());
+                if played_by == self.my_id.unwrap() {
+                    tb.push(HandMessage::PlayedCard(card).convert_msg_to_task())
+                };
+                tb.batch()
+            }
             _ => Task::none(),
         }
     }
@@ -235,10 +247,6 @@ impl Viewable for GameView {
         content = content.push(self.viewable_hand.view_and_move(
             (self.width() - self.viewable_hand.width()) / 2.0,
             self.height() - self.viewable_hand.height(),
-        ));
-        // Draw Cards Button
-        content = content.push(button("Draw Cards").on_press(
-            CardDeckMessage::Deal(15, Some(Card::new(Suit::Blue, Value::Number(8)))).convert_msg(),
         ));
         container(content)
     }

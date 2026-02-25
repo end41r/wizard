@@ -9,7 +9,7 @@ use derive_more::{Deref, DerefMut};
 
 use crate::{
     animation::{BasicAnimation, CircularAnimation, Easing, ReversableBasicAnimation},
-    api::{Avatar, AvatarKind, AvatarPose},
+    api::{Avatar, AvatarKind, AvatarPose, PlayerId},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         table::TableMessage, AVATAR_FRAME_WIDTH_HEIGHT_RATIO,
@@ -21,8 +21,9 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub enum AvatarMessage {
-    AddShards(usize),
-    PlayShard,
+    AddShards(PlayerId, usize),
+    PlayShard(PlayerId),
+    InterpolationEnded(PlayerId),
 }
 
 impl Message for AvatarMessage {
@@ -42,10 +43,10 @@ impl SpriteAnimation {
         self.current_frame_number() == 80 || self.current_frame_number() == self.max_frame_number()
     }
     fn new_casting_frame(&self) -> bool {
-        self.current_frame_number() == 25
-            || self.current_frame_number() == 50
-            || self.current_frame_number() == 75
-            || self.current_frame_number() == self.max_frame_number()
+        self.current_frame_number() == 15
+            || self.current_frame_number() == 30
+            || self.current_frame_number() == 45
+            || self.current_frame_number() == 60
     }
 }
 
@@ -69,7 +70,7 @@ impl PlayShardAnimation {
         Self(BasicAnimation::new(100))
     }
     fn get_opacity(&self) -> f32 {
-        self.progress(Easing::OutCubic)
+        1.0 - self.progress(Easing::OutCubic)
     }
 }
 
@@ -87,43 +88,48 @@ impl ShardRotationAnimation {
 }
 
 #[derive(Clone, Debug, Deref, DerefMut)]
-pub struct InterferenceAnimation(BasicAnimation);
+pub struct InterpolationAnimation(BasicAnimation);
 
-impl InterferenceAnimation {
+impl InterpolationAnimation {
     fn new() -> Self {
         Self(BasicAnimation::new(100))
     }
     fn get_progress(&self) -> f32 {
-        self.progress(Easing::OutSine)
+        self.progress(Easing::OutElastic)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct ViewableAvatar {
     window_size: Size,
+    id: PlayerId,
     avatar: Avatar,
     shards: usize,
-    interference: bool,
+    interpolation: bool,
     sprite_animation: SpriteAnimation,
     reveal_animation: RevealAnimation,
     play_shard_animation: PlayShardAnimation,
     shard_rotation_animation: ShardRotationAnimation,
-    interference_animation: InterferenceAnimation,
+    interpolation_animation: InterpolationAnimation,
 }
 
 impl ViewableAvatar {
-    pub fn new(window_size: Size, avatar_kind: AvatarKind) -> Self {
+    pub fn new(window_size: Size, avatar_kind: AvatarKind, id: PlayerId) -> Self {
         let mut viewable_avatar = Self {
             window_size,
+            id,
             avatar: avatar_kind.to_avatar(),
             shards: 20,
-            interference: false,
+            interpolation: false,
             sprite_animation: SpriteAnimation::new(),
             reveal_animation: RevealAnimation::new(),
             play_shard_animation: PlayShardAnimation::new(),
             shard_rotation_animation: ShardRotationAnimation::new(),
-            interference_animation: InterferenceAnimation::new(),
+            interpolation_animation: InterpolationAnimation::new(),
         };
+        viewable_avatar
+            .interpolation_animation
+            .on_end(AvatarMessage::InterpolationEnded(id).convert_msg());
         viewable_avatar.sprite_animation.start();
         viewable_avatar.shard_rotation_animation.start();
         viewable_avatar
@@ -132,47 +138,56 @@ impl ViewableAvatar {
         let size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
         Point::new(size, size)
     }
-    fn shard_position(&self, shard_number: usize) -> Point {
-        let position: Point = self.shard_position_helper(shard_number);
-        if self.interference {
-            let position_with_less: Point = self.shard_position_helper(shard_number - 1);
-            let position_offset: f32 = self.interference_animation.get_progress()
-                * (position.x - position_with_less.x).abs();
-            Point::new(position.x + position_offset, position.y + position_offset)
+    fn shard_position(&self, shard_number: i64) -> Point {
+        if self.interpolation {
+            self.interpolated_position(shard_number)
         } else {
-            position
+            let shard_size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
+            let circle_radius: f32 = self.width() / 2.0;
+            let mut x: f32 = circle_radius - shard_size / 2.0;
+            let mut y: f32 = x;
+            let rotation: f32 = self.shard_position_rotation_angle(shard_number, 0);
+            x += x * rotation.cos();
+            y += y * rotation.sin();
+            Point::new(x, y)
         }
     }
-    fn shard_position_helper(&self, shard_number: usize) -> Point {
+    fn shard_position_rotation_angle(&self, shard_number: i64, adjust: i64) -> f32 {
+        // The angle is scaled from 0.0 to PI, not from 0.0 to 1.0.
+        (((shard_number as i64 + adjust) as f32 / (self.shards as i64 + adjust) as f32) * 2.0 * PI
+            + self.shard_rotation_animation.get_rotation())
+            - (PI / 2.0) // To start on top of the circle.
+    }
+    fn interpolated_position(&self, shard_number: i64) -> Point {
         let shard_size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
         let circle_radius: f32 = self.width() / 2.0;
         let mut x: f32 = circle_radius - shard_size / 2.0;
         let mut y: f32 = x;
-        // The angle is scaled from 0.0 to PI, not from 0.0 to 1.0.
-        let rotation_angle: f32 = ((shard_number as f32 / self.shards as f32) * 2.0 * PI
-            + self.shard_rotation_animation.get_rotation())
-            - (PI / 2.0); // To start on top of the circle.
-        x += x * rotation_angle.cos();
-        y += y * rotation_angle.sin();
+        let rotation_before: f32 = self.shard_position_rotation_angle(shard_number, 0);
+        let rotation_after: f32 = self.shard_position_rotation_angle(shard_number, -1);
+        let rotation: f32 = rotation_before
+            + (rotation_after - rotation_before) * self.interpolation_animation.get_progress();
+        x += x * rotation.cos();
+        y += y * rotation.sin();
         Point::new(x, y)
     }
-    fn shard_rotation(&self, shard_number: usize) -> f32 {
-        let rotation = self.shard_rotation_helper(shard_number);
-        if self.interference {
-            let rotation_with_less: f32 = self.shard_rotation_helper(shard_number - 1);
-            rotation
-                + self.interference_animation.get_progress() * (rotation - rotation_with_less).abs()
+    fn shard_rotation(&self, shard_number: i64) -> f32 {
+        let rotation_before: f32 = self.shard_rotation_helper(shard_number, 0);
+        if self.interpolation {
+            let rotation_after: f32 = self.shard_rotation_helper(shard_number, -1);
+            rotation_before
+                + (rotation_after - rotation_before) * self.interpolation_animation.get_progress()
         } else {
-            rotation
+            rotation_before
         }
     }
-    fn shard_rotation_helper(&self, shard_number: usize) -> f32 {
-        (shard_number as f32 / self.shards as f32) * 2.0 * PI
+    fn shard_rotation_helper(&self, shard_number: i64, adjust: i64) -> f32 {
+        ((shard_number as i64 + adjust) as f32 / (self.shards as i64 + adjust) as f32) * 2.0 * PI
             + self.shard_rotation_animation.get_rotation()
     }
     fn sprite<'a>(&self, pose: AvatarPose, compare_pose: AvatarPose) -> Pin<'a, AppMessage> {
-        let sprite_size = AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width;
-        let opacity = if pose == compare_pose { 1.0 } else { 0.0 };
+        let sprite_size: f32 = AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width;
+        let opacity: f32 = if pose == compare_pose { 1.0 } else { 0.0 };
         pin(
             iced::widget::image(self.avatar.kind().img_path(compare_pose))
                 // AI-Usage: Claude for learning filter_method to achieve non blurred pixel art.
@@ -189,20 +204,26 @@ impl Notifiable for ViewableAvatar {
     type OwnMessage = AvatarMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
-            AvatarMessage::AddShards(cards) => {
-                self.shards = cards;
-                self.reveal_animation.start_force();
+            AvatarMessage::AddShards(id, shards) => {
+                if self.id == id {
+                    self.shards = shards;
+                    self.reveal_animation.start_force();
+                }
             }
-            AvatarMessage::PlayShard => {
-                if self.shards > 0 {
-                    self.shards -= 1;
+            AvatarMessage::PlayShard(id) => {
+                if self.id == id && self.shards > 0 {
                     self.play_shard_animation.start_force();
                     self.sprite_animation.start_force();
                     self.avatar.start_casting();
+                    self.interpolation = true;
+                    self.interpolation_animation.start_force();
                 }
-                if self.shards > 1 {
-                    self.interference = true;
-                    self.interference_animation.start_force();
+            }
+            AvatarMessage::InterpolationEnded(id) => {
+                if self.id == id && self.shards > 0 {
+                    self.play_shard_animation.reset();
+                    self.shards -= 1;
+                    self.interpolation = false;
                 }
             }
         }
@@ -224,7 +245,7 @@ impl Animated for ViewableAvatar {
         tb.push(self.reveal_animation.next_frame());
         tb.push(self.play_shard_animation.next_frame());
         tb.push(self.shard_rotation_animation.next_frame());
-        tb.push(self.interference_animation.next_frame());
+        tb.push(self.interpolation_animation.next_frame());
         tb.batch()
     }
 }
@@ -264,19 +285,19 @@ impl Viewable for ViewableAvatar {
             let play_opacity: f32 = self.play_shard_animation.get_opacity();
             let shard_size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
             for shard in 0..self.shards {
-                let opacity: f32 = if shard == self.shards {
+                let opacity: f32 = if shard == self.shards - 1 {
                     self.reveal_animation.get_opacity().min(play_opacity)
                 } else {
                     self.reveal_animation.get_opacity()
                 };
                 avatar = avatar.push(
                     pin(image(self.avatar.kind().shard_path())
-                        .rotation(self.shard_rotation(shard))
+                        .rotation(self.shard_rotation(shard as i64))
                         .scale(0.8)
                         .opacity(opacity)
                         .width(shard_size)
                         .height(shard_size))
-                    .position(self.shard_position(shard)),
+                    .position(self.shard_position(shard as i64)),
                 );
             }
         }

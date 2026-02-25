@@ -68,6 +68,7 @@ impl Message for MenuState {
 
 pub struct App {
     window_size: Size,
+    pub msg_queue: Vec<AppMessage>,
 
     pub connected: bool,
     pub connecting: bool,
@@ -152,6 +153,7 @@ impl Default for App {
         let window_size: Size = Size::new(640.0, 480.0);
         Self {
             window_size,
+            msg_queue: Vec::new(),
 
             connected: false,
             connecting: false,
