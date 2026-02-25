@@ -639,6 +639,12 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 // Reset turn - only the leader who receives YourTurn should be able to play
                 state.is_my_turn = false;
                 state.valid_cards.clear();
+                state
+                    .msg_queue
+                    .push(GameViewMessage::NewTrick.convert_msg());
+                state
+                    .msg_queue
+                    .push(GameViewMessage::ChangeTurn(leader).convert_msg());
             }
             B::TurnChanged { player } => {
                 let is_me = state.my_id == Some(player);

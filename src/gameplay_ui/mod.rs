@@ -208,6 +208,11 @@ impl Notifiable for GameView {
                 tb.push(TableMessage::DrawShards(hand_cards_len).convert_msg_to_task());
                 tb.batch()
             }
+            GameViewMessage::NewTrick => {
+                let mut tb = TaskBatcher::new();
+                tb.push(CardStackMessage::HideAllCards.convert_msg_to_task());
+                tb.batch()
+            }
             _ => Task::none(),
         }
     }
