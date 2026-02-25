@@ -15,8 +15,9 @@ use crate::{
         hand::{HandMessage, ViewableHand},
         scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage},
         table::{
-            avatar::AvatarMessage, middle::card_stack::CardStackMessage, TableMessage,
-            ViewableTable,
+            avatar::AvatarMessage,
+            middle::{card_deck::CardDeckMessage, card_stack::CardStackMessage},
+            TableMessage, ViewableTable,
         },
     },
     ui_element_traits::{Animated, Message, Notifiable, Resizable, ResizableDynHeight, Viewable},
@@ -118,7 +119,7 @@ pub enum GameViewMessage {
     // server -> gui
     StartGame(GameStartInfo),
     EndGame(PlayerId),
-    NewRound(Card, Vec<Card>),
+    NewRound(Option<Card>, Vec<Card>),
     NewTrick,
     ChangeTurn(PlayerId),
     CardPlayed(PlayerId, Card),
@@ -196,6 +197,15 @@ impl Notifiable for GameView {
                 if played_by == self.my_id.unwrap() {
                     tb.push(HandMessage::PlayedCard(card).convert_msg_to_task())
                 };
+                tb.batch()
+            }
+            GameViewMessage::NewRound(trump_card, hand_cards) => {
+                let mut tb = TaskBatcher::new();
+                let hand_cards_len = hand_cards.len();
+                tb.push(HandMessage::DrawCards(hand_cards).convert_msg_to_task());
+                tb.push(CardStackMessage::HideAllCards.convert_msg_to_task());
+                tb.push(CardDeckMessage::Deal(hand_cards_len, trump_card).convert_msg_to_task());
+                tb.push(TableMessage::DrawShards(hand_cards_len).convert_msg_to_task());
                 tb.batch()
             }
             _ => Task::none(),

@@ -2,7 +2,7 @@ use iced::Task;
 use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
-use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
+use crate::api::{Card, Lobby, PlayerId, ServerMessage, Suit, Value, B, C, S};
 use crate::client::TaskBatcher;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
@@ -420,7 +420,12 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 }
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.hand = cards;
+                state.hand = cards.clone();
+                // THE TRUMP CARD IS ONLY A PLACEHOLDER WHICH CAN BE REPLACED AFTER MERGE.
+                state.msg_queue.push(
+                    GameViewMessage::NewRound(Some(Card::new(Suit::Red, Value::Number(1))), cards)
+                        .convert_msg(),
+                )
             }
             S::TrumpRequest => {
                 let log = "[SERVER] You must set the trump suit!".to_string();

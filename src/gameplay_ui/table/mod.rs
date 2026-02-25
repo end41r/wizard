@@ -5,7 +5,6 @@ use crate::{
     api::{AvatarKind, Player, PlayerId},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        hand::HandMessage,
         table::{
             avatar::{AvatarMessage, ViewableAvatar},
             middle::{TableMiddleMessage, ViewableTableMiddle},
@@ -24,6 +23,7 @@ pub enum TableMessage {
     TableMiddleMessage(TableMiddleMessage),
     AvatarMessage(AvatarMessage),
     BuildAvatars(PlayerId, Vec<Player>),
+    DrawShards(usize),
 }
 
 impl Message for TableMessage {
@@ -89,6 +89,17 @@ impl Notifiable for ViewableTable {
                     }
                 }
                 Task::none()
+            }
+            TableMessage::DrawShards(amount) => {
+                let mut tb = TaskBatcher::new();
+                tb.push(
+                    self.my_avatar
+                        .update_with_msg(AvatarMessage::AddShards(self.my_avatar.id(), amount)),
+                );
+                for avatar in self.other_avatars.iter_mut() {
+                    tb.push(avatar.update_with_msg(AvatarMessage::AddShards(avatar.id(), amount)));
+                }
+                tb.batch()
             }
         }
     }

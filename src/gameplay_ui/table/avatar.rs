@@ -134,6 +134,9 @@ impl ViewableAvatar {
         viewable_avatar.shard_rotation_animation.start();
         viewable_avatar
     }
+    pub fn id(&self) -> PlayerId {
+        self.id
+    }
     fn avatar_img_position(&self) -> Point {
         let size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
         Point::new(size, size)

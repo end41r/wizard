@@ -9,18 +9,14 @@ use crate::{
     gameplay_ui::{
         card_area_middle_space_height, card_area_middle_space_width, card_area_middle_spawn_point,
         card_img_middle_base_scale,
-        hand::ViewableHand,
-        table::{
-            middle::{
-                card_deck::{
-                    deck_card::ViewableDeckCard,
-                    glow_card::{CardStackGlow, GlowMessage},
-                    trump_card::{TrumpCardMessage, ViewableTrumpCard},
-                },
-                card_stack::CardStackMessage,
-                TableMiddleMessage,
+        table::middle::{
+            card_deck::{
+                deck_card::ViewableDeckCard,
+                glow_card::{CardStackGlow, GlowMessage},
+                trump_card::{TrumpCardMessage, ViewableTrumpCard},
             },
-            HandMessage,
+            card_stack::CardStackMessage,
+            TableMiddleMessage,
         },
     },
     ui_element_traits::*,
@@ -140,14 +136,10 @@ impl Notifiable for ViewableCardDeck {
                     } else {
                         self.trump_card = None;
                     }
-                    tb.push(
-                        HandMessage::DrawCards(ViewableHand::build_test_cards(self.window_size))
-                            .convert_msg_to_task(),
-                    );
                 } else {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
                     tb.push(CardDeckMessage::Shuffle.convert_msg_to_task());
-                    tb.push(CardStackMessage::HideAllCard.convert_msg_to_task());
+                    tb.push(CardStackMessage::HideAllCards.convert_msg_to_task());
                 }
                 return tb.batch();
             }

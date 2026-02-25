@@ -19,7 +19,7 @@ pub enum HandMessage {
     CardMessage(CardMessage),
     PlayedCard(Card),
     DeleteCard(usize),
-    DrawCards(Vec<ViewableHandCard>),
+    DrawCards(Vec<Card>),
     HideCards,
     ShowCards,
     ShowPlayableStatus(bool),
@@ -88,10 +88,13 @@ impl ViewableHand {
         ]
     }
 
-    pub fn set_cards(&mut self, cards: Vec<ViewableHandCard>) {
+    pub fn set_cards(&mut self, cards: Vec<Card>) {
         self.cards.clear();
-        for card in cards.iter() {
-            self.cards.insert(card.id(), card.clone());
+        for (id, card) in cards.iter().enumerate() {
+            self.cards.insert(
+                id,
+                ViewableHandCard::new(id, card.clone(), self.window_size, false),
+            );
         }
     }
 

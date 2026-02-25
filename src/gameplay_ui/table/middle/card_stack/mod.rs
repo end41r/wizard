@@ -26,7 +26,7 @@ use iced::{
 #[derive(Debug, Clone)]
 pub enum CardStackMessage {
     CardPlayed(Card),
-    HideAllCard,
+    HideAllCards,
     HideCard(usize),
     RemoveAllCards,
     ShowPlayedCards,
@@ -44,7 +44,7 @@ impl ReplaceUsize for CardStackMessage {
     fn replace_usize(&self, value: usize) -> Self {
         match self {
             CardStackMessage::HideCard(_) => CardStackMessage::HideCard(value),
-            CardStackMessage::HideAllCard => self.clone(),
+            CardStackMessage::HideAllCards => self.clone(),
             CardStackMessage::CardPlayed(_) => self.clone(),
             CardStackMessage::RemoveAllCards => self.clone(),
             CardStackMessage::ShowPlayedCards => self.clone(),
@@ -112,7 +112,7 @@ impl Notifiable for ViewableCardStack {
                     ]);
                 }
             }
-            CardStackMessage::HideAllCard => {
+            CardStackMessage::HideAllCards => {
                 self.clear_card_stack_animation_starter
                     .start(self.cards.len().max(1) - 1);
             }
