@@ -93,7 +93,6 @@ fn card_area_middle_spawn_point(width: f32, height: f32, window_size: Size) -> P
 pub struct GameStartInfo {
     players: Vec<Player>,
     my_id: PlayerId,
-    current_player: Option<PlayerId>,
     sb_info: ScoreBoardInfo,
 }
 
@@ -102,7 +101,6 @@ impl GameStartInfo {
         Self {
             players: app.lobby.as_ref().unwrap().players.clone(),
             my_id: app.my_id.as_ref().unwrap().clone(),
-            current_player: app.current_player.clone(),
             sb_info: app.scoreboard_info(),
         }
     }
@@ -142,7 +140,6 @@ pub struct GameView {
 
     // game data
     my_id: Option<PlayerId>,
-    current_player: Option<PlayerId>,
 
     // gui elements
     viewable_hand: ViewableHand,
@@ -156,7 +153,6 @@ impl GameView {
             window_size,
             img_ingame_background: image::Handle::from_path("assets/ingame_background.png"),
             my_id: None,
-            current_player: None,
             viewable_hand: ViewableHand::new(window_size),
             viewable_table: ViewableTable::new(window_size),
             scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
