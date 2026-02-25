@@ -5,6 +5,7 @@ use iced::Task;
 use crate::animation::{BasicAnimation, Easing, ReversableBasicAnimation};
 use crate::api::{PlayerId, BUTTON1_PATH};
 use crate::client::{AppMessage, MenuState, TaskBatcher};
+use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable};
 
 #[derive(Debug, Clone)]
@@ -200,7 +201,7 @@ impl Button {
             BUTTON1_PATH,
             width,
             height,
-            AppMessage::SubmitBid,
+            GameViewMessage::TryBid.convert_msg(),
         )
     }
 

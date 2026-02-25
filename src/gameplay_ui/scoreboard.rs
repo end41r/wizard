@@ -219,22 +219,22 @@ impl ScoreBoard {
                 button(Image::new("assets/cards/variations/red_1.png"))
                     .width(80)
                     .height(120)
-                    .on_press(AppMessage::SetTrump(Suit::Red))
+                    .on_press(GameViewMessage::TryChooseSuit(Suit::Red).convert_msg())
                     .padding(0),
                 button(Image::new("assets/cards/variations/green_1.png"))
                     .width(80)
                     .height(120)
-                    .on_press(AppMessage::SetTrump(Suit::Green))
+                    .on_press(GameViewMessage::TryChooseSuit(Suit::Green).convert_msg())
                     .padding(0),
                 button(Image::new("assets/cards/variations/blue_1.png"))
                     .width(80)
                     .height(120)
-                    .on_press(AppMessage::SetTrump(Suit::Blue))
+                    .on_press(GameViewMessage::TryChooseSuit(Suit::Blue).convert_msg())
                     .padding(0),
                 button(Image::new("assets/cards/variations/yellow_1.png"))
                     .width(80)
                     .height(120)
-                    .on_press(AppMessage::SetTrump(Suit::Yellow))
+                    .on_press(GameViewMessage::TryChooseSuit(Suit::Yellow).convert_msg())
                     .padding(0),
             ]
             .spacing(6),

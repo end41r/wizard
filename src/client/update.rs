@@ -297,20 +297,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             handle_tick(state);
         }
         AppMessage::GameViewMessage(game_view_msg) => {
-            match game_view_msg {
-                GameViewMessage::TryPlayCard(card) => {
-                    if let Ok(guard) = state.ws_tx.lock() {
-                        if let Some(ref tx) = *guard {
-                            let _ = tx.send(C::PlayCard { card });
-                            let log =
-                                format!("[YOU] Playing card: {:?} of {:?}", card.value, card.suit);
-                            println!("{}", log);
-                            state.game_log.push(log);
-                        }
-                    }
-                }
-                _ => (),
-            }
             tb.push(
                 GameViewMessage::UpdateScoreBoard(state.scoreboard_info()).convert_msg_to_task(),
             );
