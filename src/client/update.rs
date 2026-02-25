@@ -658,6 +658,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.game_log.push(log.clone());
                 state.last_msg = log;
                 state.current_player = Some(player);
+                state
+                    .msg_queue
+                    .push(GameViewMessage::ChangeTurn(player).convert_msg());
             }
             B::CardPlayed { player, card } => {
                 let player_name = get_player_name(state, player);

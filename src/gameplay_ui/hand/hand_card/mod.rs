@@ -27,13 +27,6 @@ use iced::{
 };
 use std::ops::Not;
 
-pub fn f32_min_2(v1: f32, v2: f32) -> f32 {
-    if v1 < v2 {
-        return v1;
-    }
-    v2
-}
-
 #[derive(Debug, Clone)]
 pub enum CardMessage {
     Played(usize),
@@ -76,6 +69,7 @@ impl ReplaceUsize for CardMessage {
 #[derive(Debug, Clone)]
 pub struct ViewableHandCard {
     id: usize,
+    pub my_turn: bool,
     card: Card,
     img_path: String,
     window_size: Size,
@@ -97,6 +91,7 @@ impl ViewableHandCard {
         let play_duration: usize = 12;
         let mut viewable_card: ViewableHandCard = Self {
             id,
+            my_turn: false,
             card,
             img_path: card.img_path(),
             window_size,
@@ -256,17 +251,10 @@ impl Viewable for ViewableHandCard {
     /// This calculation is moved to view_and_move, because otherwise
     /// some effects of the card won't render for an unknown reason.
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        let img_opacity: f32 = f32_min_2(
-            self.play_animation.get_opacity(),
-            self.hide_animation.get_opacity(),
-        );
-
-        let hover_effect_opacity: f32 = f32_min_2(img_opacity, self.focus_animation.get_opacity());
-
-        let playable_opacity: f32 = f32_min_2(img_opacity, self.playable_animation.get_opacity());
-
-        let false_played_opacity: f32 =
-            f32_min_2(img_opacity, self.false_played_animation.get_opacity());
+        let img_opacity: f32 = self
+            .play_animation
+            .get_opacity()
+            .min(self.hide_animation.get_opacity());
 
         let width: f32 = self.width()
             * self.hover_animation.get_expansion()
@@ -291,57 +279,68 @@ impl Viewable for ViewableHandCard {
             .scale(scale)
             .opacity(img_opacity);
         card = card.push(img);
-        if self.playable {
-            if self.show_playable_status {
-                let playable_effect = image(FRAME_PLAYABLE_PATH)
+
+        if self.my_turn {
+            let hover_effect_opacity: f32 = self.focus_animation.get_opacity().min(img_opacity);
+            let playable_opacity: f32 = self.playable_animation.get_opacity().min(img_opacity);
+            let false_played_opacity: f32 =
+                self.false_played_animation.get_opacity().min(img_opacity);
+            if self.playable {
+                if self.show_playable_status {
+                    let playable_effect = image(FRAME_PLAYABLE_PATH)
+                        .content_fit(Fill)
+                        .width(width)
+                        .height(height)
+                        .rotation(rotation)
+                        .scale(scale)
+                        .opacity(playable_opacity);
+                    card = card.push(playable_effect);
+                }
+                let hover_effect = image(FRAME_PLAYABLE_FOCUSED_PATH)
                     .content_fit(Fill)
                     .width(width)
                     .height(height)
                     .rotation(rotation)
                     .scale(scale)
-                    .opacity(playable_opacity);
-                card = card.push(playable_effect);
+                    .opacity(hover_effect_opacity);
+                card = card.push(hover_effect);
+            } else {
+                let false_played_effect = image(FALSE_PLAYED_PATH)
+                    .content_fit(Fill)
+                    .width(width)
+                    .height(height)
+                    .rotation(rotation)
+                    .scale(scale)
+                    .opacity(false_played_opacity);
+                card = card.push(false_played_effect)
             }
-            let hover_effect = image(FRAME_PLAYABLE_FOCUSED_PATH)
-                .content_fit(Fill)
-                .width(width)
-                .height(height)
-                .rotation(rotation)
-                .scale(scale)
-                .opacity(hover_effect_opacity);
-            card = card.push(hover_effect);
-        } else {
-            let false_played_effect = image(FALSE_PLAYED_PATH)
-                .content_fit(Fill)
-                .width(width)
-                .height(height)
-                .rotation(rotation)
-                .scale(scale)
-                .opacity(false_played_opacity);
-            card = card.push(false_played_effect)
-        }
+        };
 
         let msg_hovered: AppMessage = CardMessage::Hovered(self.id).convert_msg();
         let msg_not_hoverd: AppMessage = CardMessage::NotHovered(self.id).convert_msg();
-        let msg_show_playable_status =
-            HandMessage::ShowPlayableStatus(self.show_playable_status.not()).convert_msg();
         let card_id: usize = self.id;
         let msg_cursor_moved =
             move |position: Point| CardMessage::CursorMoved(card_id, position).convert_msg();
-        let msg_double_clicked = CardMessage::Clicked(self.id).convert_msg();
-        let interaction: Interaction = if self.playable {
-            Interaction::Pointer
-        } else {
-            Interaction::NotAllowed
-        };
 
-        let mouse_area = MouseArea::new(card)
+        let mut mouse_area = MouseArea::new(card)
             .on_enter(msg_hovered)
             .on_exit(msg_not_hoverd)
-            .on_right_press(msg_show_playable_status)
-            .on_move(msg_cursor_moved)
-            .on_double_click(msg_double_clicked)
-            .interaction(interaction);
+            .on_move(msg_cursor_moved);
+
+        if self.my_turn {
+            let msg_show_playable_status =
+                HandMessage::ShowPlayableStatus(self.show_playable_status.not()).convert_msg();
+            let msg_double_clicked = CardMessage::Clicked(self.id).convert_msg();
+            let interaction: Interaction = if self.playable {
+                Interaction::Pointer
+            } else {
+                Interaction::NotAllowed
+            };
+            mouse_area = mouse_area
+                .on_right_press(msg_show_playable_status)
+                .on_double_click(msg_double_clicked)
+                .interaction(interaction);
+        }
 
         container(mouse_area)
     }

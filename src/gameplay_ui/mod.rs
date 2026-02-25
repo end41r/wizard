@@ -183,6 +183,7 @@ impl Notifiable for GameView {
             GameViewMessage::StartGame(info) => {
                 let mut tb = TaskBatcher::new();
                 self.my_id = Some(info.my_id);
+                self.viewable_hand.my_id = Some(info.my_id);
                 tb.push(
                     self.scoreboard
                         .update_with_msg(ScoreBoardMessage::Update(info.sb_info)),
@@ -206,13 +207,15 @@ impl Notifiable for GameView {
                 tb.push(CardStackMessage::HideAllCards.convert_msg_to_task());
                 tb.push(CardDeckMessage::Deal(hand_cards_len, trump_card).convert_msg_to_task());
                 tb.push(TableMessage::DrawShards(hand_cards_len).convert_msg_to_task());
+                tb.push(TableMessage::NobodiesTurn.convert_msg_to_task());
+                tb.push(HandMessage::NobodiesTurn.convert_msg_to_task());
                 tb.batch()
             }
-            GameViewMessage::NewTrick => {
-                let mut tb = TaskBatcher::new();
-                tb.push(CardStackMessage::HideAllCards.convert_msg_to_task());
-                tb.batch()
-            }
+            GameViewMessage::NewTrick => CardStackMessage::HideAllCards.convert_msg_to_task(),
+            GameViewMessage::ChangeTurn(player_id) => TaskBatcher::instant_batch([
+                TableMessage::ChangeTurn(player_id).convert_msg_to_task(),
+                HandMessage::ChangeTurn(player_id).convert_msg_to_task(),
+            ]),
             _ => Task::none(),
         }
     }

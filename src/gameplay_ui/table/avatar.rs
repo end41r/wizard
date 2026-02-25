@@ -24,6 +24,8 @@ pub enum AvatarMessage {
     AddShards(PlayerId, usize),
     PlayShard(PlayerId),
     InterpolationEnded(PlayerId),
+    ChangeTurn(PlayerId),
+    NobodiesTurn,
 }
 
 impl Message for AvatarMessage {
@@ -103,6 +105,7 @@ impl InterpolationAnimation {
 pub struct ViewableAvatar {
     window_size: Size,
     id: PlayerId,
+    my_turn: bool,
     avatar: Avatar,
     shards: usize,
     interpolation: bool,
@@ -118,6 +121,7 @@ impl ViewableAvatar {
         let mut viewable_avatar = Self {
             window_size,
             id,
+            my_turn: false,
             avatar: avatar_kind.to_avatar(),
             shards: 20,
             interpolation: false,
@@ -229,6 +233,16 @@ impl Notifiable for ViewableAvatar {
                     self.interpolation = false;
                 }
             }
+            AvatarMessage::ChangeTurn(id) => {
+                if id == self.id {
+                    self.my_turn = true;
+                } else {
+                    self.my_turn = false;
+                }
+            }
+            AvatarMessage::NobodiesTurn => {
+                self.my_turn = false;
+            }
         }
         Task::none()
     }
@@ -277,9 +291,15 @@ impl SizeFromOutside for ViewableAvatar {
 impl Viewable for ViewableAvatar {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let mut avatar = stack!().width(self.width()).height(self.height());
-        avatar = avatar.push(
-            image("assets/avatars/avatar_frame_idle.png").filter_method(FilterMethod::Nearest),
-        );
+        if self.my_turn {
+            avatar = avatar.push(
+                image("assets/avatars/avatar_frame_turn.png").filter_method(FilterMethod::Nearest),
+            );
+        } else {
+            avatar = avatar.push(
+                image("assets/avatars/avatar_frame_idle.png").filter_method(FilterMethod::Nearest),
+            );
+        }
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting1));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting2));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Standing1));

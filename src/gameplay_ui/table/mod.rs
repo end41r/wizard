@@ -24,6 +24,8 @@ pub enum TableMessage {
     AvatarMessage(AvatarMessage),
     BuildAvatars(PlayerId, Vec<Player>),
     DrawShards(usize),
+    ChangeTurn(PlayerId),
+    NobodiesTurn,
 }
 
 impl Message for TableMessage {
@@ -98,6 +100,25 @@ impl Notifiable for ViewableTable {
                 );
                 for avatar in self.other_avatars.iter_mut() {
                     tb.push(avatar.update_with_msg(AvatarMessage::AddShards(avatar.id(), amount)));
+                }
+                tb.batch()
+            }
+            TableMessage::ChangeTurn(id) => {
+                let mut tb = TaskBatcher::new();
+                tb.push(
+                    self.my_avatar
+                        .update_with_msg(AvatarMessage::ChangeTurn(id.clone())),
+                );
+                for avatar in self.other_avatars.iter_mut() {
+                    tb.push(avatar.update_with_msg(AvatarMessage::ChangeTurn(id.clone())))
+                }
+                tb.batch()
+            }
+            TableMessage::NobodiesTurn => {
+                let mut tb = TaskBatcher::new();
+                tb.push(self.my_avatar.update_with_msg(AvatarMessage::NobodiesTurn));
+                for avatar in self.other_avatars.iter_mut() {
+                    tb.push(avatar.update_with_msg(AvatarMessage::NobodiesTurn))
                 }
                 tb.batch()
             }

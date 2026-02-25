@@ -1,7 +1,7 @@
 pub mod hand_card;
 
 use crate::animation::AnimationStarter;
-use crate::api::Card;
+use crate::api::{Card, PlayerId};
 use crate::client::{AppMessage, TaskBatcher};
 use crate::gamelogic::round::random_card;
 use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableHandCard};
@@ -23,6 +23,8 @@ pub enum HandMessage {
     HideCards,
     ShowCards,
     ShowPlayableStatus(bool),
+    ChangeTurn(PlayerId),
+    NobodiesTurn,
 }
 
 impl Message for HandMessage {
@@ -34,6 +36,7 @@ impl Message for HandMessage {
 #[derive(Debug)]
 pub struct ViewableHand {
     window_size: Size,
+    pub my_id: Option<PlayerId>,
     pub cards: IndexMap<usize, ViewableHandCard>,
     hovered_card_row_low: bool,
     allow_hover: bool,
@@ -50,6 +53,7 @@ impl ViewableHand {
     pub fn new(window_size: Size) -> Self {
         Self {
             window_size,
+            my_id: None,
             cards: IndexMap::from([]),
             hovered_card_row_low: true,
             allow_hover: true,
@@ -304,6 +308,22 @@ impl Notifiable for ViewableHand {
             HandMessage::ShowPlayableStatus(do_show) => {
                 for (id, card) in self.cards.iter_mut() {
                     tb.push(card.update_with_msg(CardMessage::ShowPlayableStatus(*id, do_show)));
+                }
+            }
+            HandMessage::ChangeTurn(player_id) => {
+                if player_id == self.my_id.unwrap() {
+                    for (_, card) in self.cards.iter_mut() {
+                        card.my_turn = true;
+                    }
+                } else {
+                    for (_, card) in self.cards.iter_mut() {
+                        card.my_turn = false;
+                    }
+                }
+            }
+            HandMessage::NobodiesTurn => {
+                for (_, card) in self.cards.iter_mut() {
+                    card.my_turn = false;
                 }
             }
         }
