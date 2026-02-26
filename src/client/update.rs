@@ -35,6 +35,13 @@ fn format_card(card: &Card) -> String {
 }
 
 pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
+    match msg.clone() {
+        AppMessage::AnimationTick => (),
+        AppMessage::ServerTick => (),
+        _ => {
+            println!("{:?}", msg)
+        }
+    };
     let mut tb = TaskBatcher::new();
     for queue_msg in state.msg_queue.iter() {
         println!("GAMEVIEW {:?}", queue_msg);
@@ -179,7 +186,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     }
                 }
             }
-            return GameViewMessage::StartGame(state.game_start_info()).convert_msg_to_task();
+            tb.push(GameViewMessage::StartGame(state.game_start_info()).convert_msg_to_task());
         }
 
         AppMessage::GameRules => {
