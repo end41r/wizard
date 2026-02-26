@@ -9,6 +9,7 @@ use axum::{
     Router,
 };
 use futures::{SinkExt, StreamExt};
+use rand::seq::IndexedRandom;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -311,10 +312,16 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList,
                         }
                         drop(players_map);
                         let is_host = players_clone.read().await.is_empty(); // thats really unsafe
+                        let avatar_kinds: [AvatarKind; 4] = [
+                            AvatarKind::Elf,
+                            AvatarKind::Knight,
+                            AvatarKind::Mage,
+                            AvatarKind::Witch,
+                        ];
                         let player = Player {
                             id,
                             name: name.clone(),
-                            avatar: AvatarKind::Mage,
+                            avatar: *avatar_kinds.choose(&mut rand::rng()).unwrap(),
                             ready: false,
                             is_host,
                         };
