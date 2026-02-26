@@ -469,7 +469,8 @@ impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEn
         self.times
     }
     fn check_tick(&self) -> bool {
-        self.tick.is_multiple_of(self.animation_delay) && self.tick <= self.animation_delay * self.times
+        self.tick.is_multiple_of(self.animation_delay)
+            && self.tick <= self.animation_delay * self.times
     }
     fn check_all_ended(&self) -> bool {
         (self.tick == self.animation_delay * self.times + self.animation_length)

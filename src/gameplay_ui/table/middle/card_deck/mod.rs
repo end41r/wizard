@@ -128,7 +128,8 @@ impl Notifiable for ViewableCardDeck {
             CardDeckMessage::ClearTrumpCard => {
                 self.trump_card = None;
 
-                return self.clear_card_animation_starter
+                return self
+                    .clear_card_animation_starter
                     .start(self.deal_card_animation_starter.times());
             }
             CardDeckMessage::Deal(cards, trump_card) => {

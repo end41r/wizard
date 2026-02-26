@@ -4,8 +4,8 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
-use crate::gameplay_ui::hand::HandMessage;
 use crate::gameplay_ui::hand::hand_card::CardMessage;
+use crate::gameplay_ui::hand::HandMessage;
 use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
@@ -61,9 +61,15 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
             ScoreBoardMessage::Update(_),
         )) => (),
-        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(CardMessage::Hovered(_)))) => (),
-        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(CardMessage::NotHovered(_)))) => (),
-        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(CardMessage::CursorMoved(_, _)))) => (),
+        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+            CardMessage::Hovered(_),
+        ))) => (),
+        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+            CardMessage::NotHovered(_),
+        ))) => (),
+        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+            CardMessage::CursorMoved(_, _),
+        ))) => (),
         _ => {
             println!("{:?}", msg_unaltered)
         }
@@ -79,11 +85,11 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
     }
     let msg = match msg_unaltered.clone() {
         AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
-                ScoreBoardMessage::Update(_),
-            )) => AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
-                ScoreBoardMessage::Update(state.scoreboard_info()),
-            )),
-        _ => msg_unaltered
+            ScoreBoardMessage::Update(_),
+        )) => AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+            ScoreBoardMessage::Update(state.scoreboard_info()),
+        )),
+        _ => msg_unaltered,
     };
     match msg {
         AppMessage::DecrementACDL => {

@@ -115,7 +115,8 @@ impl Notifiable for ViewableCardStack {
             }
             CardStackMessage::HideAllCards => {
                 if self.cards.len() > 0 {
-                    return self.clear_card_stack_animation_starter
+                    return self
+                        .clear_card_stack_animation_starter
                         .start(self.cards.len().max(1) - 1);
                 }
             }

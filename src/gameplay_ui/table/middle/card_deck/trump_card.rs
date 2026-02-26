@@ -75,19 +75,15 @@ impl Notifiable for ViewableTrumpCard {
     type OwnMessage = TrumpCardMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
-            TrumpCardMessage::TurnPart1 => {
-                return self.reveal_animation.start()
-            }
+            TrumpCardMessage::TurnPart1 => return self.reveal_animation.start(),
             TrumpCardMessage::TurnPart2 => {
                 self.show_back = false;
-                return self.reveal_animation.reverse()
+                return self.reveal_animation.reverse();
             }
-            TrumpCardMessage::RemovePart1 => {
-                return self.remove_animation.start()
-            }
+            TrumpCardMessage::RemovePart1 => return self.remove_animation.start(),
             TrumpCardMessage::RemovePart2 => {
                 self.show_back = true;
-                return self.remove_animation.reverse()
+                return self.remove_animation.reverse();
             }
         }
     }
