@@ -15,7 +15,6 @@ use crate::gameplay_ui::hand::hand_card::{
     animation_playable::PlayableAnimation,
 };
 use crate::gameplay_ui::hand::HandMessage;
-use crate::gameplay_ui::table::middle::card_stack::CardStackMessage;
 use crate::gameplay_ui::{card_height_hand, card_img_base_scale, card_width_hand, GameViewMessage};
 use crate::ui_element_traits::*;
 use iced::Task;
@@ -163,7 +162,6 @@ impl Notifiable for ViewableHandCard {
                     if self.playable {
                         self.clickable = false;
                         tb.push(self.play_animation.start());
-                        tb.push(CardStackMessage::CardPlayed(self.card).convert_msg_to_task());
                     } else {
                         tb.push(self.false_played_animation.start());
                     }
