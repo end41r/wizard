@@ -4,6 +4,8 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
+use crate::gameplay_ui::hand::HandMessage;
+use crate::gameplay_ui::hand::hand_card::CardMessage;
 use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
@@ -35,24 +37,65 @@ fn format_card(card: &Card) -> String {
     }
 }
 
-pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
-    match msg.clone() {
+fn is_msg_not_ready(state: &App, msg: AppMessage) -> bool {
+    if state.animation_count_down_latch > 0 {
+        match msg {
+            AppMessage::GameViewMessage(GameViewMessage::NewRound(_, _, _)) => true,
+            AppMessage::GameViewMessage(GameViewMessage::ChangeTurn(_, _)) => true,
+            AppMessage::GameViewMessage(GameViewMessage::NewTrick) => true,
+            /* AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+                ScoreBoardMessage::Update(_),
+            )) => true, */
+            _ => false,
+        }
+    } else {
+        false
+    }
+}
+
+pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
+    println!("{}", state.animation_count_down_latch);
+    match msg_unaltered.clone() {
         AppMessage::AnimationTick => (),
         AppMessage::ServerTick => (),
         AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
             ScoreBoardMessage::Update(_),
         )) => (),
+        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(CardMessage::Hovered(_)))) => (),
+        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(CardMessage::NotHovered(_)))) => (),
+        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(CardMessage::CursorMoved(_, _)))) => (),
         _ => {
-            println!("{:?}", msg)
+            println!("{:?}", msg_unaltered)
         }
     };
     let mut tb = TaskBatcher::new();
     for queue_msg in state.msg_queue.iter() {
-        println!("GAMEVIEW {:?}", queue_msg);
-        tb.push(queue_msg.convert_msg_to_task())
+        tb.push_msg(queue_msg.clone())
     }
     state.msg_queue.clear();
+    if is_msg_not_ready(state, msg_unaltered.clone()) {
+        state.msg_queue_delayed.push(msg_unaltered);
+        return tb.batch();
+    }
+    let msg = match msg_unaltered.clone() {
+        AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+                ScoreBoardMessage::Update(_),
+            )) => AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+                ScoreBoardMessage::Update(state.scoreboard_info()),
+            )),
+        _ => msg_unaltered
+    };
     match msg {
+        AppMessage::DecrementACDL => {
+            state.animation_count_down_latch -= 1;
+            if state.animation_count_down_latch == 0 {
+                for queue_msg in state.msg_queue_delayed.iter() {
+                    tb.push_msg(queue_msg.clone())
+                }
+                state.msg_queue_delayed.clear();
+            }
+        }
+        AppMessage::IncrementACDL => state.animation_count_down_latch += 1,
         AppMessage::Navigate(menu) => {
             state.menu = menu;
         }

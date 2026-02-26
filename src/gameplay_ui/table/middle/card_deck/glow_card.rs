@@ -18,7 +18,7 @@ pub struct RevealAnimation(ReversableBasicAnimation);
 
 impl RevealAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(ReversableBasicAnimation::new(duration))
+        Self(ReversableBasicAnimation::new(duration, false))
     }
     pub fn get_opacity(&self) -> f32 {
         self.progress(Easing::InSine)
@@ -30,7 +30,7 @@ pub struct GlowAnimation(CircularAutoReversingAnimation);
 
 impl GlowAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(CircularAutoReversingAnimation::new(duration))
+        Self(CircularAutoReversingAnimation::new(duration, false))
     }
     pub fn get_opacity(&self) -> f32 {
         0.7 + 0.3 * self.progress(Easing::InSine)
@@ -65,8 +65,7 @@ impl CardStackGlow {
         };
         card_stack_glow
             .reveal_animation
-            .on_start(GlowMessage::ResetColor.convert_msg());
-        card_stack_glow.glow_animation.start();
+            .on_start_reached(GlowMessage::ResetColor.convert_msg());
         card_stack_glow
     }
     pub fn change_color(&mut self, card: Card) {

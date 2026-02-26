@@ -27,7 +27,7 @@ pub struct HoverAnim(ReversableBasicAnimation);
 
 impl HoverAnim {
     pub fn new(duration: usize) -> Self {
-        Self(ReversableBasicAnimation::new(duration))
+        Self(ReversableBasicAnimation::new(duration, false))
     }
 
     pub fn get_expansion(&self) -> f32 {
@@ -41,7 +41,7 @@ pub struct ClickAnim(BasicAnimation);
 
 impl ClickAnim {
     pub fn new(duration: usize) -> Self {
-        Self(BasicAnimation::new(duration))
+        Self(BasicAnimation::new(duration, false))
     }
 
     pub fn get_contraction(&self) -> f32 {
@@ -86,7 +86,7 @@ impl Button {
         };
         button
             .click_animation
-            .on_end(ButtonMessage::ClickEnded(id).convert_msg());
+            .on_end_reached(ButtonMessage::ClickEnded(id).convert_msg());
         button
     }
 
@@ -297,23 +297,25 @@ impl Notifiable for Button {
         match msg {
             ButtonMessage::Hovered(id) => {
                 if id == self.id {
-                    self.hover_animation.start()
+                    return self.hover_animation.start();
                 }
             }
             ButtonMessage::NotHovered(id) => {
                 if id == self.id {
-                    self.hover_animation.reverse()
+                    return self.hover_animation.reverse();
                 }
             }
             ButtonMessage::Clicked(id) => {
                 if id == self.id {
-                    self.click_animation.start();
+                    return self.click_animation.start();
                 }
             }
             ButtonMessage::ClickEnded(id) => {
                 if id == self.id {
-                    self.click_animation.reset();
-                    return self.on_click.convert_msg_to_task();
+                    return TaskBatcher::instant_batch([
+                        self.on_click.convert_msg_to_task(),
+                        self.click_animation.reset(),
+                    ]);
                 }
             }
         }

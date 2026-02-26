@@ -121,11 +121,11 @@ impl ViewableHandCard {
         };
         viewable_card
             .play_animation
-            .on_end(HandMessage::DeleteCard(id).convert_msg());
+            .on_end_reached(HandMessage::DeleteCard(id).convert_msg());
         viewable_card
             .hide_animation
-            .on_end(CardMessage::MakeClickable(id).convert_msg());
-        viewable_card.playable_animation.start();
+            .on_end_reached(CardMessage::MakeClickable(id).convert_msg());
+        viewable_card.playable_animation.start_infinite();
         viewable_card
     }
     pub fn card(&self) -> Card {
@@ -148,8 +148,8 @@ impl Notifiable for ViewableHandCard {
         match msg {
             CardMessage::Hovered(id) => {
                 if id == self.id {
-                    self.hover_animation.start();
-                    self.focus_animation.start();
+                    tb.push(self.hover_animation.start());
+                    tb.push(self.focus_animation.start());
                 } else {
                     // Sometimes on_exit for a viewed card won't register
                     // and won't send the CardNotHovered msg.
@@ -162,10 +162,10 @@ impl Notifiable for ViewableHandCard {
                 if id == self.id {
                     if self.playable {
                         self.clickable = false;
-                        self.play_animation.start();
+                        tb.push(self.play_animation.start());
                         tb.push(CardStackMessage::CardPlayed(self.card).convert_msg_to_task());
                     } else {
-                        self.false_played_animation.start();
+                        tb.push(self.false_played_animation.start());
                     }
                 };
             }
@@ -174,31 +174,31 @@ impl Notifiable for ViewableHandCard {
                     if self.playable {
                         tb.push(GameViewMessage::TryPlayCard(self.card).convert_msg_to_task())
                     } else {
-                        self.false_played_animation.start();
+                        tb.push(self.false_played_animation.start());
                     }
                 }
             }
             CardMessage::NotHovered(id) => {
                 if id == self.id {
-                    self.hover_animation.reverse();
-                    self.focus_animation.reset();
+                    tb.push(self.hover_animation.reverse());
+                    tb.push(self.focus_animation.reset());
                     self.rotation = 0.0;
                 };
             }
             CardMessage::Hide(id) => {
                 if id == self.id {
                     self.clickable = false;
-                    self.hide_animation.start();
+                    tb.push(self.hide_animation.start());
                 };
             }
             CardMessage::Show(id) => {
                 if id == self.id {
-                    self.hide_animation.reverse();
+                    tb.push(self.hide_animation.reverse());
                 };
             }
             CardMessage::Draw(id) => {
                 if id == self.id {
-                    self.draw_animation.start();
+                    tb.push(self.draw_animation.start());
                 };
             }
             CardMessage::CursorMoved(id, point) => {

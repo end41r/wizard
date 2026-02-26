@@ -9,7 +9,7 @@ pub struct HoverAnimation(ReversableBasicAnimation);
 
 impl HoverAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(ReversableBasicAnimation::new(duration))
+        Self(ReversableBasicAnimation::new(duration, false))
     }
     // The factor 0.15 changes the height of the hand in ViewableHand::height.
     pub fn get_offset(&self, window_size: Size) -> f32 {

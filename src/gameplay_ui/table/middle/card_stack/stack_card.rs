@@ -22,7 +22,7 @@ pub struct RevealAnimation(BasicAnimation);
 
 impl RevealAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(BasicAnimation::new(duration))
+        Self(BasicAnimation::new(duration, false))
     }
     pub fn get_rotation(&self) -> f32 {
         self.progress(Easing::InSine)
@@ -38,7 +38,7 @@ pub struct RemoveAnimation(BasicAnimation);
 
 impl RemoveAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(BasicAnimation::new(duration))
+        Self(BasicAnimation::new(duration, false))
     }
     pub fn get_opacity(&self) -> f32 {
         1.0 - self.progress(Easing::OutCubic)
@@ -51,22 +51,20 @@ impl RemoveAnimation {
 pub struct ViewableStackCard {
     window_size: Size,
     card: Card,
-    reveal_animation: RevealAnimation,
+    pub reveal_animation: RevealAnimation,
     pub remove_animation: RemoveAnimation,
     rotation: f32,
 }
 
 impl ViewableStackCard {
     pub fn new(window_size: Size, card: Card) -> Self {
-        let mut viewable_stack_card = Self {
+        Self {
             window_size,
             card,
             reveal_animation: RevealAnimation::new(50),
             remove_animation: RemoveAnimation::new(10),
             rotation: rand::rng().random_range(-0.15..0.15),
-        };
-        viewable_stack_card.reveal_animation.start();
-        viewable_stack_card
+        }
     }
     pub fn card(&self) -> Card {
         self.card

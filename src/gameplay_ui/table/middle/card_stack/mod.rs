@@ -59,7 +59,7 @@ pub struct ViewPlayedCardsAnimation(ReversableBasicAnimation);
 
 impl ViewPlayedCardsAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(ReversableBasicAnimation::new(duration))
+        Self(ReversableBasicAnimation::new(duration, false))
     }
     pub fn get_progress(&self) -> f32 {
         self.progress(Easing::OutCubic)
@@ -103,42 +103,43 @@ impl Notifiable for ViewableCardStack {
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
             CardStackMessage::CardPlayed(card) => {
-                self.cards
-                    .push(ViewableStackCard::new(self.window_size, card));
+                let mut tb = TaskBatcher::new();
+                let mut stack_card = ViewableStackCard::new(self.window_size, card);
+                tb.push(stack_card.reveal_animation.start());
+                self.cards.push(stack_card);
                 if self.cards.len() == 1 {
-                    return TaskBatcher::instant_batch([
-                        CardDeckMessage::ChangeGlow(card).convert_msg_to_task(),
-                        CardDeckMessage::ShowGlow.convert_msg_to_task(),
-                    ]);
+                    tb.push_msg(CardDeckMessage::ChangeGlow(card));
+                    tb.push_msg(CardDeckMessage::ShowGlow);
                 }
+                return tb.batch();
             }
             CardStackMessage::HideAllCards => {
                 if self.cards.len() > 0 {
-                    self.clear_card_stack_animation_starter
+                    return self.clear_card_stack_animation_starter
                         .start(self.cards.len().max(1) - 1);
                 }
             }
             CardStackMessage::HideCard(id) => {
                 let card_count: usize = self.cards.len();
-                self.cards[card_count - 1 - id].remove_animation.start();
+                return self.cards[card_count - 1 - id].remove_animation.start();
             }
             CardStackMessage::RemoveAllCards => {
                 self.cards.clear();
             }
             CardStackMessage::ShowPlayedCards => {
-                self.view_played_cards_animation.start();
+                return self.view_played_cards_animation.start();
             }
             CardStackMessage::HidePlayedCards => {
                 if !self.always_show_played_cards {
-                    self.view_played_cards_animation.reverse();
+                    return self.view_played_cards_animation.reverse();
                 }
             }
             CardStackMessage::SwitchAlwaysShowPlayedCards => {
                 self.always_show_played_cards = self.always_show_played_cards.not();
                 if self.always_show_played_cards {
-                    self.view_played_cards_animation.start();
+                    return self.view_played_cards_animation.start();
                 } else {
-                    self.view_played_cards_animation.reverse();
+                    return self.view_played_cards_animation.reverse();
                 }
             }
         };

@@ -70,6 +70,8 @@ impl Message for MenuState {
 pub struct App {
     window_size: Size,
     pub msg_queue: Vec<AppMessage>,
+    pub msg_queue_delayed: Vec<AppMessage>,
+    pub animation_count_down_latch: usize,
 
     pub connected: bool,
     pub connecting: bool,
@@ -168,6 +170,8 @@ impl Default for App {
         Self {
             window_size,
             msg_queue: Vec::new(),
+            msg_queue_delayed: Vec::new(),
+            animation_count_down_latch: 0,
 
             connected: false,
             connecting: false,
@@ -308,6 +312,10 @@ pub enum AppMessage {
 
     // Button messages from view widgets
     ButtonMessage(crate::client::views::ButtonMessage),
+
+    // Animation Count Down Letch
+    IncrementACDL,
+    DecrementACDL,
 }
 
 impl Message for AppMessage {

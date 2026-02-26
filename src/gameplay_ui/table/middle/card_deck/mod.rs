@@ -114,29 +114,33 @@ impl Notifiable for ViewableCardDeck {
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
             CardDeckMessage::AddDeckCard(cycle) => {
-                let view_able_deck_card = ViewableDeckCard::new(self.window_size, cycle, true);
-                self.deck_cards.push(view_able_deck_card);
+                let mut viewable_deck_card = ViewableDeckCard::new(self.window_size, cycle, true);
+                let task = viewable_deck_card.deal_animation.start();
+                self.deck_cards.push(viewable_deck_card);
+                return task;
             }
             CardDeckMessage::DealDeckCard(cycle) => {
-                let view_able_deck_card = ViewableDeckCard::new(self.window_size, cycle, false);
-                self.deck_cards.push(view_able_deck_card);
+                let mut viewable_deck_card = ViewableDeckCard::new(self.window_size, cycle, false);
+                let task = viewable_deck_card.deal_animation.start();
+                self.deck_cards.push(viewable_deck_card);
+                return task;
             }
             CardDeckMessage::ClearTrumpCard => {
                 self.trump_card = None;
 
-                self.clear_card_animation_starter
+                return self.clear_card_animation_starter
                     .start(self.deal_card_animation_starter.times());
             }
             CardDeckMessage::Deal(cards, trump_card) => {
                 let mut tb = TaskBatcher::new();
                 if self.deal_msg.is_none() {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
-                    self.deal_card_animation_starter.start(cards);
                     if let Some(card) = trump_card {
                         self.trump_card = Some(ViewableTrumpCard::new(self.window_size, card));
                     } else {
                         self.trump_card = None;
                     }
+                    return self.deal_card_animation_starter.start(cards);
                 } else {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
                     tb.push(CardDeckMessage::Shuffle.convert_msg_to_task());
@@ -145,6 +149,9 @@ impl Notifiable for ViewableCardDeck {
                 return tb.batch();
             }
             CardDeckMessage::AllDealt => {
+                for card in self.deck_cards.iter() {
+                    println!("all dealt: {}", card.deal_animation.current_frame_number());
+                }
                 self.deck_cards.clear();
                 return TrumpCardMessage::TurnPart1.convert_msg_to_task();
             }
@@ -161,8 +168,10 @@ impl Notifiable for ViewableCardDeck {
                 }
             }
             CardDeckMessage::Shuffle => {
-                self.glow.reveal_animation.reverse();
-                return TrumpCardMessage::RemovePart1.convert_msg_to_task();
+                return TaskBatcher::instant_batch([
+                    self.glow.reveal_animation.reverse(),
+                    TrumpCardMessage::RemovePart1.convert_msg_to_task(),
+                ])
             }
             CardDeckMessage::ChangeGlow(card) => {
                 self.glow.change_color(card);
@@ -171,7 +180,7 @@ impl Notifiable for ViewableCardDeck {
                 return self.glow.update_with_msg(glow_msg);
             }
             CardDeckMessage::ShowGlow => {
-                self.glow.reveal_animation.start_force();
+                return self.glow.reveal_animation.start_force();
             }
         }
         Task::none()

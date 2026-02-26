@@ -27,7 +27,7 @@ pub struct DealAnimation(ReversableBasicAnimation);
 
 impl DealAnimation {
     fn new(duration: usize) -> Self {
-        Self(ReversableBasicAnimation::new(duration))
+        Self(ReversableBasicAnimation::new(duration, false))
     }
     fn get_offset(&self) -> f32 {
         self.progress(Easing::OutCubic)
@@ -42,19 +42,17 @@ pub struct ViewableDeckCard {
     window_size: Size,
     add: bool,
     direction: Direction,
-    deal_animation: DealAnimation,
+    pub deal_animation: DealAnimation,
 }
 
 impl ViewableDeckCard {
     pub fn new(window_size: Size, cycle: usize, add: bool) -> Self {
-        let mut viewable_deck_card = Self {
+        Self {
             window_size,
             add,
             direction: Self::choose_direction(cycle),
             deal_animation: DealAnimation::new(10),
-        };
-        viewable_deck_card.deal_animation.start();
-        viewable_deck_card
+        }
     }
     pub fn offset(&self) -> Point {
         let mut linear_progress: f32 = self.deal_animation.get_offset();

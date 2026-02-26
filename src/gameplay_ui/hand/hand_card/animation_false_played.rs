@@ -6,7 +6,7 @@ pub struct FalsePlayedAnimation(AutoReversingAnimation);
 
 impl FalsePlayedAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(AutoReversingAnimation::new(duration))
+        Self(AutoReversingAnimation::new(duration, false))
     }
     pub fn get_opacity(&self) -> f32 {
         self.progress(Easing::InOutSine)

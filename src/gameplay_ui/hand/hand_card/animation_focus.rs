@@ -6,7 +6,7 @@ pub struct FocusAnimation(CircularAutoReversingAnimation);
 
 impl FocusAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(CircularAutoReversingAnimation::new(duration))
+        Self(CircularAutoReversingAnimation::new(duration, false))
     }
     pub fn get_opacity(&self) -> f32 {
         self.progress(Easing::InOutCubic)

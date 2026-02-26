@@ -293,7 +293,7 @@ impl Notifiable for ViewableHand {
                 self.top_card_id_lower = None;
                 self.top_card_id_upper = None;
                 self.update_size(self.window_size);
-                self.draw_animation_starter.start(self.cards.len());
+                tb.push(self.draw_animation_starter.start(self.cards.len()));
             }
             HandMessage::ShowPlayableStatus(do_show) => {
                 for (id, card) in self.cards.iter_mut() {
