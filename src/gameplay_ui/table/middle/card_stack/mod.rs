@@ -113,8 +113,10 @@ impl Notifiable for ViewableCardStack {
                 }
             }
             CardStackMessage::HideAllCards => {
-                self.clear_card_stack_animation_starter
-                    .start(self.cards.len().max(1) - 1);
+                if self.cards.len() > 0 {
+                    self.clear_card_stack_animation_starter
+                        .start(self.cards.len().max(1) - 1);
+                }
             }
             CardStackMessage::HideCard(id) => {
                 let card_count: usize = self.cards.len();

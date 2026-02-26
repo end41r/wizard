@@ -184,7 +184,6 @@ impl ScoreBoard {
         if !self.info.is_bidding_phase || !self.info.is_my_turn || self.info.must_set_trump {
             return container(None::<&str>);
         }
-
         let max_bid = self.info.round_number + 1;
 
         let panel = column![

@@ -22,7 +22,7 @@ pub enum HandMessage {
     HideCards,
     ShowCards,
     ShowPlayableStatus(bool),
-    ChangeTurn(PlayerId),
+    ChangeTurn(PlayerId, Vec<Card>),
     NobodiesTurn,
 }
 
@@ -68,7 +68,7 @@ impl ViewableHand {
     pub fn set_cards(&mut self, cards: Vec<Card>, valid_cards: Vec<Card>) {
         self.cards.clear();
         for (id, card) in self
-            .create_viewable_cards_static(cards, valid_cards)
+            .create_viewable_cards(cards, valid_cards)
             .iter()
             .enumerate()
         {
@@ -77,7 +77,7 @@ impl ViewableHand {
     }
 
     /// Create ViewableHandCards from game cards (static version for use in update functions)
-    pub fn create_viewable_cards_static(
+    pub fn create_viewable_cards(
         &self,
         game_cards: Vec<Card>,
         valid_cards: Vec<Card>,
@@ -300,10 +300,11 @@ impl Notifiable for ViewableHand {
                     tb.push(card.update_with_msg(CardMessage::ShowPlayableStatus(*id, do_show)));
                 }
             }
-            HandMessage::ChangeTurn(player_id) => {
+            HandMessage::ChangeTurn(player_id, valid_cards) => {
                 if player_id == self.my_id.unwrap() {
                     for (_, card) in self.cards.iter_mut() {
                         card.my_turn = true;
+                        card.validate(valid_cards.clone());
                     }
                 } else {
                     for (_, card) in self.cards.iter_mut() {

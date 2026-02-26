@@ -118,9 +118,8 @@ pub enum GameViewMessage {
     EndGame(PlayerId),
     NewRound(Option<Card>, Vec<Card>, Vec<Card>),
     NewTrick,
-    ChangeTurn(PlayerId),
+    ChangeTurn(PlayerId, Vec<Card>),
     CardPlayed(PlayerId, Card),
-    UpdateScoreBoard(ScoreBoardInfo),
 
     // gui -> server
     TryPlayCard(Card),
@@ -184,33 +183,33 @@ impl Notifiable for GameView {
                     self.scoreboard
                         .update_with_msg(ScoreBoardMessage::Update(info.sb_info)),
                 );
-                tb.push(TableMessage::BuildAvatars(info.players).convert_msg_to_task());
+                self.viewable_table.build_avatars(info.players);
                 tb.batch()
             }
             GameViewMessage::CardPlayed(played_by, card) => {
                 let mut tb = TaskBatcher::new();
-                tb.push(CardStackMessage::CardPlayed(card).convert_msg_to_task());
-                tb.push(AvatarMessage::PlayShard(played_by).convert_msg_to_task());
+                tb.push_msg(CardStackMessage::CardPlayed(card));
+                tb.push_msg(AvatarMessage::PlayShard(played_by));
                 if played_by == self.my_id.unwrap() {
-                    tb.push(HandMessage::PlayedCard(card).convert_msg_to_task())
+                    tb.push_msg(HandMessage::PlayedCard(card))
                 };
                 tb.batch()
             }
             GameViewMessage::NewRound(trump_card, hand_cards, valid_cards) => {
                 let mut tb = TaskBatcher::new();
                 let hand_cards_len = hand_cards.len();
-                tb.push(HandMessage::DrawCards(hand_cards, valid_cards).convert_msg_to_task());
-                tb.push(CardStackMessage::HideAllCards.convert_msg_to_task());
-                tb.push(CardDeckMessage::Deal(hand_cards_len, trump_card).convert_msg_to_task());
-                tb.push(TableMessage::DrawShards(hand_cards_len).convert_msg_to_task());
-                tb.push(TableMessage::NobodiesTurn.convert_msg_to_task());
-                tb.push(HandMessage::NobodiesTurn.convert_msg_to_task());
+                tb.push_msg(HandMessage::DrawCards(hand_cards, valid_cards));
+                tb.push_msg(CardStackMessage::HideAllCards);
+                tb.push_msg(CardDeckMessage::Deal(hand_cards_len, trump_card));
+                tb.push_msg(TableMessage::DrawShards(hand_cards_len));
+                tb.push_msg(TableMessage::NobodiesTurn);
+                tb.push_msg(HandMessage::NobodiesTurn);
                 tb.batch()
             }
             GameViewMessage::NewTrick => CardStackMessage::HideAllCards.convert_msg_to_task(),
-            GameViewMessage::ChangeTurn(player_id) => TaskBatcher::instant_batch([
+            GameViewMessage::ChangeTurn(player_id, valid_cards) => TaskBatcher::instant_batch([
                 TableMessage::ChangeTurn(player_id).convert_msg_to_task(),
-                HandMessage::ChangeTurn(player_id).convert_msg_to_task(),
+                HandMessage::ChangeTurn(player_id, valid_cards).convert_msg_to_task(),
             ]),
             GameViewMessage::TryPlayCard(card) => AppMessage::PlayCard(card).convert_msg_to_task(),
             GameViewMessage::TryBid => AppMessage::SubmitBid.convert_msg_to_task(),

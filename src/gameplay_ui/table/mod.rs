@@ -22,7 +22,6 @@ use iced::{
 pub enum TableMessage {
     TableMiddleMessage(TableMiddleMessage),
     AvatarMessage(AvatarMessage),
-    BuildAvatars(Vec<Player>),
     DrawShards(usize),
     ChangeTurn(PlayerId),
     NobodiesTurn,
@@ -48,6 +47,17 @@ impl ViewableTable {
             avatars: Vec::new(),
         }
     }
+    /// This method is highly critical and needs to be executed as soon as possible
+    /// which is why this is not handled via a Task.
+    pub fn build_avatars(&mut self, players: Vec<Player>) {
+        for player in players.iter() {
+            self.avatars.push(ViewableAvatar::new(
+                self.window_size,
+                player.avatar,
+                player.id,
+            ));
+        }
+    }
 }
 
 impl Notifiable for ViewableTable {
@@ -64,16 +74,6 @@ impl Notifiable for ViewableTable {
                     tb.push(avatar.update_with_msg(avatar_msg.clone()));
                 }
                 tb.batch()
-            }
-            TableMessage::BuildAvatars(players) => {
-                for player in players.iter() {
-                    self.avatars.push(ViewableAvatar::new(
-                        self.window_size,
-                        player.avatar,
-                        player.id,
-                    ));
-                }
-                Task::none()
             }
             TableMessage::DrawShards(amount) => {
                 let mut tb = TaskBatcher::new();
@@ -138,9 +138,11 @@ impl Viewable for ViewableTable {
         // Player Avatars
         let avatar_size: f32 = ViewableAvatar::width_for(self.window_size);
         let sec_col_x_spawn: f32 = self.width() - avatar_size;
-        content = content.push(self.avatars[0].view());
-        content = content.push(self.avatars[1].view_and_move(sec_col_x_spawn, 0.0));
-        content = content.push(self.avatars[2].view_and_move(0.0, avatar_size * 1.5));
+        if self.avatars.len() > 0 {
+            content = content.push(self.avatars[0].view());
+            content = content.push(self.avatars[1].view_and_move(sec_col_x_spawn, 0.0));
+            content = content.push(self.avatars[2].view_and_move(0.0, avatar_size * 1.5));
+        }
         if self.avatars.len() > 3 {
             content =
                 content.push(self.avatars[3].view_and_move(sec_col_x_spawn, avatar_size * 1.5))

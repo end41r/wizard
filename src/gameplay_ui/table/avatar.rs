@@ -60,7 +60,7 @@ impl RevealAnimation {
         Self(ReversableBasicAnimation::new(100))
     }
     fn get_opacity(&self) -> f32 {
-        1.0 - self.progress(Easing::OutElastic)
+        self.progress(Easing::OutElastic)
     }
 }
 

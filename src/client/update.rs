@@ -4,6 +4,7 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
 use crate::client::TaskBatcher;
+use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
 
@@ -38,6 +39,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
     match msg.clone() {
         AppMessage::AnimationTick => (),
         AppMessage::ServerTick => (),
+        AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+            ScoreBoardMessage::Update(_),
+        )) => (),
         _ => {
             println!("{:?}", msg)
         }
@@ -186,7 +190,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     }
                 }
             }
-            tb.push(GameViewMessage::StartGame(state.game_start_info()).convert_msg_to_task());
         }
 
         AppMessage::GameRules => {
@@ -275,9 +278,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             } else {
                 state.last_msg = "Invalid bid - enter a number".to_string();
             }
-            tb.push(
-                GameViewMessage::UpdateScoreBoard(state.scoreboard_info()).convert_msg_to_task(),
-            );
         }
         AppMessage::PlayCard(card) => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -302,16 +302,14 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::ServerTick => {
             handle_tick(state);
+            tb.push_msg(ScoreBoardMessage::Update(state.scoreboard_info()));
         }
         AppMessage::GameViewMessage(game_view_msg) => {
-            tb.push(
-                GameViewMessage::UpdateScoreBoard(state.scoreboard_info()).convert_msg_to_task(),
-            );
             tb.push(state.game_view.update_with_msg(game_view_msg));
         }
         AppMessage::ButtonMessage(btn_msg) => {
             // Route to buttons (each button filters by id internally)
-            return TaskBatcher::instant_batch([
+            tb.push_mult([
                 state.btn_host.update_with_msg(btn_msg.clone()),
                 state.btn_join.update_with_msg(btn_msg.clone()),
                 state.btn_rules.update_with_msg(btn_msg.clone()),
@@ -327,7 +325,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             ]);
         }
         AppMessage::AnimationTick => {
-            return TaskBatcher::instant_batch([
+            tb.push_mult([
                 state.game_view.update_animations(),
                 // Update button animations
                 state.btn_host.update_animations(),
@@ -422,10 +420,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.last_msg = log;
                 state.hand = cards.clone();
 
-                state.msg_queue.push(
-                    GameViewMessage::NewRound(state.trump, cards, state.valid_cards.clone())
-                        .convert_msg(),
-                );
+                state
+                    .msg_queue
+                    .push(GameViewMessage::NewRound(state.trump, cards, Vec::new()).convert_msg());
             }
             S::TrumpRequest => {
                 let log = "[SERVER] You must set the trump suit!".to_string();
@@ -463,6 +460,10 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.is_my_turn = true;
                 state.is_bidding_phase = false;
                 state.valid_cards = valid_cards;
+                state.msg_queue.push(
+                    GameViewMessage::ChangeTurn(state.my_id.unwrap(), state.valid_cards.clone())
+                        .convert_msg(),
+                );
             }
             S::InvalidMove { reason } => {
                 let log = format!("[ERROR] Invalid move: {reason}");
@@ -524,6 +525,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.scores.clear();
                 state.bids.clear();
                 state.tricks_won.clear();
+                state
+                    .msg_queue
+                    .push(GameViewMessage::StartGame(state.game_start_info()).convert_msg());
             }
             B::RoundStarted {
                 round,
@@ -645,9 +649,6 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state
                     .msg_queue
                     .push(GameViewMessage::NewTrick.convert_msg());
-                state
-                    .msg_queue
-                    .push(GameViewMessage::ChangeTurn(leader).convert_msg());
             }
             B::TurnChanged { player } => {
                 let is_me = state.my_id == Some(player);
@@ -661,9 +662,6 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.game_log.push(log.clone());
                 state.last_msg = log;
                 state.current_player = Some(player);
-                state
-                    .msg_queue
-                    .push(GameViewMessage::ChangeTurn(player).convert_msg());
             }
             B::CardPlayed { player, card } => {
                 let player_name = get_player_name(state, player);
