@@ -184,7 +184,7 @@ impl Notifiable for GameView {
                     self.scoreboard
                         .update_with_msg(ScoreBoardMessage::Update(info.sb_info)),
                 );
-                tb.push(TableMessage::BuildAvatars(info.my_id, info.players).convert_msg_to_task());
+                tb.push(TableMessage::BuildAvatars(info.players).convert_msg_to_task());
                 tb.batch()
             }
             GameViewMessage::CardPlayed(played_by, card) => {

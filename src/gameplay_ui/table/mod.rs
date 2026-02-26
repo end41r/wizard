@@ -2,7 +2,7 @@ pub mod avatar;
 pub mod middle;
 
 use crate::{
-    api::{AvatarKind, Player, PlayerId},
+    api::{Player, PlayerId},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         table::{
@@ -22,7 +22,7 @@ use iced::{
 pub enum TableMessage {
     TableMiddleMessage(TableMiddleMessage),
     AvatarMessage(AvatarMessage),
-    BuildAvatars(PlayerId, Vec<Player>),
+    BuildAvatars(Vec<Player>),
     DrawShards(usize),
     ChangeTurn(PlayerId),
     NobodiesTurn,
@@ -37,8 +37,7 @@ impl Message for TableMessage {
 pub struct ViewableTable {
     window_size: Size,
     middle: ViewableTableMiddle,
-    my_avatar: ViewableAvatar,
-    other_avatars: Vec<ViewableAvatar>,
+    avatars: Vec<ViewableAvatar>,
 }
 
 impl ViewableTable {
@@ -46,19 +45,8 @@ impl ViewableTable {
         Self {
             window_size,
             middle: ViewableTableMiddle::new(window_size),
-            my_avatar: ViewableAvatar::new(window_size, AvatarKind::Mage, 0),
-            other_avatars: Self::build_test_avatars(window_size),
+            avatars: Vec::new(),
         }
-    }
-
-    pub fn build_test_avatars(window_size: Size) -> Vec<ViewableAvatar> {
-        vec![
-            ViewableAvatar::new(window_size, AvatarKind::Elf, 1),
-            ViewableAvatar::new(window_size, AvatarKind::Knight, 2),
-            ViewableAvatar::new(window_size, AvatarKind::Mage, 3),
-            ViewableAvatar::new(window_size, AvatarKind::Witch, 4),
-            ViewableAvatar::new(window_size, AvatarKind::Elf, 5),
-        ]
     }
 }
 
@@ -72,52 +60,38 @@ impl Notifiable for ViewableTable {
             }
             TableMessage::AvatarMessage(avatar_msg) => {
                 let mut tb = TaskBatcher::new();
-                for avatar in self.other_avatars.iter_mut() {
+                for avatar in self.avatars.iter_mut() {
                     tb.push(avatar.update_with_msg(avatar_msg.clone()));
                 }
-                tb.push(self.my_avatar.update_with_msg(avatar_msg));
                 tb.batch()
             }
-            TableMessage::BuildAvatars(my_id, players) => {
+            TableMessage::BuildAvatars(players) => {
                 for player in players.iter() {
-                    if player.id == my_id {
-                        self.my_avatar = ViewableAvatar::new(self.window_size, player.avatar, my_id)
-                    } else {
-                        self.other_avatars.push(ViewableAvatar::new(
-                            self.window_size,
-                            player.avatar,
-                            player.id,
-                        ));
-                    }
+                    self.avatars.push(ViewableAvatar::new(
+                        self.window_size,
+                        player.avatar,
+                        player.id,
+                    ));
                 }
                 Task::none()
             }
             TableMessage::DrawShards(amount) => {
                 let mut tb = TaskBatcher::new();
-                tb.push(
-                    self.my_avatar
-                        .update_with_msg(AvatarMessage::AddShards(self.my_avatar.id(), amount)),
-                );
-                for avatar in self.other_avatars.iter_mut() {
-                    tb.push(avatar.update_with_msg(AvatarMessage::AddShards(avatar.id(), amount)));
+                for avatar in self.avatars.iter_mut() {
+                    tb.push(avatar.update_with_msg(AvatarMessage::AddShards(avatar.id(), amount)))
                 }
                 tb.batch()
             }
             TableMessage::ChangeTurn(id) => {
                 let mut tb = TaskBatcher::new();
-                tb.push(
-                    self.my_avatar
-                        .update_with_msg(AvatarMessage::ChangeTurn(id.clone())),
-                );
-                for avatar in self.other_avatars.iter_mut() {
+                for avatar in self.avatars.iter_mut() {
                     tb.push(avatar.update_with_msg(AvatarMessage::ChangeTurn(id.clone())))
                 }
                 tb.batch()
             }
             TableMessage::NobodiesTurn => {
                 let mut tb = TaskBatcher::new();
-                tb.push(self.my_avatar.update_with_msg(AvatarMessage::NobodiesTurn));
-                for avatar in self.other_avatars.iter_mut() {
+                for avatar in self.avatars.iter_mut() {
                     tb.push(avatar.update_with_msg(AvatarMessage::NobodiesTurn))
                 }
                 tb.batch()
@@ -130,10 +104,9 @@ impl Animated for ViewableTable {
     fn update_animations(&mut self) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
         tb.push(self.middle.update_animations());
-        for avatar in self.other_avatars.iter_mut() {
+        for avatar in self.avatars.iter_mut() {
             tb.push(avatar.update_animations());
         }
-        tb.push(self.my_avatar.update_animations());
         tb.batch()
     }
 }
@@ -148,10 +121,9 @@ impl Resizable for ViewableTable {
     fn update_size(&mut self, window_size: iced::Size) {
         self.window_size = window_size;
         self.middle.update_size(window_size);
-        for avatar in self.other_avatars.iter_mut() {
+        for avatar in self.avatars.iter_mut() {
             avatar.update_size(window_size);
         }
-        self.my_avatar.update_size(window_size);
     }
 }
 
@@ -166,19 +138,19 @@ impl Viewable for ViewableTable {
         // Player Avatars
         let avatar_size: f32 = ViewableAvatar::width_for(self.window_size);
         let sec_col_x_spawn: f32 = self.width() - avatar_size;
-        content = content.push(self.my_avatar.view());
-        content = content.push(self.other_avatars[0].view_and_move(sec_col_x_spawn, 0.0));
-        content = content.push(self.other_avatars[1].view_and_move(0.0, avatar_size * 1.5));
-        if self.other_avatars.len() > 2 {
-            content = content
-                .push(self.other_avatars[2].view_and_move(sec_col_x_spawn, avatar_size * 1.5))
+        content = content.push(self.avatars[0].view());
+        content = content.push(self.avatars[1].view_and_move(sec_col_x_spawn, 0.0));
+        content = content.push(self.avatars[2].view_and_move(0.0, avatar_size * 1.5));
+        if self.avatars.len() > 3 {
+            content =
+                content.push(self.avatars[3].view_and_move(sec_col_x_spawn, avatar_size * 1.5))
         }
-        if self.other_avatars.len() > 3 {
-            content = content.push(self.other_avatars[3].view_and_move(0.0, avatar_size * 3.0))
+        if self.avatars.len() > 4 {
+            content = content.push(self.avatars[4].view_and_move(0.0, avatar_size * 3.0))
         }
-        if self.other_avatars.len() > 4 {
-            content = content
-                .push(self.other_avatars[4].view_and_move(sec_col_x_spawn, avatar_size * 3.0))
+        if self.avatars.len() > 5 {
+            content =
+                content.push(self.avatars[5].view_and_move(sec_col_x_spawn, avatar_size * 3.0))
         }
         container(content)
     }
