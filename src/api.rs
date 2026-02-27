@@ -16,6 +16,7 @@ pub type SessionId = u64;
 pub enum ServerMessage {
     Server(S),
     Broadcast(B),
+    ConnectionClosed,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

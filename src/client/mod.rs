@@ -75,6 +75,7 @@ pub struct App {
 
     pub connected: bool,
     pub connecting: bool,
+    pub disconnected: bool,
     pub ws_tx: WsConnection,
     pub server_rx: ServerMsgReceiver,
     pub msg: String,
@@ -175,6 +176,7 @@ impl Default for App {
 
             connected: false,
             connecting: false,
+            disconnected: false,
             ws_tx: Arc::new(Mutex::new(None)),
             server_rx: Arc::new(Mutex::new(None)),
             msg: String::new(),
