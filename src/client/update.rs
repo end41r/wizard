@@ -7,6 +7,7 @@ use crate::client::TaskBatcher;
 use crate::gameplay_ui::hand::hand_card::CardMessage;
 use crate::gameplay_ui::hand::HandMessage;
 use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
+use crate::gameplay_ui::table::TableMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
 
@@ -618,6 +619,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 if is_me {
                     state.must_set_trump = true;
                 }
+                state
+                    .msg_queue
+                    .push(TableMessage::ChangeTurn(dealer).convert_msg());
             }
             B::TrumpSet { suit, by_dealer } => {
                 let dealer_name = get_player_name(state, by_dealer);
@@ -658,6 +662,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.game_log.push(log.clone());
                 state.last_msg = log;
                 state.current_player = Some(player);
+                state
+                    .msg_queue
+                    .push(TableMessage::ChangeTurn(player).convert_msg());
             }
             B::BidMade { player, amount } => {
                 let player_name = get_player_name(state, player);
@@ -697,9 +704,6 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 // Reset turn - only the leader who receives YourTurn should be able to play
                 state.is_my_turn = false;
                 state.valid_cards.clear();
-                state
-                    .msg_queue
-                    .push(GameViewMessage::NewTrick.convert_msg());
             }
             B::TurnChanged { player } => {
                 let is_me = state.my_id == Some(player);

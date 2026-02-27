@@ -211,7 +211,6 @@ impl Notifiable for GameView {
                 tb.push_msg(CardStackMessage::HideAllCards);
                 tb.push_msg(CardDeckMessage::Deal(hand_cards_len, trump_card));
                 tb.push_msg(TableMessage::DrawShards(hand_cards_len));
-                tb.push_msg(TableMessage::NobodiesTurn);
                 tb.push_msg(HandMessage::NobodiesTurn);
                 tb.batch()
             }
