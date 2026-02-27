@@ -46,7 +46,7 @@ pub async fn connect_ws(ws_tx: WsConnection, server_rx: ServerMsgReceiver, ip: S
                         }
                     }
                 }
-                println!("Receive loop ended");
+                let _ = srv_tx.send(ServerMessage::ConnectionClosed);
             });
 
             // Waits for either task to complete.

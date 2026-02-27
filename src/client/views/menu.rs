@@ -1,8 +1,7 @@
 use iced::{
-    widget::{
-        column, container, pick_list, row, scrollable, stack, text, text_input, Column, Image,
-    },
-    ContentFit, Element,
+    ContentFit, Element, widget::{
+        Column, Image, Row, column, container, pick_list, row, scrollable, stack, text, text_input
+    }
 };
 
 use crate::client::{App, AppMessage, PlayerCount};
@@ -29,7 +28,15 @@ pub fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     ]
     .spacing(100)
     .align_x(iced::alignment::Horizontal::Right);
-
+    let bottom: Row<'a, AppMessage> = row![
+        if state.disconnected {
+            text("You have been disconnected from the server. Please check your connection and try again.")
+                .size(20)
+                .color(iced::Color::from_rgb(1.0, 0.0, 0.0))
+        } else {
+            text("")
+        }
+    ];
     stack![
         Image::new(state.img_main_menu.clone())
             .width(iced::Length::Fill)
@@ -51,7 +58,12 @@ pub fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
                 .center_x(iced::Fill)
                 .center_y(iced::Fill),
         ]
-        .align_y(iced::alignment::Vertical::Center)
+        .align_y(iced::alignment::Vertical::Center),
+        container(bottom)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .center_x(iced::Fill)
+            .align_y(iced::alignment::Vertical::Bottom),
     ]
     .into()
 }

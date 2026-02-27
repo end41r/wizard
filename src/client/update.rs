@@ -417,20 +417,29 @@ fn handle_tick(state: &mut App) {
             }
         }
     }
-    // Collects messages first to avoid borrowing issues.
-    let messages: Vec<ServerMessage> = if let Ok(guard) = state.server_rx.lock() {
-        if let Some(ref rx) = *guard {
-            let mut msgs = Vec::new();
-            while let Ok(msg) = rx.try_recv() {
-                println!("Received: {msg:?}");
-                msgs.push(msg);
+    // Detect if the connection was dropped externally (ws_tx went None while connected).
+    let mut messages: Vec<ServerMessage> = if state.connected {
+        if let Ok(guard) = state.ws_tx.lock() {
+            if guard.is_none() {
+                vec![ServerMessage::ConnectionClosed]
+            } else {
+                Vec::new()
             }
-            msgs
         } else {
             Vec::new()
         }
     } else {
         Vec::new()
+    };
+
+    // Collects messages first to avoid borrowing issues.
+    if let Ok(guard) = state.server_rx.lock() {
+        if let Some(ref rx) = *guard {
+            while let Ok(msg) = rx.try_recv() {
+                println!("Received: {msg:?}");
+                messages.push(msg);
+            }
+        }
     };
 
     for msg in messages {
@@ -440,6 +449,39 @@ fn handle_tick(state: &mut App) {
 
 fn handle_server_message(state: &mut App, msg: ServerMessage) {
     match msg {
+        ServerMessage::ConnectionClosed => {
+            println!("Connection lost, resetting state.");
+            state.connected = false;
+            state.connecting = false;
+            state.disconnected = true;
+            state.my_id = None;
+            state.lobby = Some(Lobby {
+                players: Vec::new(),
+                chat: Vec::new(),
+            });
+            state.chat_input.clear();
+            state.server_messages.clear();
+            state.last_msg = "Disconnected from server.".to_string();
+            state.game_log.clear();
+            state.hand.clear();
+            state.current_trick.clear();
+            state.trump = None;
+            state.round_number = 0;
+            state.is_my_turn = false;
+            state.is_bidding_phase = false;
+            state.must_set_trump = false;
+            state.current_player = None;
+            state.player_order.clear();
+            state.bids.clear();
+            state.tricks_won.clear();
+            state.scores.clear();
+            state.bid_input.clear();
+            state.valid_cards.clear();
+            state.dealer = None;
+            state.game_over = false;
+            state.winner = None;
+            state.menu = MenuState::Main;
+        }
         ServerMessage::Server(s) => match s {
             S::HandshakeConfirmation { version, supported } => {
                 let log = format!("[SERVER] Handshake: version {version}, supported {supported}");
@@ -454,6 +496,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state
                     .btn_ready_owned
                     .set_on_click(AppMessage::ToggleReady(id));
+                state.disconnected = false;
             }
             S::Error { reason } => {
                 let log = format!("[ERROR] {reason}");
