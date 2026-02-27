@@ -36,8 +36,20 @@ impl ReplaceUsize for HandMessage {
     fn replace_usize(&self, value: usize) -> Self {
         match &self {
             HandMessage::Draw(_) => HandMessage::Draw(value),
-            _ => self.clone()
+            _ => self.clone(),
         }
+    }
+}
+
+use crate::animation::ReversableBasicAnimation;
+use derive_more::{Deref, DerefMut};
+
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct HideAnimationTracker(ReversableBasicAnimation);
+
+impl HideAnimationTracker {
+    pub fn new(duration: usize) -> Self {
+        Self(ReversableBasicAnimation::new(duration, false))
     }
 }
 
@@ -52,6 +64,7 @@ pub struct ViewableHand {
     played_card: Option<Card>,
     top_card_upper: Option<Card>,
     top_card_lower: Option<Card>,
+    hide_animation_tracker: HideAnimationTracker,
     // AI-Usage: Claude.ai for the idea of passing a union type for a generic
     //           where the type doesn't matter.
     draw_animation_starter: AnimationStarter<HandMessage, CardMessage>,
@@ -59,7 +72,7 @@ pub struct ViewableHand {
 
 impl ViewableHand {
     pub fn new(window_size: Size) -> Self {
-        Self {
+        let mut vh = Self {
             window_size,
             my_id: None,
             cards: Vec::new(),
@@ -69,17 +82,17 @@ impl ViewableHand {
             played_card: None,
             top_card_upper: None,
             top_card_lower: None,
-            // 3 is the delay for the animation start.
+            hide_animation_tracker: HideAnimationTracker::new(12),
             draw_animation_starter: AnimationStarter::new(3, 10, HandMessage::Draw(0)),
-        }
+        };
+        vh.hide_animation_tracker
+            .on_end_reached(HandMessage::ShowCards.convert_msg());
+        vh
     }
 
     pub fn set_cards(&mut self, cards: Vec<Card>, valid_cards: Vec<Card>) {
         self.cards.clear();
-        for card in self
-            .create_viewable_cards(cards, valid_cards)
-            .iter()
-        {
+        for card in self.create_viewable_cards(cards, valid_cards).iter() {
             self.cards.push(card.clone());
         }
     }
@@ -253,6 +266,10 @@ impl Notifiable for ViewableHand {
                             }
                         }
                     }
+                    CardMessage::Clicked(card) => {
+                        self.played_card = Some(card);
+                        tb.push(self.update_cards_with_msg(card_msg));
+                    }
                     _ => {
                         tb.push(self.update_cards_with_msg(card_msg));
                     }
@@ -266,7 +283,7 @@ impl Notifiable for ViewableHand {
             HandMessage::PlayedCard(played_card) => {
                 for card in self.cards.iter() {
                     if played_card == card.card {
-                        tb.push(CardMessage::Played(card.card).convert_msg_to_task());
+                        tb.push(CardMessage::Played(played_card).convert_msg_to_task());
                         tb.push(HandMessage::HideCards.convert_msg_to_task());
                     }
                 }
@@ -279,12 +296,13 @@ impl Notifiable for ViewableHand {
                     }
                 }
                 self.played_card = None;
+                tb.push(self.hide_animation_tracker.start())
             }
             HandMessage::DeleteCard(card) => {
                 self.cards.retain(|vhc| vhc.card != card);
-                tb.push(HandMessage::ShowCards.convert_msg_to_task());
             }
             HandMessage::ShowCards => {
+                tb.push(self.hide_animation_tracker.reset());
                 self.allow_hover = true;
                 for card in self.cards.iter_mut() {
                     tb.push(card.update_with_msg(CardMessage::Show(card.card)));
@@ -301,7 +319,9 @@ impl Notifiable for ViewableHand {
             }
             HandMessage::ShowPlayableStatus(do_show) => {
                 for card in self.cards.iter_mut() {
-                    tb.push(card.update_with_msg(CardMessage::ShowPlayableStatus(card.card, do_show)));
+                    tb.push(
+                        card.update_with_msg(CardMessage::ShowPlayableStatus(card.card, do_show)),
+                    );
                 }
             }
             HandMessage::ChangeTurn(player_id, valid_cards) => {
@@ -330,7 +350,7 @@ impl Animated for ViewableHand {
     fn update_animations(&mut self) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
         tb.push(self.draw_animation_starter.next_frame());
-
+        tb.push(self.hide_animation_tracker.next_frame());
         for card in self.cards.iter_mut() {
             tb.push(card.update_animations());
         }

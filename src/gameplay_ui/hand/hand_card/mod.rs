@@ -122,7 +122,6 @@ impl Notifiable for ViewableHandCard {
         match msg {
             CardMessage::Hovered(card) => {
                 if card == self.card {
-                    println!("hovered");
                     tb.push(self.hover_animation.start());
                     tb.push(self.focus_animation.start());
                 } else {
