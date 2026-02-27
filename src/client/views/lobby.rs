@@ -27,7 +27,7 @@ fn view_not_connected<'a>(state: &'a App) -> Element<'a, AppMessage> {
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
         container(column![
-            text("Nicht verbunden zum Server. / IP wurde falsch eingegeben"),
+            text("Nicht verbunden zum Server. / IP wurde falsch eingegeben").color(iced::Color::WHITE),
             state.btn_back.view().padding(0)
         ])
         .width(iced::Length::Fill)
@@ -45,7 +45,7 @@ fn view_no_lobby<'a>(state: &'a App) -> Element<'a, AppMessage> {
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
         container(column![
-            text("Keine Lobby vorhanden"),
+            text("Keine Lobby vorhanden").color(iced::Color::WHITE),
             state.btn_back.view().padding(0)
         ])
         .width(iced::Length::Fill)
@@ -62,9 +62,9 @@ fn view_lobby_content<'a>(state: &'a App, lobby: &'a Lobby) -> Element<'a, AppMe
     let start_button = build_start_button(state, lobby);
 
     let content = column![
-        text("Lobby").size(30),
+        text("Lobby").size(30).color(iced::Color::WHITE),
         row![
-            text("Host Address:"),
+            text("Host Address:").color(iced::Color::WHITE),
             text_input("Address to share", &state.ip)
         ]
         .spacing(10),
@@ -72,7 +72,7 @@ fn view_lobby_content<'a>(state: &'a App, lobby: &'a Lobby) -> Element<'a, AppMe
             "Spieler: {}/{}",
             lobby.players.len(),
             state.host_player_count.to_usize()
-        )),
+        )).color(iced::Color::WHITE),
         player_rows,
         scrollable(chat_block).height(150).width(400),
         row![
@@ -115,7 +115,9 @@ fn build_player_rows<'a>(state: &'a App, lobby: &'a Lobby) -> Column<'a, AppMess
                 "{}{}",
                 if p.is_host { "(Host) " } else { "" },
                 p.name
-            )),
+            ))
+            .color(iced::Color::WHITE),
+
             toggle
         ];
         player_rows = player_rows.push(row);
@@ -128,7 +130,7 @@ fn build_chat_block<'a>(lobby: &'a Lobby) -> Column<'a, AppMessage> {
     let mut chat_block = Column::new().spacing(5);
 
     for (sender, msg) in &lobby.chat {
-        chat_block = chat_block.push(text(format!("{}: {}", sender, msg)));
+        chat_block = chat_block.push(text(format!("{}: {}", sender, msg)).color(iced::Color::WHITE));
     }
 
     chat_block
@@ -164,5 +166,5 @@ fn build_start_button<'a>(state: &'a App, lobby: &'a Lobby) -> iced::widget::Row
         ""
     };
 
-    row![start_button_view, text(status_text)].spacing(5)
+    row![start_button_view, text(status_text).color(iced::Color::WHITE)].spacing(5)
 }

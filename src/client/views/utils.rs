@@ -33,7 +33,7 @@ pub fn get_player_name(state: &App, player_id: PlayerId) -> String {
 /// Read PNG image dimensions from the file header.
 pub fn png_dimensions(path: &str) -> Option<(u32, u32)> {
     let mut f = File::open(path).ok()?;
-    let mut buf = [0u8; 24];
+    let mut buf = [0 as u8; 24];
     f.read_exact(&mut buf).ok()?;
 
     if &buf[0..8] != b"\x89PNG\r\n\x1a\n" {
@@ -102,9 +102,9 @@ pub fn menu_panel<'a>(
                         text(title)
                             .size(38)
                             .font(TITLE_FONT)
-                            .color(iced::Color::from_rgb(0.0, 0.0, 0.0)),
+                            .color(iced::Color::WHITE),
                     )
-                    .height(48u32)
+                    .height(48 as u32)
                     .center_x(iced::Fill),
                 ),
         )
@@ -118,7 +118,7 @@ pub fn menu_panel<'a>(
 pub fn back_button_footer<'a>(state: &'a App) -> Option<Element<'a, AppMessage>> {
     Some(
         container(row![state.btn_back.view().padding(6)])
-            .height(56u32)
+            .height(56 as u32)
             .width(iced::Length::Fill)
             .align_x(iced::alignment::Horizontal::Left)
             .into(),
