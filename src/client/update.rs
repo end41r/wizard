@@ -61,12 +61,12 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
             ScoreBoardMessage::Update(_),
         )) => (),
-        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+        /* AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::Hovered(_),
         ))) => (),
         AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::NotHovered(_),
-        ))) => (),
+        ))) => (), */
         AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::CursorMoved(_, _),
         ))) => (),

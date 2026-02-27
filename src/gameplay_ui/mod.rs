@@ -196,7 +196,7 @@ impl Notifiable for GameView {
             }
             GameViewMessage::CardPlayed(played_by, card) => {
                 let mut tb = TaskBatcher::new();
-                tb.push(self.card_played_guardian.start(self.card_played_duration()));
+                //tb.push(self.card_played_guardian.start(self.card_played_duration()));
                 tb.push_msg(CardStackMessage::CardPlayed(card));
                 tb.push_msg(AvatarMessage::PlayShard(played_by));
                 if played_by == self.my_id.unwrap() {

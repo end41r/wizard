@@ -323,6 +323,8 @@ impl Notifiable for ViewableHand {
             HandMessage::ChangeTurn(player_id, valid_cards) => {
                 if player_id == self.my_id.unwrap() {
                     for card in self.cards.iter_mut() {
+                        println!("~~~###~~~VALID CARDS~~~###~~~");
+                        println!("{:?}", valid_cards);
                         card.my_turn = true;
                         card.validate(valid_cards.clone());
                     }

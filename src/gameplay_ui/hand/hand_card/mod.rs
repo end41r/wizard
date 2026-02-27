@@ -105,6 +105,7 @@ impl ViewableHandCard {
         } else {
             self.playable = false;
         }
+        println!("{}", self.playable);
     }
 }
 
