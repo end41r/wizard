@@ -36,7 +36,6 @@ pub enum CardMessage {
     Show(Card),
     CursorMoved(Card, Point),
     ShowPlayableStatus(Card, bool),
-    MakeClickable(Card),
 }
 
 impl Message for CardMessage {
@@ -50,7 +49,6 @@ pub struct ViewableHandCard {
     pub my_turn: bool,
     pub card: Card,
     window_size: Size,
-    clickable: bool,
     playable: bool,
     show_playable_status: bool,
     rotation: f32,
@@ -76,7 +74,6 @@ impl ViewableHandCard {
             my_turn: false,
             card,
             window_size,
-            clickable: true,
             playable,
             show_playable_status: false,
             rotation: 0.0,
@@ -99,9 +96,6 @@ impl ViewableHandCard {
         viewable_card
             .play_animation
             .on_end_reached(HandMessage::DeleteCard(card).convert_msg());
-        viewable_card
-            .hide_animation
-            .on_end_reached(CardMessage::MakeClickable(card).convert_msg());
         viewable_card.playable_animation.start_infinite();
         viewable_card
     }
@@ -135,7 +129,6 @@ impl Notifiable for ViewableHandCard {
             CardMessage::Played(card) => {
                 if card == self.card {
                     if self.playable {
-                        self.clickable = false;
                         self.play_animation.start();
                     } else {
                         self.false_played_animation.start();
@@ -160,7 +153,6 @@ impl Notifiable for ViewableHandCard {
             }
             CardMessage::Hide(card) => {
                 if card == self.card {
-                    self.clickable = false;
                     self.hide_animation.start();
                 };
             }
@@ -181,11 +173,6 @@ impl Notifiable for ViewableHandCard {
                 if card == self.card {
                     self.show_playable_status = do_show;
                 };
-            }
-            CardMessage::MakeClickable(card) => {
-                if card == self.card {
-                    self.clickable = true;
-                }
             }
         }
         tb.batch()
