@@ -229,7 +229,7 @@ impl Button {
 
         let content = stack![
             img,
-            container(text(label).size(txt_size))
+            container(text(label).size(txt_size).color(iced::Color::WHITE))
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
                 .center_x(iced::Fill)
