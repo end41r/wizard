@@ -55,6 +55,7 @@ impl ViewableTable {
                 self.window_size,
                 player.avatar,
                 player.id,
+                player.name.clone(),
             ));
         }
     }

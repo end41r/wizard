@@ -1,8 +1,8 @@
 use std::f32::consts::PI;
 
 use iced::{
-    widget::{image, image::FilterMethod, pin, stack, Container, Pin},
-    Point, Size, Task,
+    widget::{container, image, image::FilterMethod, pin, stack, text, Container, Pin},
+    Alignment, Color, Point, Size, Task,
 };
 
 use derive_more::{Deref, DerefMut};
@@ -105,6 +105,7 @@ impl InterpolationAnimation {
 pub struct ViewableAvatar {
     window_size: Size,
     id: PlayerId,
+    name: String,
     my_turn: bool,
     avatar: Avatar,
     shards: usize,
@@ -117,10 +118,11 @@ pub struct ViewableAvatar {
 }
 
 impl ViewableAvatar {
-    pub fn new(window_size: Size, avatar_kind: AvatarKind, id: PlayerId) -> Self {
+    pub fn new(window_size: Size, avatar_kind: AvatarKind, id: PlayerId, name: String) -> Self {
         let mut viewable_avatar = Self {
             window_size,
             id,
+            name,
             my_turn: false,
             avatar: avatar_kind.to_avatar(),
             shards: 20,
@@ -192,8 +194,11 @@ impl ViewableAvatar {
         ((shard_number as i64 + adjust) as f32 / (self.shards as i64 + adjust) as f32) * 2.0 * PI
             + self.shard_rotation_animation.get_rotation()
     }
+    fn sprite_size(&self) -> f32 {
+        AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width
+    }
     fn sprite<'a>(&self, pose: AvatarPose, compare_pose: AvatarPose) -> Pin<'a, AppMessage> {
-        let sprite_size: f32 = AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH * self.window_size.width;
+        let sprite_size: f32 = self.sprite_size();
         let opacity: f32 = if pose == compare_pose { 1.0 } else { 0.0 };
         pin(
             iced::widget::image(self.avatar.kind().img_path(compare_pose))
@@ -204,6 +209,9 @@ impl ViewableAvatar {
                 .height(sprite_size),
         )
         .position(self.avatar_img_position())
+    }
+    fn text_size(&self) -> f32 {
+        self.width() / 8.0
     }
 }
 
@@ -326,6 +334,22 @@ impl Viewable for ViewableAvatar {
                 );
             }
         }
+        avatar = avatar.push(
+            pin(container(
+                text(self.name.clone())
+                    .size(self.text_size())
+                    .color(Color::from_rgb(1.0, 0.85, 0.4)),
+            )
+            .width(self.width())
+            .height(self.height() - self.sprite_size() - self.avatar_img_position().y)
+            .align_x(Alignment::Center)
+            .align_y(Alignment::Center))
+            .position(Point::new(
+                0.0,
+                // 1.7 is an arbitrary number that results into a good text position.
+                self.sprite_size() + self.avatar_img_position().y * 1.7,
+            )),
+        );
         Container::new(avatar)
             .width(self.width())
             .height(self.height())
