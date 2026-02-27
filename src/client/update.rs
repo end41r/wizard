@@ -43,9 +43,9 @@ fn is_msg_not_ready(state: &App, msg: AppMessage) -> bool {
             AppMessage::GameViewMessage(GameViewMessage::NewRound(_, _, _)) => true,
             AppMessage::GameViewMessage(GameViewMessage::ChangeTurn(_, _)) => true,
             AppMessage::GameViewMessage(GameViewMessage::NewTrick) => true,
-            /* AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+            AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
                 ScoreBoardMessage::Update(_),
-            )) => true, */
+            )) => true,
             _ => false,
         }
     } else {
@@ -54,6 +54,7 @@ fn is_msg_not_ready(state: &App, msg: AppMessage) -> bool {
 }
 
 pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
+    // println!("{}", state.animation_count_down_latch);
     match msg_unaltered.clone() {
         AppMessage::AnimationTick => (),
         AppMessage::ServerTick => (),
@@ -66,9 +67,9 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::NotHovered(_),
         ))) => (),
-        /* AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::CursorMoved(_, _),
-        ))) => (), */
+        ))) => (),
         _ => {
             println!("{:?}", msg_unaltered)
         }
@@ -78,7 +79,8 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         tb.push_msg(queue_msg.clone())
     }
     state.msg_queue.clear();
-    if is_msg_not_ready(state, msg_unaltered.clone()) {
+    // Deactivate this for now
+    if false && is_msg_not_ready(state, msg_unaltered.clone()) {
         state.msg_queue_delayed.push(msg_unaltered);
         return tb.batch();
     }
@@ -93,7 +95,8 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
     match msg {
         AppMessage::DecrementACDL => {
             state.animation_count_down_latch -= 1;
-            if state.animation_count_down_latch == 0 {
+            // Deactivate this for now
+            if false && state.animation_count_down_latch == 0 {
                 for queue_msg in state.msg_queue_delayed.iter() {
                     tb.push_msg(queue_msg.clone())
                 }

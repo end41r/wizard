@@ -6,7 +6,7 @@ pub struct PlayableAnimation(CircularAutoReversingAnimation);
 
 impl PlayableAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(CircularAutoReversingAnimation::new(duration, false))
+        Self(CircularAutoReversingAnimation::new(duration))
     }
     pub fn get_opacity(&self) -> f32 {
         // This only affects the last 15% of the opacity.

@@ -122,8 +122,8 @@ impl Notifiable for ViewableHandCard {
         match msg {
             CardMessage::Hovered(card) => {
                 if card == self.card {
-                    tb.push(self.hover_animation.start());
-                    tb.push(self.focus_animation.start());
+                    self.hover_animation.start();
+                    self.focus_animation.start();
                 } else {
                     // Sometimes on_exit for a viewed card won't register
                     // and won't send the CardNotHovered msg.
@@ -136,9 +136,9 @@ impl Notifiable for ViewableHandCard {
                 if card == self.card {
                     if self.playable {
                         self.clickable = false;
-                        tb.push(self.play_animation.start());
+                        self.play_animation.start();
                     } else {
-                        tb.push(self.false_played_animation.start());
+                        self.false_played_animation.start();
                     }
                 };
             }
@@ -147,26 +147,26 @@ impl Notifiable for ViewableHandCard {
                     if self.playable {
                         tb.push(GameViewMessage::TryPlayCard(self.card).convert_msg_to_task())
                     } else {
-                        tb.push(self.false_played_animation.start());
+                        self.false_played_animation.start();
                     }
                 }
             }
             CardMessage::NotHovered(card) => {
                 if card == self.card {
-                    tb.push(self.hover_animation.reverse());
-                    tb.push(self.focus_animation.reset());
+                    self.hover_animation.reverse();
+                    self.focus_animation.reset();
                     self.rotation = 0.0;
                 };
             }
             CardMessage::Hide(card) => {
                 if card == self.card {
                     self.clickable = false;
-                    tb.push(self.hide_animation.start());
+                    self.hide_animation.start();
                 };
             }
             CardMessage::Show(card) => {
                 if card == self.card {
-                    tb.push(self.hide_animation.reverse());
+                    self.hide_animation.reverse();
                 };
             }
             CardMessage::CursorMoved(card, point) => {

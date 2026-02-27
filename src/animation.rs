@@ -40,7 +40,7 @@ use iced::Task;
 use std::f32::consts::PI;
 
 use crate::{
-    client::{AppMessage, TaskBatcher},
+    client::AppMessage,
     ui_element_traits::{Message, ReplaceUsize},
 };
 
@@ -138,8 +138,6 @@ pub fn ease_out_bounce(v: f32) -> f32 {
 
 #[derive(Clone, Debug)]
 pub struct AnimationCore {
-    critical: bool,
-    counter_increment: usize,
     after_max_frame_number: usize,
     current_frame_number: usize,
     animation_state: AnimationState,
@@ -148,10 +146,8 @@ pub struct AnimationCore {
 }
 
 impl AnimationCore {
-    fn new(duration: usize, critical: bool) -> Self {
+    fn new(duration: usize) -> Self {
         Self {
-            critical,
-            counter_increment: 0,
             after_max_frame_number: duration,
             current_frame_number: 0,
             animation_state: AnimationState::NotMoving,
@@ -159,57 +155,20 @@ impl AnimationCore {
             on_end: None,
         }
     }
-    pub fn start(&mut self) -> Task<AppMessage> {
+    pub fn start(&mut self) {
         self.animation_state = AnimationState::MovingForward;
-        self.increment()
     }
-    pub fn start_force(&mut self) -> Task<AppMessage> {
+    pub fn start_force(&mut self) {
         self.current_frame_number = 0;
         self.animation_state = AnimationState::MovingForward;
-        self.increment()
-    }
-    fn increment(&mut self) -> Task<AppMessage> {
-        if self.critical && self.check_increment() {
-            AppMessage::IncrementACDL.convert_msg_to_task()
-        } else {
-            Task::none()
-        }
-    }
-    fn decrement(&mut self) -> Task<AppMessage> {
-        if self.critical && self.check_decrement() {
-            AppMessage::DecrementACDL.convert_msg_to_task()
-        } else {
-            Task::none()
-        }
-    }
-    fn decrement_and_start_task(&mut self) -> Task<AppMessage> {
-        TaskBatcher::instant_batch([self.decrement(), self.start_reached_task()])
-    }
-    fn decrement_and_end_task(&mut self) -> Task<AppMessage> {
-        TaskBatcher::instant_batch([self.decrement(), self.end_task()])
-    }
-    fn check_increment(&mut self) -> bool {
-        if self.counter_increment == 0 {
-            self.counter_increment = 1;
-            return true;
-        }
-        false
-    }
-    fn check_decrement(&mut self) -> bool {
-        if self.counter_increment == 1 {
-            self.counter_increment = 0;
-            return true;
-        }
-        false
     }
     #[allow(dead_code)]
     pub fn interrupt(&mut self) {
         self.animation_state = AnimationState::NotMoving;
     }
-    pub fn reset(&mut self) -> Task<AppMessage> {
+    pub fn reset(&mut self) {
         self.current_frame_number = 0;
         self.animation_state = AnimationState::NotMoving;
-        self.decrement()
     }
     /// This function represents the progress of the animation ranging from 0.0 to 1.0.
     /// Choose an easing type to manipulate the look of the animation to your liking.
@@ -271,8 +230,8 @@ macro_rules! new_core {
     ($name:ident) => {
         impl $name {
             // This is marked as not used because CircularAnimation is as of now not used.
-            pub fn new(duration: usize, critical: bool) -> Self {
-                Self(AnimationCore::new(duration, critical))
+            pub fn new(duration: usize) -> Self {
+                Self(AnimationCore::new(duration))
             }
         }
     };
@@ -293,7 +252,7 @@ impl BasicAnimation {
                 self.current_frame_number += 1;
             } else {
                 self.animation_state = AnimationState::Ended;
-                return self.decrement_and_end_task();
+                return self.end_task();
             }
         }
         Task::none()
@@ -314,7 +273,7 @@ impl CircularAnimation {
                 (self.current_frame_number + 1) % self.after_max_frame_number;
             let frame_number_after = self.current_frame_number;
             if frame_number_before >= frame_number_after {
-                return self.decrement_and_end_task();
+                return self.end_task();
             }
         }
         Task::none()
@@ -324,15 +283,13 @@ impl CircularAnimation {
 #[derive(Clone, Debug, Deref, DerefMut)]
 pub struct ReversableBasicAnimation(AnimationCore);
 impl ReversableBasicAnimation {
-    pub fn reverse(&mut self) -> Task<AppMessage> {
+    pub fn reverse(&mut self) {
         self.animation_state = AnimationState::Reversing;
-        self.increment()
     }
     #[allow(dead_code)]
-    pub fn reverse_force(&mut self) -> Task<AppMessage> {
+    pub fn reverse_force(&mut self) {
         self.current_frame_number = self.after_max_frame_number;
         self.animation_state = AnimationState::Reversing;
-        self.increment()
     }
     pub fn next_frame(&mut self) -> Task<AppMessage> {
         match self.animation_state {
@@ -341,7 +298,7 @@ impl ReversableBasicAnimation {
                     self.current_frame_number += 1;
                 } else {
                     self.animation_state = AnimationState::NotMoving;
-                    return self.decrement_and_end_task();
+                    return self.end_task();
                 }
             }
             AnimationState::Reversing => {
@@ -349,7 +306,7 @@ impl ReversableBasicAnimation {
                     self.current_frame_number -= 1;
                 } else {
                     self.animation_state = AnimationState::Ended;
-                    return self.decrement_and_start_task();
+                    return self.start_reached_task();
                 }
             }
             _ => {}
@@ -377,7 +334,7 @@ impl AutoReversingAnimation {
                 } else {
                     self.current_frame_number = 0;
                     self.animation_state = AnimationState::NotMoving;
-                    return self.decrement_and_start_task();
+                    return self.start_reached_task();
                 }
             }
             _ => {}
@@ -399,7 +356,7 @@ impl CircularAutoReversingAnimation {
                     self.current_frame_number += 1;
                 } else {
                     self.animation_state = AnimationState::Reversing;
-                    return self.decrement_and_end_task();
+                    return self.end_task();
                 }
             }
             AnimationState::Reversing => {
@@ -407,7 +364,7 @@ impl CircularAutoReversingAnimation {
                     self.current_frame_number -= 1;
                 } else {
                     self.animation_state = AnimationState::MovingForward;
-                    return self.decrement_and_start_task();
+                    return self.start_reached_task();
                 }
             }
             _ => {}
@@ -419,7 +376,6 @@ impl CircularAutoReversingAnimation {
 #[derive(Clone, Debug)]
 pub struct AnimationStarter<MStart: Message + ReplaceUsize, MEnd: Message> {
     state: AnimationState,
-    counter_increment: usize,
     times: usize,
     animation_delay: usize,
     animation_length: usize,
@@ -435,7 +391,6 @@ impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEn
         Self {
             times: 0,
             state: AnimationState::NotMoving,
-            counter_increment: 0,
             animation_delay,
             animation_length: animation_duration,
             tick: 0,
@@ -447,8 +402,6 @@ impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEn
     pub fn start(&mut self, times: usize) -> Task<AppMessage> {
         self.times = times;
         self.state = AnimationState::MovingForward;
-        self.counter_increment += 1;
-        //AppMessage::IncrementACDL.convert_msg_to_task()
         Task::none()
     }
     pub fn next_frame(&mut self) -> Task<AppMessage> {
@@ -484,8 +437,6 @@ impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEn
         self.state = AnimationState::NotMoving;
         self.tick = 0;
         self.started = 0;
-        self.counter_increment -= 1;
-        //TaskBatcher::instant_batch([AppMessage::DecrementACDL.convert_msg_to_task(), end_task])
         end_task
     }
     fn start_single(&mut self) -> Task<AppMessage> {
@@ -493,5 +444,41 @@ impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEn
         self.on_start_single
             .replace_usize(self.started - 1)
             .convert_msg_to_task()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct AnimationChainGuardian {
+    tick: usize,
+    max_tick: usize,
+    is_moving: bool,
+}
+
+impl AnimationChainGuardian {
+    pub fn new() -> Self {
+        Self {
+            tick: 0,
+            max_tick: 0,
+            is_moving: false,
+        }
+    }
+    pub fn start(&mut self, chain_duration: usize) -> Task<AppMessage> {
+        self.is_moving = true;
+        self.tick = 0;
+        self.max_tick = chain_duration;
+        AppMessage::IncrementACDL.convert_msg_to_task()
+    }
+    pub fn next_frame(&mut self) -> Task<AppMessage> {
+        if self.is_moving {
+            if self.tick < self.max_tick {
+                self.tick += 1;
+            } else {
+                self.is_moving = false;
+                self.tick = 0;
+                self.max_tick = 0;
+                return AppMessage::DecrementACDL.convert_msg_to_task();
+            }
+        }
+        Task::none()
     }
 }

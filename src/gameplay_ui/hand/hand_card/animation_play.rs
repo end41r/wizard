@@ -6,7 +6,7 @@ pub struct PlayAnimation(BasicAnimation);
 
 impl PlayAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(BasicAnimation::new(duration, false))
+        Self(BasicAnimation::new(duration))
     }
     pub fn get_opacity(&self) -> f32 {
         1.0 - self.progress(Easing::InCubic)

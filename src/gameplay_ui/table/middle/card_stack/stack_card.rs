@@ -22,7 +22,7 @@ pub struct RevealAnimation(BasicAnimation);
 
 impl RevealAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(BasicAnimation::new(duration, false))
+        Self(BasicAnimation::new(duration))
     }
     pub fn get_rotation(&self) -> f32 {
         self.progress(Easing::InSine)
@@ -38,7 +38,7 @@ pub struct RemoveAnimation(BasicAnimation);
 
 impl RemoveAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(BasicAnimation::new(duration, false))
+        Self(BasicAnimation::new(duration))
     }
     pub fn get_opacity(&self) -> f32 {
         1.0 - self.progress(Easing::OutCubic)

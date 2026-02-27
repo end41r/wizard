@@ -27,7 +27,7 @@ pub struct DealAnimation(ReversableBasicAnimation);
 
 impl DealAnimation {
     fn new(duration: usize) -> Self {
-        Self(ReversableBasicAnimation::new(duration, false))
+        Self(ReversableBasicAnimation::new(duration))
     }
     fn get_offset(&self) -> f32 {
         self.progress(Easing::OutCubic)

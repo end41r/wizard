@@ -6,7 +6,7 @@ pub struct DrawAnimation(BasicAnimation);
 
 impl DrawAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(BasicAnimation::new(duration, false))
+        Self(BasicAnimation::new(duration))
     }
     pub fn get_contraction(&self) -> f32 {
         self.progress(Easing::Linear)

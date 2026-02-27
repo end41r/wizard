@@ -18,7 +18,7 @@ pub struct RevealAnimation(ReversableBasicAnimation);
 
 impl RevealAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(ReversableBasicAnimation::new(duration, false))
+        Self(ReversableBasicAnimation::new(duration))
     }
     pub fn get_opacity(&self) -> f32 {
         self.progress(Easing::InSine)
@@ -30,7 +30,7 @@ pub struct GlowAnimation(CircularAutoReversingAnimation);
 
 impl GlowAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(CircularAutoReversingAnimation::new(duration, false))
+        Self(CircularAutoReversingAnimation::new(duration))
     }
     pub fn get_opacity(&self) -> f32 {
         0.7 + 0.3 * self.progress(Easing::InSine)

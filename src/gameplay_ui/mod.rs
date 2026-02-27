@@ -8,6 +8,7 @@ use iced::{
 };
 
 use crate::{
+    animation::AnimationChainGuardian,
     api::{Card, Player, PlayerId, Suit},
     client::{views::ButtonMessage, App, AppMessage, TaskBatcher},
     gameplay_ui::{
@@ -144,6 +145,9 @@ pub struct GameView {
     viewable_hand: ViewableHand,
     viewable_table: ViewableTable,
     scoreboard: ScoreBoard,
+
+    // animation chain guardians
+    card_played_guardian: AnimationChainGuardian,
 }
 
 impl GameView {
@@ -155,10 +159,14 @@ impl GameView {
             viewable_hand: ViewableHand::new(window_size),
             viewable_table: ViewableTable::new(window_size),
             scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
+            card_played_guardian: AnimationChainGuardian::new(),
         }
     }
     pub fn update_buttons_with_msg(&mut self, btn_msg: ButtonMessage) -> Task<AppMessage> {
         self.scoreboard.btn_submit_bid.update_with_msg(btn_msg)
+    }
+    pub fn card_played_duration(&self) -> usize {
+        100
     }
 }
 
@@ -188,6 +196,7 @@ impl Notifiable for GameView {
             }
             GameViewMessage::CardPlayed(played_by, card) => {
                 let mut tb = TaskBatcher::new();
+                tb.push(self.card_played_guardian.start(self.card_played_duration()));
                 tb.push_msg(CardStackMessage::CardPlayed(card));
                 tb.push_msg(AvatarMessage::PlayShard(played_by));
                 if played_by == self.my_id.unwrap() {
@@ -227,6 +236,7 @@ impl Animated for GameView {
             self.viewable_hand.update_animations(),
             self.viewable_table.update_animations(),
             self.scoreboard.update_animations(),
+            self.card_played_guardian.next_frame(),
         ])
     }
 }

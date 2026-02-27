@@ -59,7 +59,7 @@ pub struct ViewPlayedCardsAnimation(ReversableBasicAnimation);
 
 impl ViewPlayedCardsAnimation {
     pub fn new(duration: usize) -> Self {
-        Self(ReversableBasicAnimation::new(duration, false))
+        Self(ReversableBasicAnimation::new(duration))
     }
     pub fn get_progress(&self) -> f32 {
         self.progress(Easing::OutCubic)
@@ -105,7 +105,7 @@ impl Notifiable for ViewableCardStack {
             CardStackMessage::CardPlayed(card) => {
                 let mut tb = TaskBatcher::new();
                 let mut stack_card = ViewableStackCard::new(self.window_size, card);
-                tb.push(stack_card.reveal_animation.start());
+                stack_card.reveal_animation.start();
                 self.cards.push(stack_card);
                 if self.cards.len() == 1 {
                     tb.push_msg(CardDeckMessage::ChangeGlow(card));
@@ -122,25 +122,25 @@ impl Notifiable for ViewableCardStack {
             }
             CardStackMessage::HideCard(id) => {
                 let card_count: usize = self.cards.len();
-                return self.cards[card_count - 1 - id].remove_animation.start();
+                self.cards[card_count - 1 - id].remove_animation.start();
             }
             CardStackMessage::RemoveAllCards => {
                 self.cards.clear();
             }
             CardStackMessage::ShowPlayedCards => {
-                return self.view_played_cards_animation.start();
+                self.view_played_cards_animation.start();
             }
             CardStackMessage::HidePlayedCards => {
                 if !self.always_show_played_cards {
-                    return self.view_played_cards_animation.reverse();
+                    self.view_played_cards_animation.reverse();
                 }
             }
             CardStackMessage::SwitchAlwaysShowPlayedCards => {
                 self.always_show_played_cards = self.always_show_played_cards.not();
                 if self.always_show_played_cards {
-                    return self.view_played_cards_animation.start();
+                    self.view_played_cards_animation.start();
                 } else {
-                    return self.view_played_cards_animation.reverse();
+                    self.view_played_cards_animation.reverse();
                 }
             }
         };

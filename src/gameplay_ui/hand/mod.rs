@@ -49,7 +49,7 @@ pub struct HideAnimationTracker(ReversableBasicAnimation);
 
 impl HideAnimationTracker {
     pub fn new(duration: usize) -> Self {
-        Self(ReversableBasicAnimation::new(duration, false))
+        Self(ReversableBasicAnimation::new(duration))
     }
 }
 
@@ -274,7 +274,7 @@ impl Notifiable for ViewableHand {
             }
             HandMessage::Draw(card_number) => {
                 if card_number <= self.cards.len() {
-                    tb.push(self.cards[card_number].draw_animation.start())
+                    self.cards[card_number].draw_animation.start()
                 }
             }
             HandMessage::PlayedCard(played_card) => {
@@ -293,13 +293,13 @@ impl Notifiable for ViewableHand {
                     }
                 }
                 self.played_card = None;
-                tb.push(self.hide_animation_tracker.start())
+                self.hide_animation_tracker.start()
             }
             HandMessage::DeleteCard(card) => {
                 self.cards.retain(|vhc| vhc.card != card);
             }
             HandMessage::ShowCards => {
-                tb.push(self.hide_animation_tracker.reset());
+                self.hide_animation_tracker.reset();
                 self.allow_hover = true;
                 for card in self.cards.iter_mut() {
                     tb.push(card.update_with_msg(CardMessage::Show(card.card)));

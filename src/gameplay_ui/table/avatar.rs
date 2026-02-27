@@ -39,7 +39,7 @@ pub struct SpriteAnimation(CircularAnimation);
 
 impl SpriteAnimation {
     fn new() -> Self {
-        Self(CircularAnimation::new(100, false))
+        Self(CircularAnimation::new(100))
     }
     fn new_frame(&self) -> bool {
         self.current_frame_number() == 80 || self.current_frame_number() == self.max_frame_number()
@@ -57,7 +57,7 @@ pub struct RevealAnimation(ReversableBasicAnimation);
 
 impl RevealAnimation {
     fn new() -> Self {
-        Self(ReversableBasicAnimation::new(100, false))
+        Self(ReversableBasicAnimation::new(100))
     }
     fn get_opacity(&self) -> f32 {
         self.progress(Easing::OutElastic)
@@ -69,7 +69,7 @@ pub struct PlayShardAnimation(BasicAnimation);
 
 impl PlayShardAnimation {
     fn new() -> Self {
-        Self(BasicAnimation::new(100, false))
+        Self(BasicAnimation::new(100))
     }
     fn get_opacity(&self) -> f32 {
         1.0 - self.progress(Easing::OutCubic)
@@ -81,7 +81,7 @@ pub struct ShardRotationAnimation(CircularAnimation);
 
 impl ShardRotationAnimation {
     fn new() -> Self {
-        Self(CircularAnimation::new(400, false))
+        Self(CircularAnimation::new(400))
     }
     /// Scaled to PI not to a 100%.
     fn get_rotation(&self) -> f32 {
@@ -94,7 +94,7 @@ pub struct InterpolationAnimation(BasicAnimation);
 
 impl InterpolationAnimation {
     fn new() -> Self {
-        Self(BasicAnimation::new(100, false))
+        Self(BasicAnimation::new(100))
     }
     fn get_progress(&self) -> f32 {
         self.progress(Easing::OutElastic)
@@ -222,25 +222,23 @@ impl Notifiable for ViewableAvatar {
             AvatarMessage::AddShards(id, shards) => {
                 if self.id == id {
                     self.shards = shards;
-                    return self.reveal_animation.start_force();
+                    self.reveal_animation.start_force();
                 }
             }
             AvatarMessage::PlayShard(id) => {
                 if self.id == id && self.shards > 0 {
-                    let mut tb = TaskBatcher::new();
                     self.avatar.start_casting();
                     self.interpolation = true;
-                    tb.push(self.play_shard_animation.start_force());
-                    tb.push(self.sprite_animation.start_force());
-                    tb.push(self.interpolation_animation.start_force());
-                    return tb.batch();
+                    self.play_shard_animation.start_force();
+                    self.sprite_animation.start_force();
+                    self.interpolation_animation.start_force();
                 }
             }
             AvatarMessage::InterpolationEnded(id) => {
                 if self.id == id && self.shards > 0 {
                     self.shards -= 1;
                     self.interpolation = false;
-                    return self.play_shard_animation.reset();
+                    self.play_shard_animation.reset();
                 }
             }
             AvatarMessage::ChangeTurn(id) => {

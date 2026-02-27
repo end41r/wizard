@@ -115,15 +115,13 @@ impl Notifiable for ViewableCardDeck {
         match msg {
             CardDeckMessage::AddDeckCard(cycle) => {
                 let mut viewable_deck_card = ViewableDeckCard::new(self.window_size, cycle, true);
-                let task = viewable_deck_card.deal_animation.start();
+                viewable_deck_card.deal_animation.start();
                 self.deck_cards.push(viewable_deck_card);
-                return task;
             }
             CardDeckMessage::DealDeckCard(cycle) => {
                 let mut viewable_deck_card = ViewableDeckCard::new(self.window_size, cycle, false);
-                let task = viewable_deck_card.deal_animation.start();
+                viewable_deck_card.deal_animation.start();
                 self.deck_cards.push(viewable_deck_card);
-                return task;
             }
             CardDeckMessage::ClearTrumpCard => {
                 self.trump_card = None;
@@ -169,10 +167,8 @@ impl Notifiable for ViewableCardDeck {
                 }
             }
             CardDeckMessage::Shuffle => {
-                return TaskBatcher::instant_batch([
-                    self.glow.reveal_animation.reverse(),
-                    TrumpCardMessage::RemovePart1.convert_msg_to_task(),
-                ])
+                self.glow.reveal_animation.reverse();
+                return TrumpCardMessage::RemovePart1.convert_msg_to_task();
             }
             CardDeckMessage::ChangeGlow(card) => {
                 self.glow.change_color(card);
@@ -181,7 +177,7 @@ impl Notifiable for ViewableCardDeck {
                 return self.glow.update_with_msg(glow_msg);
             }
             CardDeckMessage::ShowGlow => {
-                return self.glow.reveal_animation.start_force();
+                self.glow.reveal_animation.start_force();
             }
         }
         Task::none()
