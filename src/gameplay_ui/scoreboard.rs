@@ -186,18 +186,64 @@ impl ScoreBoard {
         }
         let max_bid = self.info.round_number + 1;
 
+        let is_valid_bid = if let Ok(bid) = self.info.bid_input.parse::<usize>() {
+            if bid > max_bid {
+                false
+            } else {
+                // enforce sum != max_bid for last bidder
+                let num_players = self.info.player_order.len();
+                let bids_placed = self.info.bids.len();
+                if bids_placed + 1 == num_players {
+                    let sum_existing: usize = self.info.bids.values().sum();
+                    sum_existing + bid != max_bid
+                } else {
+                    true
+                }
+            }
+        } else {
+            false
+        };
+
+        let bid_hint = if !self.info.bid_input.is_empty() {
+            if let Ok(bid) = self.info.bid_input.parse::<usize>() {
+                if bid > max_bid {
+                    format!("Max bid is {max_bid}")
+                } else if !is_valid_bid {
+                    let sum_existing: usize = self.info.bids.values().sum();
+                    let forbidden = max_bid - sum_existing;
+                    format!("Can't bid {forbidden} as last bidder")
+                } else {
+                    format!("(0 to {max_bid})")
+                }
+            } else {
+                "Enter a number".to_string()
+            }
+        } else {
+            format!("(0 to {max_bid})")
+        };
+
+        let submit_button: iced::Element<'a, AppMessage> = if is_valid_bid {
+            self.btn_submit_bid.view().into()
+        } else {
+            container(None::<&str>).into()
+        };
+
         let panel = column![
-            text("Bid:").size(16).color(Color::from_rgb(1.0, 1.0, 1.0)),
+            text("Bid:").size(16).color(Color::WHITE),
             row![
                 text_input("Enter bid", &self.info.bid_input)
                     .on_input(AppMessage::BidInputChanged)
                     .width(80),
-                self.btn_submit_bid.view(),
+                submit_button,
             ]
             .spacing(6),
-            text(format!("(0 to {max_bid})"))
+            text(bid_hint)
                 .size(12)
-                .color(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+                .color(if is_valid_bid || self.info.bid_input.is_empty() {
+                    Color::from_rgba(1.0, 1.0, 1.0, 0.7)
+                } else {
+                    Color::from_rgba(1.0, 0.4, 0.4, 0.9)
+                }),
         ]
         .spacing(6);
 
@@ -213,7 +259,7 @@ impl ScoreBoard {
         let panel = column![
             text("Select Trump Suit:")
                 .size(16)
-                .color(Color::from_rgb(1.0, 1.0, 1.0)),
+                .color(Color::WHITE),
             row![
                 button(Image::new("assets/cards/variations/red_1.png"))
                     .width(80)
