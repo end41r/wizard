@@ -28,16 +28,15 @@ use std::ops::Not;
 
 #[derive(Debug, Clone)]
 pub enum CardMessage {
-    Played(usize),
-    Clicked(usize),
-    Hovered(usize),
-    NotHovered(usize),
-    Hide(usize),
-    Show(usize),
-    Draw(usize),
-    CursorMoved(usize, Point),
-    ShowPlayableStatus(usize, bool),
-    MakeClickable(usize),
+    Played(Card),
+    Clicked(Card),
+    Hovered(Card),
+    NotHovered(Card),
+    Hide(Card),
+    Show(Card),
+    CursorMoved(Card, Point),
+    ShowPlayableStatus(Card, bool),
+    MakeClickable(Card),
 }
 
 impl Message for CardMessage {
@@ -46,37 +45,17 @@ impl Message for CardMessage {
     }
 }
 
-impl ReplaceUsize for CardMessage {
-    fn replace_usize(&self, value: usize) -> Self {
-        match self {
-            CardMessage::Played(_) => CardMessage::Played(value),
-            CardMessage::Clicked(_) => CardMessage::Clicked(value),
-            CardMessage::Hovered(_) => CardMessage::Hovered(value),
-            CardMessage::NotHovered(_) => CardMessage::NotHovered(value),
-            CardMessage::Hide(_) => CardMessage::Hide(value),
-            CardMessage::Show(_) => CardMessage::Show(value),
-            CardMessage::Draw(_) => CardMessage::Draw(value),
-            CardMessage::CursorMoved(_, point) => CardMessage::CursorMoved(value, *point),
-            CardMessage::ShowPlayableStatus(_, bool) => {
-                CardMessage::ShowPlayableStatus(value, *bool)
-            }
-            CardMessage::MakeClickable(_) => CardMessage::MakeClickable(value),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ViewableHandCard {
-    id: usize,
     pub my_turn: bool,
-    card: Card,
+    pub card: Card,
     window_size: Size,
     clickable: bool,
     playable: bool,
     show_playable_status: bool,
     rotation: f32,
 
-    draw_animation: DrawAnimation,
+    pub draw_animation: DrawAnimation,
     hover_animation: HoverAnimation,
     play_animation: PlayAnimation,
     playable_animation: PlayableAnimation,
@@ -91,10 +70,9 @@ pub struct ViewableHandCard {
 }
 
 impl ViewableHandCard {
-    pub fn new(id: usize, card: Card, window_size: Size, playable: bool) -> Self {
+    pub fn new(card: Card, window_size: Size, playable: bool) -> Self {
         let play_duration: usize = 12;
         let mut viewable_card: ViewableHandCard = Self {
-            id,
             my_turn: false,
             card,
             window_size,
@@ -120,15 +98,12 @@ impl ViewableHandCard {
         };
         viewable_card
             .play_animation
-            .on_end_reached(HandMessage::DeleteCard(id).convert_msg());
+            .on_end_reached(HandMessage::DeleteCard(card).convert_msg());
         viewable_card
             .hide_animation
-            .on_end_reached(CardMessage::MakeClickable(id).convert_msg());
+            .on_end_reached(CardMessage::MakeClickable(card).convert_msg());
         viewable_card.playable_animation.start_infinite();
         viewable_card
-    }
-    pub fn card(&self) -> Card {
-        self.card
     }
     pub fn validate(&mut self, valid_cards: Vec<Card>) {
         if valid_cards.contains(&self.card) {
@@ -145,8 +120,9 @@ impl Notifiable for ViewableHandCard {
     fn update_with_msg(&mut self, msg: CardMessage) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
         match msg {
-            CardMessage::Hovered(id) => {
-                if id == self.id {
+            CardMessage::Hovered(card) => {
+                if card == self.card {
+                    println!("hovered");
                     tb.push(self.hover_animation.start());
                     tb.push(self.focus_animation.start());
                 } else {
@@ -154,11 +130,11 @@ impl Notifiable for ViewableHandCard {
                     // and won't send the CardNotHovered msg.
                     // To ensure that an unhovered card is not sticking up all the time
                     // send NotHovered to all cards except the hovered one.
-                    tb.push(CardMessage::NotHovered(self.id).convert_msg_to_task())
+                    tb.push(CardMessage::NotHovered(card).convert_msg_to_task())
                 };
             }
-            CardMessage::Played(id) => {
-                if id == self.id {
+            CardMessage::Played(card) => {
+                if card == self.card {
                     if self.playable {
                         self.clickable = false;
                         tb.push(self.play_animation.start());
@@ -167,8 +143,8 @@ impl Notifiable for ViewableHandCard {
                     }
                 };
             }
-            CardMessage::Clicked(id) => {
-                if id == self.id {
+            CardMessage::Clicked(card) => {
+                if card == self.card {
                     if self.playable {
                         tb.push(GameViewMessage::TryPlayCard(self.card).convert_msg_to_task())
                     } else {
@@ -176,44 +152,39 @@ impl Notifiable for ViewableHandCard {
                     }
                 }
             }
-            CardMessage::NotHovered(id) => {
-                if id == self.id {
+            CardMessage::NotHovered(card) => {
+                if card == self.card {
                     tb.push(self.hover_animation.reverse());
                     tb.push(self.focus_animation.reset());
                     self.rotation = 0.0;
                 };
             }
-            CardMessage::Hide(id) => {
-                if id == self.id {
+            CardMessage::Hide(card) => {
+                if card == self.card {
                     self.clickable = false;
                     tb.push(self.hide_animation.start());
                 };
             }
-            CardMessage::Show(id) => {
-                if id == self.id {
+            CardMessage::Show(card) => {
+                if card == self.card {
                     tb.push(self.hide_animation.reverse());
                 };
             }
-            CardMessage::Draw(id) => {
-                if id == self.id {
-                    tb.push(self.draw_animation.start());
-                };
-            }
-            CardMessage::CursorMoved(id, point) => {
-                if id == self.id {
+            CardMessage::CursorMoved(card, point) => {
+                if card == self.card {
                     let halve_card_width: f32 = self.width() / 2.0;
                     let factor_width: f32 = (point.x - halve_card_width) / halve_card_width;
                     // The factor 0.05 is representing a 5% rotation offset on maximum.
                     self.rotation = 0.05 * factor_width;
                 };
             }
-            CardMessage::ShowPlayableStatus(id, do_show) => {
-                if id == self.id {
+            CardMessage::ShowPlayableStatus(card, do_show) => {
+                if card == self.card {
                     self.show_playable_status = do_show;
                 };
             }
-            CardMessage::MakeClickable(id) => {
-                if id == self.id {
+            CardMessage::MakeClickable(card) => {
+                if card == self.card {
                     self.clickable = true;
                 }
             }
@@ -330,11 +301,11 @@ impl Viewable for ViewableHandCard {
             }
         };
 
-        let msg_hovered: AppMessage = CardMessage::Hovered(self.id).convert_msg();
-        let msg_not_hoverd: AppMessage = CardMessage::NotHovered(self.id).convert_msg();
-        let card_id: usize = self.id;
+        let msg_hovered: AppMessage = CardMessage::Hovered(self.card).convert_msg();
+        let msg_not_hoverd: AppMessage = CardMessage::NotHovered(self.card).convert_msg();
+        let card_data = self.card;
         let msg_cursor_moved =
-            move |position: Point| CardMessage::CursorMoved(card_id, position).convert_msg();
+            move |position: Point| CardMessage::CursorMoved(card_data, position).convert_msg();
 
         let mut mouse_area = MouseArea::new(card)
             .on_enter(msg_hovered)
@@ -344,7 +315,7 @@ impl Viewable for ViewableHandCard {
         if self.my_turn {
             let msg_show_playable_status =
                 HandMessage::ShowPlayableStatus(self.show_playable_status.not()).convert_msg();
-            let msg_double_clicked = CardMessage::Clicked(self.id).convert_msg();
+            let msg_double_clicked = CardMessage::Clicked(self.card).convert_msg();
             let interaction: Interaction = if self.playable {
                 Interaction::Pointer
             } else {
