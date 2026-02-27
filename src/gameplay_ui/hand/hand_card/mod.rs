@@ -129,7 +129,7 @@ impl Notifiable for ViewableHandCard {
                     // and won't send the CardNotHovered msg.
                     // To ensure that an unhovered card is not sticking up all the time
                     // send NotHovered to all cards except the hovered one.
-                    tb.push(CardMessage::NotHovered(card).convert_msg_to_task())
+                    tb.push(CardMessage::NotHovered(self.card).convert_msg_to_task())
                 };
             }
             CardMessage::Played(card) => {

@@ -66,9 +66,9 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::NotHovered(_),
         ))) => (),
-        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+        /* AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::CursorMoved(_, _),
-        ))) => (),
+        ))) => (), */
         _ => {
             println!("{:?}", msg_unaltered)
         }

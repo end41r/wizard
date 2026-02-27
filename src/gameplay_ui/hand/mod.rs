@@ -60,7 +60,6 @@ pub struct ViewableHand {
     pub cards: Vec<ViewableHandCard>,
     hovered_card_row_low: bool,
     allow_hover: bool,
-    hovered_card: Option<Card>,
     played_card: Option<Card>,
     top_card_upper: Option<Card>,
     top_card_lower: Option<Card>,
@@ -78,7 +77,6 @@ impl ViewableHand {
             cards: Vec::new(),
             hovered_card_row_low: true,
             allow_hover: true,
-            hovered_card: None,
             played_card: None,
             top_card_upper: None,
             top_card_lower: None,
@@ -252,7 +250,6 @@ impl Notifiable for ViewableHand {
                     CardMessage::Hovered(card) => {
                         if self.allow_hover {
                             tb.push(self.update_cards_with_msg(card_msg));
-                            self.hovered_card = Some(card);
                             if self.upper_row_exists() &&
                                // AI-Usage: Claude.ai for learning how to see if value is in a vec
                                //           without the last few elements.
@@ -311,7 +308,6 @@ impl Notifiable for ViewableHand {
             HandMessage::DrawCards(cards, valid_cards) => {
                 self.set_cards(cards, valid_cards);
                 self.hovered_card_row_low = true;
-                self.hovered_card = None;
                 self.top_card_lower = None;
                 self.top_card_upper = None;
                 self.update_size(self.window_size);
