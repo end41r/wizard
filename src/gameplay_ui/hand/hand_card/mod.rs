@@ -322,7 +322,7 @@ impl Viewable for ViewableHandCard {
             };
             mouse_area = mouse_area
                 .on_right_press(msg_show_playable_status)
-                .on_double_click(msg_double_clicked)
+                .on_press(msg_double_clicked)
                 .interaction(interaction);
         }
 
