@@ -106,10 +106,10 @@ pub struct ScoreBoard {
 impl ScoreBoard {
     /// AI Usage: write this function to get player order sorted by score
     fn sorted_player_order_by_score(&self) -> Vec<PlayerId> {
-            let mut players: Vec<PlayerId> = self.info.player_order.clone();
-            players.sort_by_key(|pid| std::cmp::Reverse(*self.info.scores.get(pid).unwrap_or(&0)));
-            players
-        }
+        let mut players: Vec<PlayerId> = self.info.player_order.clone();
+        players.sort_by_key(|pid| std::cmp::Reverse(*self.info.scores.get(pid).unwrap_or(&0)));
+        players
+    }
     pub fn new(window_size: Size, info: ScoreBoardInfo) -> Self {
         Self {
             window_size,
@@ -267,9 +267,7 @@ impl ScoreBoard {
         }
 
         let panel = column![
-            text("Select Trump Suit:")
-                .size(16)
-                .color(Color::WHITE),
+            text("Select Trump Suit:").size(16).color(Color::WHITE),
             row![
                 button(Image::new("assets/cards/variations/red_1.png"))
                     .width(80)
