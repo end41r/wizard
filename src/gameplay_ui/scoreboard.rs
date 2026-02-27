@@ -28,6 +28,7 @@ pub struct ScoreBoardInfo {
     is_bidding_phase: bool,
     is_my_turn: bool,
     bid_input: String,
+    current_player: Option<PlayerId>,
 }
 
 impl Default for ScoreBoardInfo {
@@ -45,6 +46,7 @@ impl Default for ScoreBoardInfo {
             is_bidding_phase: false,
             is_my_turn: false,
             bid_input: String::new(),
+            current_player: None,
         }
     }
 }
@@ -63,6 +65,7 @@ impl ScoreBoardInfo {
         is_bidding_phase: bool,
         is_my_turn: bool,
         bid_input: String,
+        current_player: Option<PlayerId>,
     ) -> Self {
         Self {
             round_number,
@@ -77,6 +80,7 @@ impl ScoreBoardInfo {
             is_bidding_phase,
             is_my_turn,
             bid_input,
+            current_player,
         }
     }
 }
@@ -100,6 +104,12 @@ pub struct ScoreBoard {
 }
 
 impl ScoreBoard {
+    /// AI Usage: write this function to get player order sorted by score
+    fn sorted_player_order_by_score(&self) -> Vec<PlayerId> {
+            let mut players: Vec<PlayerId> = self.info.player_order.clone();
+            players.sort_by_key(|pid| std::cmp::Reverse(*self.info.scores.get(pid).unwrap_or(&0)));
+            players
+        }
     pub fn new(window_size: Size, info: ScoreBoardInfo) -> Self {
         Self {
             window_size,
@@ -115,9 +125,9 @@ impl ScoreBoard {
         tricks: &str,
         bid: &str,
         is_header: bool,
-        is_self: bool,
+        is_current_turn: bool,
     ) -> Container<'a, AppMessage> {
-        let text_color = if is_self {
+        let text_color = if is_current_turn {
             Color::from_rgb(1.0, 0.85, 0.4)
         } else {
             Color::WHITE
@@ -162,18 +172,18 @@ impl ScoreBoard {
         container(row_content)
             .width(self.width())
             .style(move |_theme| container::Style {
-                background: Some(if is_self {
+                background: Some(if is_current_turn {
                     Color::from_rgba(1.0, 0.85, 0.4, 0.15).into()
                 } else {
                     Color::from_rgba(0.0, 0.0, 0.0, if is_header { 0.4 } else { 0.2 }).into()
                 }),
                 border: Border {
-                    color: if is_self {
+                    color: if is_current_turn {
                         Color::from_rgba(1.0, 0.85, 0.4, 0.5)
                     } else {
                         Color::from_rgba(1.0, 1.0, 1.0, 0.2)
                     },
-                    width: if is_self { 1.5 } else { 1.0 },
+                    width: if is_current_turn { 1.5 } else { 1.0 },
                     radius: 2.0.into(),
                 },
                 ..Default::default()
@@ -370,12 +380,12 @@ impl Viewable for ScoreBoard {
         // Header row
         scores_col = scores_col.push(self.scoreboard_row("Name", "Pkt", "Won", "Bid", true, false));
 
-        for player_id in &self.info.player_order {
-            let mut player_name = self.get_player_name(*player_id);
-            let score = self.info.scores.get(player_id).unwrap_or(&0);
-            let tricks = self.info.tricks_won.get(player_id).unwrap_or(&0);
-            let bid = self.info.bids.get(player_id).unwrap_or(&0);
-            let is_self = self.info.my_id == Some(*player_id);
+        for player_id in self.sorted_player_order_by_score() {
+            let mut player_name = self.get_player_name(player_id);
+            let score = self.info.scores.get(&player_id).unwrap_or(&0);
+            let tricks = self.info.tricks_won.get(&player_id).unwrap_or(&0);
+            let bid = self.info.bids.get(&player_id).unwrap_or(&0);
+            let is_current_turn = self.info.current_player == Some(player_id);
 
             if player_name.is_empty() {
                 player_name = "???".to_string();
@@ -387,7 +397,7 @@ impl Viewable for ScoreBoard {
                 &tricks.to_string(),
                 &bid.to_string(),
                 false,
-                is_self,
+                is_current_turn,
             ));
         }
 

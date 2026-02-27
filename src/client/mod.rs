@@ -156,6 +156,7 @@ impl App {
             self.is_bidding_phase,
             self.is_my_turn,
             self.bid_input.clone(),
+            self.current_player,
         )
     }
 
