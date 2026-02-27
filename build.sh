@@ -4,6 +4,7 @@ TARGET="linux"
 DEST_PATH="/mnt/c/Users/capos/Downloads"
 BUILD_TYPE="release"
 FEATURES=""
+EXE_EXT=""
 
 while getopts "t:fh" opt; do
     case $opt in
@@ -35,11 +36,9 @@ case $TARGET in
         ;;
     linux)
         TARGET_NAME="x86_64-unknown-linux-gnu"
-        EXE_EXT=""
         ;;
     macos)
         TARGET_NAME="aarch64-apple-darwin"
-        EXE_EXT=""
         ;;
     *)
         echo "Unknown target: $TARGET"
