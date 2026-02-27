@@ -19,5 +19,6 @@ pub fn view(state: &App) -> Element<'_, AppMessage> {
         MenuState::Lobby => lobby::view_lobby_menu(state),
         MenuState::Playing => gameplay::view_gameplay(state),
         MenuState::PlayingTest => gameplay::view_test_gameplay(state),
+        MenuState::Options => menu::view_options_menu(state),
     }
 }

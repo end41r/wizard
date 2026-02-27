@@ -42,6 +42,13 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.toggle_music();
             Task::none()
         }
+        AppMessage::MusicVolumeChanged(volume) => {
+            state.music_volume = volume as i32;
+            if let Some(a) = &mut state.audio {
+                a.set_music_volume(volume);
+            }
+            Task::none()
+        }
         AppMessage::Host => {
             let local_ip = crate::server::local_ip();
             state.msg = format!("Hosting on {local_ip}");
@@ -171,7 +178,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             }
             Task::none()
         }
-
         AppMessage::GameRules => {
             state.set_menu(MenuState::Rules);
             Task::none()
@@ -300,6 +306,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.btn_join.update_with_msg(btn_msg.clone());
             state.btn_rules.update_with_msg(btn_msg.clone());
             state.btn_exit.update_with_msg(btn_msg.clone());
+            state.btn_options.update_with_msg(btn_msg.clone());
 
             state.btn_create_lobby.update_with_msg(btn_msg.clone());
             state.btn_back.update_with_msg(btn_msg.clone());
@@ -307,7 +314,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.btn_send_chat.update_with_msg(btn_msg.clone());
             state.btn_start_game.update_with_msg(btn_msg.clone());
             state.btn_back_to_menu.update_with_msg(btn_msg.clone());
-
             state.btn_ready_owned.update_with_msg(btn_msg);
             Task::none()
         }
@@ -319,6 +325,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.btn_join.update_animations();
             state.btn_rules.update_animations();
             state.btn_exit.update_animations();
+            state.btn_options.update_animations();
 
             state.btn_create_lobby.update_animations();
             state.btn_back.update_animations();
@@ -346,6 +353,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 pending_msgs.push(AppMessage::CloseGame);
             });
 
+            state.btn_options.check_click_end(|_| {
+                pending_msgs.push(AppMessage::Navigate(MenuState::Options));
+            });
             state.btn_create_lobby.check_click_end(|&_id| {
                 pending_msgs.push(AppMessage::CreateLobby);
             });

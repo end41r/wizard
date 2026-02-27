@@ -92,7 +92,11 @@ impl Audio {
         }
     }
 
-    //pub fn set_music_volume(&mut self, v: f32) { self.music_volume = v; self.music_sink.set_volume(v); }
+    pub fn set_music_volume(&mut self, v: f32) {
+        let clamped = v.clamp(0.0, 100.0) / 100.0;
+        self.music_volume = clamped;
+        self.music_sink.set_volume(clamped);
+    }
     //pub fn set_sfx_volume(&mut self, v: f32) { self.sfx_volume = v; }
 
     /// Temporarily mute/unmute music sink (keeps configured music_volume).

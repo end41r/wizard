@@ -54,6 +54,7 @@ pub enum MenuState {
     Rules,
     Lobby,
     Playing,
+    Options,
     #[allow(dead_code)]
     PlayingTest,
 }
@@ -107,6 +108,7 @@ pub struct App {
     pub btn_join: crate::client::views::Button,
     pub btn_rules: crate::client::views::Button,
     pub btn_exit: crate::client::views::Button,
+    pub btn_options: crate::client::views::Button,
 
     // Buttons for other menus
     pub btn_create_lobby: crate::client::views::Button,
@@ -120,6 +122,7 @@ pub struct App {
 
     // Audio subsystem (may be None if audio initialization fails)
     pub audio: Option<crate::client::audio::Audio>,
+    pub music_volume: i32,
     // prepared flag for a future mute button
     pub music_muted: bool,
 }
@@ -182,6 +185,13 @@ impl Default for App {
             btn_join: crate::client::views::Button::new(
                 1,
                 "Beitreten",
+                "assets/menu/button1.png",
+                180,
+                44,
+            ),
+            btn_options: crate::client::views::Button::new(
+                4,
+                "Optionen",
                 "assets/menu/button1.png",
                 180,
                 44,
@@ -253,6 +263,7 @@ impl Default for App {
             ),
 
             audio: None,
+            music_volume: 100,
             music_muted: false,
         };
 
@@ -280,7 +291,7 @@ impl App {
         // decide music first (avoids moving `menu` before we use it)
         if let Some(a) = &mut self.audio {
             match menu {
-                MenuState::Main | MenuState::Host | MenuState::Join | MenuState::Rules => {
+                MenuState::Main | MenuState::Host | MenuState::Join | MenuState::Rules | MenuState::Options => {
                     a.play_music(crate::client::audio::Music::Menu);
                 }
                 MenuState::Lobby => {
@@ -346,6 +357,9 @@ pub enum AppMessage {
 
     // Button messages from view widgets
     ButtonMessage(crate::client::views::ButtonMessage),
+
+    // Audio messages
+    MusicVolumeChanged(f32),
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
