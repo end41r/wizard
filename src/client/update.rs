@@ -815,6 +815,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 }
                 state.game_over = true;
                 state.winner = Some(winner);
+                state
+                    .msg_queue
+                    .push(GameViewMessage::EndGame(winner).convert_msg());
             }
             B::ServerShutdown => {
                 println!("[SERVER] Server shutdown received");

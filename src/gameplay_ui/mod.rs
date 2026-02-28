@@ -2,12 +2,16 @@ pub mod hand;
 pub mod scoreboard;
 pub mod table;
 
+use derive_more::{Deref, DerefMut};
 use iced::{
     widget::{container, image, stack, Container},
-    ContentFit, Point, Size, Task,
+    ContentFit,
+    Length::Fill,
+    Point, Size, Task,
 };
 
 use crate::{
+    animation::{BasicAnimation, Easing},
     api::{Card, Player, PlayerId, Suit},
     client::{views::ButtonMessage, App, AppMessage, TaskBatcher},
     gameplay_ui::{
@@ -127,6 +131,18 @@ pub enum GameViewMessage {
     TryChooseSuit(Suit),
 }
 
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct BlackScreenFadeInAnimation(BasicAnimation);
+
+impl BlackScreenFadeInAnimation {
+    pub fn new(duration: usize) -> Self {
+        Self(BasicAnimation::new(duration))
+    }
+    pub fn get_opacity(&self) -> f32 {
+        self.progress(Easing::InSine) * 0.7
+    }
+}
+
 impl Message for GameViewMessage {
     fn convert_msg_from(msg: Self) -> crate::client::AppMessage {
         AppMessage::GameViewMessage(msg)
@@ -139,6 +155,8 @@ pub struct GameView {
 
     // game data
     my_id: Option<PlayerId>,
+    game_ended: bool,
+    game_ended_animation: BlackScreenFadeInAnimation,
 
     // gui elements
     viewable_hand: ViewableHand,
@@ -152,6 +170,8 @@ impl GameView {
             window_size,
             img_ingame_background: image::Handle::from_path("assets/ingame_background.png"),
             my_id: None,
+            game_ended: false,
+            game_ended_animation: BlackScreenFadeInAnimation::new(400),
             viewable_hand: ViewableHand::new(window_size),
             viewable_table: ViewableTable::new(window_size),
             scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
@@ -215,7 +235,11 @@ impl Notifiable for GameView {
             GameViewMessage::TryChooseSuit(suit) => {
                 AppMessage::SetTrump(suit).convert_msg_to_task()
             }
-            _ => Task::none(),
+            GameViewMessage::EndGame(_) => {
+                self.game_ended = true;
+                self.game_ended_animation.start();
+                Task::none()
+            }
         }
     }
 }
@@ -266,6 +290,12 @@ impl Viewable for GameView {
             (self.width() - self.viewable_hand.width()) / 2.0,
             self.height() - self.viewable_hand.height(),
         ));
+        if self.game_ended {
+            content = content
+                .push(image("assets/black_screen").opacity(self.game_ended_animation.get_opacity()))
+                .width(Fill)
+                .height(Fill)
+        }
         container(content)
     }
 }
