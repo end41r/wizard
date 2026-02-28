@@ -1,12 +1,12 @@
 //! Lobby view for waiting players before game start.
 
 use iced::{
-    widget::{column, container, row, scrollable, stack, text, text_input, Column, Image},
-    ContentFit, Element,
+    ContentFit, Element, widget::{Column, Image, column, container, row, scrollable, stack, text, text_input}
 };
 
-use crate::api::{Lobby, TextColor};
+use crate::{api::{Lobby, TextColor}, client::views::utils::back_button_footer};
 use crate::client::{App, AppMessage};
+use super::utils::menu_panel;
 
 pub fn view_lobby_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     if !state.connected {
@@ -27,7 +27,8 @@ fn view_not_connected<'a>(state: &'a App) -> Element<'a, AppMessage> {
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
         container(column![
-            text("Nicht verbunden zum Server. / IP wurde falsch eingegeben").white(),
+            text("Nicht verbunden zum Server. / IP wurde falsch eingegeben")
+            .white(),
             state.btn_back.view().padding(0)
         ])
         .width(iced::Length::Fill)
@@ -45,7 +46,8 @@ fn view_no_lobby<'a>(state: &'a App) -> Element<'a, AppMessage> {
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
         container(column![
-            text("Keine Lobby vorhanden").white(),
+            text("Keine Lobby vorhanden")
+            .white(),
             state.btn_back.view().padding(0)
         ])
         .width(iced::Length::Fill)
@@ -72,8 +74,7 @@ fn view_lobby_content<'a>(state: &'a App, lobby: &'a Lobby) -> Element<'a, AppMe
             "Spieler: {}/{}",
             lobby.players.len(),
             state.host_player_count.to_usize()
-        ))
-        .white(),
+        )).white(),
         player_rows,
         scrollable(chat_block).height(150).width(400),
         row![
@@ -91,11 +92,7 @@ fn view_lobby_content<'a>(state: &'a App, lobby: &'a Lobby) -> Element<'a, AppMe
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
-        container(content)
-            .width(iced::Length::Fill)
-            .height(iced::Length::Fill)
-            .center_x(iced::Length::Fill)
-            .center_y(iced::Length::Fill)
+        menu_panel(state, "Lobby", content.into(), back_button_footer(state))
     ]
     .into()
 }
@@ -116,8 +113,7 @@ fn build_player_rows<'a>(state: &'a App, lobby: &'a Lobby) -> Column<'a, AppMess
                 "{}{}",
                 if p.is_host { "(Host) " } else { "" },
                 p.name
-            ))
-            .white(),
+            )).white(),
             toggle
         ];
         player_rows = player_rows.push(row);
