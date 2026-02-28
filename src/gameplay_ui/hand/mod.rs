@@ -24,6 +24,7 @@ pub enum HandMessage {
     ChangeTurn(PlayerId, Vec<Card>),
     NobodiesTurn,
     Draw(usize),
+    NotMyTurn,
 }
 
 impl Message for HandMessage {
@@ -270,6 +271,11 @@ impl Notifiable for ViewableHand {
                     _ => {
                         tb.push(self.update_cards_with_msg(card_msg));
                     }
+                }
+            }
+            HandMessage::NotMyTurn => {
+                for card in self.cards.iter_mut() {
+                    card.my_turn = false;
                 }
             }
             HandMessage::Draw(card_number) => {
