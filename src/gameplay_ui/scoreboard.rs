@@ -241,53 +241,6 @@ impl ScoreBoard {
         }
         let max_bid = self.info.round_number + 1;
 
-        let is_valid_bid = if let Ok(bid) = self.info.bid_input.parse::<usize>() {
-            if bid > max_bid {
-                false
-            } else {
-                if max_bid != 1 {
-                    // enforce sum != max_bid for the last bidder
-                    let num_players = self.info.player_order.len();
-                    let bids_placed = self.info.bids.len();
-                    if bids_placed + 1 == num_players {
-                        // last bidder
-                        let sum_existing: usize = self.info.bids.values().sum();
-                        sum_existing + bid != max_bid
-                    } else {
-                        true
-                    }
-                } else {
-                    true // in the 1st round the sum can be 1
-                }
-            }
-        } else {
-            false
-        };
-
-        let bid_hint = if !self.info.bid_input.is_empty() {
-            if let Ok(bid) = self.info.bid_input.parse::<usize>() {
-                if bid > max_bid {
-                    format!("Max bid is {max_bid}")
-                } else if !is_valid_bid {
-                    let sum_existing: usize = self.info.bids.values().sum();
-                    let forbidden = max_bid - sum_existing;
-                    format!("Can't bid {forbidden} as last bidder")
-                } else {
-                    format!("(0 to {max_bid})")
-                }
-            } else {
-                "Enter a number".to_string()
-            }
-        } else {
-            format!("(0 to {max_bid})")
-        };
-
-        let submit_button: iced::Element<'a, AppMessage> = if is_valid_bid {
-            self.btn_submit_bid.view().into()
-        } else {
-            container(None::<&str>).into()
-        };
-
         let panel = column![
             text("Bid:")
                 .size(self.size_big())
