@@ -8,7 +8,10 @@ use iced::{
 use derive_more::{Deref, DerefMut};
 
 use crate::{
-    animation::{BasicAnimation, CircularAnimation, Easing, ReversableBasicAnimation},
+    animation::{
+        BasicAnimation, CircularAnimation, CircularAutoReversingAnimation, Easing,
+        ReversableBasicAnimation,
+    },
     api::{Avatar, AvatarKind, AvatarPose, PlayerId},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
@@ -100,6 +103,30 @@ impl InterpolationAnimation {
     }
 }
 
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct TurnFrameAnimation(ReversableBasicAnimation);
+
+impl TurnFrameAnimation {
+    pub fn new() -> Self {
+        Self(ReversableBasicAnimation::new(20))
+    }
+    pub fn get_opacity(&self) -> f32 {
+        self.progress(Easing::Linear)
+    }
+}
+
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct TurnFrameGlowAnimation(CircularAutoReversingAnimation);
+
+impl TurnFrameGlowAnimation {
+    pub fn new() -> Self {
+        Self(CircularAutoReversingAnimation::new(40))
+    }
+    pub fn get_opacity(&self) -> f32 {
+        0.5 + 0.5 * self.progress(Easing::Linear)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ViewableAvatar {
     window_size: Size,
@@ -114,6 +141,8 @@ pub struct ViewableAvatar {
     play_shard_animation: PlayShardAnimation,
     shard_rotation_animation: ShardRotationAnimation,
     interpolation_animation: InterpolationAnimation,
+    turn_frame_animation: TurnFrameAnimation,
+    turn_frame_glow_animation: TurnFrameGlowAnimation,
 }
 
 impl ViewableAvatar {
@@ -131,12 +160,15 @@ impl ViewableAvatar {
             play_shard_animation: PlayShardAnimation::new(),
             shard_rotation_animation: ShardRotationAnimation::new(),
             interpolation_animation: InterpolationAnimation::new(),
+            turn_frame_animation: TurnFrameAnimation::new(),
+            turn_frame_glow_animation: TurnFrameGlowAnimation::new(),
         };
         viewable_avatar
             .interpolation_animation
             .on_end_reached(AvatarMessage::InterpolationEnded(id).convert_msg());
         viewable_avatar.sprite_animation.start_infinite();
         viewable_avatar.shard_rotation_animation.start_infinite();
+        viewable_avatar.turn_frame_glow_animation.start_infinite();
         viewable_avatar
     }
     pub fn id(&self) -> PlayerId {
@@ -242,7 +274,13 @@ impl Notifiable for ViewableAvatar {
                 }
             }
             AvatarMessage::ChangeTurn(id) => {
-                self.my_turn = id == self.id;
+                if id == self.id {
+                    self.my_turn = true;
+                    self.turn_frame_animation.start();
+                } else {
+                    self.my_turn = false;
+                    self.turn_frame_animation.reverse();
+                }
             }
         }
         Task::none()
@@ -264,6 +302,8 @@ impl Animated for ViewableAvatar {
         tb.push(self.play_shard_animation.next_frame());
         tb.push(self.shard_rotation_animation.next_frame());
         tb.push(self.interpolation_animation.next_frame());
+        tb.push(self.turn_frame_animation.next_frame());
+        tb.push(self.turn_frame_glow_animation.next_frame());
         tb.batch()
     }
 }
@@ -292,15 +332,23 @@ impl SizeFromOutside for ViewableAvatar {
 impl Viewable for ViewableAvatar {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let mut avatar = stack!().width(self.width()).height(self.height());
-        if self.my_turn {
-            avatar = avatar.push(
-                image("assets/avatars/avatar_frame_turn.png").filter_method(FilterMethod::Nearest),
-            );
-        } else {
-            avatar = avatar.push(
-                image("assets/avatars/avatar_frame_idle.png").filter_method(FilterMethod::Nearest),
-            );
-        }
+        avatar = avatar.push(
+            image("assets/avatars/avatar_frame_idle.png")
+                .filter_method(FilterMethod::Nearest)
+                .width(self.width())
+                .height(self.height()),
+        );
+        avatar = avatar.push(
+            image("assets/avatars/avatar_frame_turn.png")
+                .filter_method(FilterMethod::Nearest)
+                .width(self.width())
+                .height(self.height())
+                .opacity(
+                    self.turn_frame_animation
+                        .get_opacity()
+                        .min(self.turn_frame_glow_animation.get_opacity()),
+                ),
+        );
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting1));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting2));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Standing1));
