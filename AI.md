@@ -1,4 +1,5 @@
 ### This document contains code / images that have been created/implemented with help of AI, this is a list of changes that were noted with comments.
+
 - assets/
     - background_forall.png
     - ingame_background.png
