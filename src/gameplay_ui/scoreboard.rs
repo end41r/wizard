@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use iced::{
-    widget::{button, column, container, row, text, text_input, Column, Container, Image},
+    mouse::Interaction,
+    widget::{column, container, mouse_area, row, text, text_input, Column, Container, Image},
     Border, Color,
     Length::Shrink,
     Size, Task,
@@ -10,7 +11,9 @@ use iced::{
 use crate::{
     api::{Lobby, PlayerId, Suit},
     client::{views::Button, AppMessage},
-    gameplay_ui::{GameViewMessage, SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH},
+    gameplay_ui::{
+        GameViewMessage, CARD_WIDTH_HEIGHT_RATIO, SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH,
+    },
     ui_element_traits::{Animated, Message, Notifiable, ResizableDynHeight, Viewable},
 };
 
@@ -187,16 +190,18 @@ impl ScoreBoard {
         let max_bid = self.info.round_number + 1;
 
         let panel = column![
-            text("Bid:").size(16).color(Color::from_rgb(1.0, 1.0, 1.0)),
+            text("Bid:")
+                .size(self.size_big())
+                .color(Color::from_rgb(1.0, 1.0, 1.0)),
             row![
                 text_input("Enter bid", &self.info.bid_input)
                     .on_input(AppMessage::BidInputChanged)
-                    .width(80),
+                    .width(self.bid_input_size()),
                 self.btn_submit_bid.view(),
             ]
             .spacing(6),
             text(format!("(0 to {max_bid})"))
-                .size(12)
+                .size(self.size_middle())
                 .color(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
         ]
         .spacing(6);
@@ -212,29 +217,37 @@ impl ScoreBoard {
 
         let panel = column![
             text("Select Trump Suit:")
-                .size(16)
+                .size(self.size_big())
                 .color(Color::from_rgb(1.0, 1.0, 1.0)),
             row![
-                button(Image::new("assets/cards/variations/red_1.png"))
-                    .width(80)
-                    .height(120)
-                    .on_press(GameViewMessage::TryChooseSuit(Suit::Red).convert_msg())
-                    .padding(0),
-                button(Image::new("assets/cards/variations/green_1.png"))
-                    .width(80)
-                    .height(120)
-                    .on_press(GameViewMessage::TryChooseSuit(Suit::Green).convert_msg())
-                    .padding(0),
-                button(Image::new("assets/cards/variations/blue_1.png"))
-                    .width(80)
-                    .height(120)
-                    .on_press(GameViewMessage::TryChooseSuit(Suit::Blue).convert_msg())
-                    .padding(0),
-                button(Image::new("assets/cards/variations/yellow_1.png"))
-                    .width(80)
-                    .height(120)
-                    .on_press(GameViewMessage::TryChooseSuit(Suit::Yellow).convert_msg())
-                    .padding(0),
+                mouse_area(
+                    Image::new("assets/cards/variations/red_1.png")
+                        .width(self.card_width())
+                        .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
+                )
+                .interaction(Interaction::Pointer)
+                .on_press(GameViewMessage::TryChooseSuit(Suit::Red).convert_msg()),
+                mouse_area(
+                    Image::new("assets/cards/variations/green_1.png")
+                        .width(self.card_width())
+                        .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
+                )
+                .interaction(Interaction::Pointer)
+                .on_press(GameViewMessage::TryChooseSuit(Suit::Green).convert_msg()),
+                mouse_area(
+                    Image::new("assets/cards/variations/blue_1.png")
+                        .width(self.card_width())
+                        .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
+                )
+                .interaction(Interaction::Pointer)
+                .on_press(GameViewMessage::TryChooseSuit(Suit::Blue).convert_msg()),
+                mouse_area(
+                    Image::new("assets/cards/variations/yellow_1.png")
+                        .width(self.card_width())
+                        .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
+                )
+                .interaction(Interaction::Pointer)
+                .on_press(GameViewMessage::TryChooseSuit(Suit::Yellow).convert_msg()),
             ]
             .spacing(6),
         ]
@@ -267,6 +280,12 @@ impl ScoreBoard {
     }
     fn size_huge(&self) -> f32 {
         self.width() / 10.0
+    }
+    fn card_width(&self) -> f32 {
+        self.width() * 0.15
+    }
+    fn bid_input_size(&self) -> f32 {
+        self.width() * 0.3
     }
 }
 
