@@ -119,7 +119,7 @@ pub enum GameViewMessage {
     ScoreBoardMessage(ScoreBoardMessage),
 
     // server -> gui
-    StartGame(GameStartInfo),
+    StartGame(Box<GameStartInfo>),
     EndGame(PlayerId),
     NewRound(Option<Card>, Vec<Card>, Vec<Card>),
     NewTrick,

@@ -43,13 +43,13 @@ fn format_card(card: &Card) -> String {
 fn is_msg_not_ready(state: &App, msg: AppMessage) -> bool {
     if state.animation_count_down_latch > 0 {
         match msg {
-            AppMessage::GameViewMessage(inner) => match &*inner {
-                GameViewMessage::NewRound(_, _, _) => true,
-                GameViewMessage::ChangeTurn(_, _) => true,
-                GameViewMessage::NewTrick => true,
-                GameViewMessage::ScoreBoardMessage(ScoreBoardMessage::Update(_)) => true,
-                _ => false,
-            },
+            AppMessage::GameViewMessage(inner) => matches!(
+                &*inner,
+                GameViewMessage::NewRound(_, _, _)
+                    | GameViewMessage::ChangeTurn(_, _)
+                    | GameViewMessage::NewTrick
+                    | GameViewMessage::ScoreBoardMessage(ScoreBoardMessage::Update(_))
+            ),
             _ => false,
         }
     } else {
@@ -652,9 +652,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.scores.clear();
                 state.bids.clear();
                 state.tricks_won.clear();
-                state
-                    .msg_queue
-                    .push(GameViewMessage::StartGame(state.game_start_info()).convert_msg());
+                state.msg_queue.push(
+                    GameViewMessage::StartGame(Box::new(state.game_start_info())).convert_msg(),
+                );
             }
             B::RoundStarted {
                 round,
