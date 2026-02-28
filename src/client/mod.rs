@@ -226,7 +226,6 @@ impl Default for App {
             join_name: "".to_string(),
 
             my_id: None,
-            game_view: GameView::new(window_size),
             lobby: Some(Lobby {
                 players: Vec::new(),
                 chat: Vec::new(),
@@ -255,7 +254,8 @@ impl Default for App {
             dealer: None,
             game_over: false,
             winner: None,
-
+            
+            game_view: GameView::new(window_size),
             
             //Buttons
             btn_host: Button::new_host_button(0, 180, 44),

@@ -395,6 +395,7 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::AnimationTick => {
             tb.push_mult([
+                state.game_view.update_animations(),
                 state.btn_host.update_animations(),
                 state.btn_join.update_animations(),
                 state.btn_rules.update_animations(),
