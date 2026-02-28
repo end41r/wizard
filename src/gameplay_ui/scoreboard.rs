@@ -221,28 +221,28 @@ impl ScoreBoard {
                 .color(Color::from_rgb(1.0, 1.0, 1.0)),
             row![
                 mouse_area(
-                    Image::new("assets/cards/variations/red_1.png")
+                    Image::new("assets/suits/red.png")
                         .width(self.card_width())
                         .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
                 )
                 .interaction(Interaction::Pointer)
                 .on_press(GameViewMessage::TryChooseSuit(Suit::Red).convert_msg()),
                 mouse_area(
-                    Image::new("assets/cards/variations/green_1.png")
+                    Image::new("assets/suits/green.png")
                         .width(self.card_width())
                         .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
                 )
                 .interaction(Interaction::Pointer)
                 .on_press(GameViewMessage::TryChooseSuit(Suit::Green).convert_msg()),
                 mouse_area(
-                    Image::new("assets/cards/variations/blue_1.png")
+                    Image::new("assets/suits/blue.png")
                         .width(self.card_width())
                         .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
                 )
                 .interaction(Interaction::Pointer)
                 .on_press(GameViewMessage::TryChooseSuit(Suit::Blue).convert_msg()),
                 mouse_area(
-                    Image::new("assets/cards/variations/yellow_1.png")
+                    Image::new("assets/suits/yellow.png")
                         .width(self.card_width())
                         .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
                 )
