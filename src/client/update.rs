@@ -7,6 +7,7 @@ use crate::client::TaskBatcher;
 use crate::gameplay_ui::hand::hand_card::CardMessage;
 use crate::gameplay_ui::hand::HandMessage;
 use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
+use crate::gameplay_ui::table::middle::card_deck::CardDeckMessage;
 use crate::gameplay_ui::table::TableMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
@@ -635,6 +636,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                     value: Value::Number(1),
                 });
                 state.must_set_trump = false;
+                state
+                    .msg_queue
+                    .push(CardDeckMessage::ChangeGlow(state.trump.unwrap()).convert_msg())
             }
             B::BiddingStarted {
                 starting_player,

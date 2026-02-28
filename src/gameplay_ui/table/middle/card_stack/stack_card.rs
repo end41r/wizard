@@ -3,7 +3,8 @@ use crate::{
     api::Card,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        CARD_AREA_MIDDLE_RELATION, card_height_middle, card_img_middle_base_scale, card_width_middle, table::middle::card_stack::CardStackMessage
+        card_height_middle, card_img_middle_base_scale, card_width_middle,
+        table::middle::card_stack::CardStackMessage, CARD_AREA_MIDDLE_RELATION,
     },
     ui_element_traits::*,
 };
@@ -64,7 +65,8 @@ impl ViewableStackCard {
             remove_animation: RemoveAnimation::new(10),
             rotation: rand::rng().random_range(-0.15..0.15),
         };
-        vsc.remove_animation.on_end_reached(CardStackMessage::RemoveAllCards.convert_msg());
+        vsc.remove_animation
+            .on_end_reached(CardStackMessage::RemoveAllCards.convert_msg());
         vsc
     }
     pub fn card(&self) -> Card {

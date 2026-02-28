@@ -51,25 +51,24 @@ impl Message for GlowMessage {
 pub struct CardStackGlow {
     window_size: Size,
     img_path: String,
-    pub reveal_animation: RevealAnimation,
-    pub glow_animation: GlowAnimation,
+    reveal_animation: RevealAnimation,
+    glow_animation: GlowAnimation,
 }
 
 impl CardStackGlow {
     pub fn new(window_size: Size) -> Self {
-        let mut card_stack_glow = Self {
+        Self {
             window_size,
             img_path: "".to_string(),
             reveal_animation: RevealAnimation::new(30),
             glow_animation: GlowAnimation::new(60),
-        };
-        card_stack_glow
-            .reveal_animation
-            .on_start_reached(GlowMessage::ResetColor.convert_msg());
-        card_stack_glow
+        }
     }
     pub fn change_color(&mut self, card: Card) {
-        self.img_path = card.glow_path();
+        if self.img_path == "".to_string() {
+            self.img_path = card.glow_path();
+            self.reveal_animation.start();
+        }
     }
 }
 
@@ -79,6 +78,7 @@ impl Notifiable for CardStackGlow {
         match msg {
             GlowMessage::ResetColor => {
                 self.img_path = "".to_string();
+                self.reveal_animation.reverse();
             }
         }
         Task::none()
