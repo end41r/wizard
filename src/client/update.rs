@@ -2,12 +2,19 @@ use iced::Task;
 use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
-use crate::api::{Card, Lobby, ServerMessage, Value, B, C, S};
-use crate::ui_element_traits::{Animated, Message, Resizable};
+use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
+use crate::client::TaskBatcher;
+use crate::gameplay_ui::hand::hand_card::CardMessage;
+use crate::gameplay_ui::hand::HandMessage;
+use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
+use crate::gameplay_ui::table::middle::card_deck::CardDeckMessage;
+use crate::gameplay_ui::table::TableMessage;
+use crate::gameplay_ui::GameViewMessage;
+use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
 use crate::client::audio::Sfx;
 
-/// Helper function to get player name from ID using lobby data
-fn get_player_name(state: &App, player_id: u64) -> String {
+/// Get player name from ID using lobby data
+fn get_player_name(state: &App, player_id: PlayerId) -> String {
     if state.my_id == Some(player_id) {
         return "You".to_string();
     }
@@ -33,23 +40,86 @@ fn format_card(card: &Card) -> String {
     }
 }
 
-pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
+fn is_msg_not_ready(state: &App, msg: AppMessage) -> bool {
+    if state.animation_count_down_latch > 0 {
+        match msg {
+            AppMessage::GameViewMessage(GameViewMessage::NewRound(_, _, _)) => true,
+            AppMessage::GameViewMessage(GameViewMessage::ChangeTurn(_, _)) => true,
+            AppMessage::GameViewMessage(GameViewMessage::NewTrick) => true,
+            AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+                ScoreBoardMessage::Update(_),
+            )) => true,
+            _ => false,
+        }
+    } else {
+        false
+    }
+}
+
+pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
+    match msg_unaltered.clone() {
+        AppMessage::AnimationTick => (),
+        AppMessage::ServerTick => (),
+        AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+            ScoreBoardMessage::Update(_),
+        )) => (),
+        /* AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+            CardMessage::Hovered(_),
+        ))) => (),
+        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+            CardMessage::NotHovered(_),
+        ))) => (), */
+        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+            CardMessage::CursorMoved(_, _),
+        ))) => (),
+        _ => {
+            println!("{:?}", msg_unaltered)
+        }
+    };
+    let mut tb = TaskBatcher::new();
+    for queue_msg in state.msg_queue.iter() {
+        tb.push_msg(queue_msg.clone())
+    }
+    state.msg_queue.clear();
+    if is_msg_not_ready(state, msg_unaltered.clone()) {
+        state.msg_queue_delayed.push(msg_unaltered);
+        return tb.batch();
+    }
+    let msg = match msg_unaltered.clone() {
+        AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+            ScoreBoardMessage::Update(_),
+        )) => AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
+            ScoreBoardMessage::Update(state.scoreboard_info()),
+        )),
+        _ => msg_unaltered,
+    };
     match msg {
+        AppMessage::DecrementACDL(amount) => {
+            if state.animation_count_down_latch >= amount {
+                state.animation_count_down_latch -= amount;
+            } else {
+                state.animation_count_down_latch = 0;
+            }
+            if state.animation_count_down_latch == 0 {
+                for queue_msg in state.msg_queue_delayed.iter() {
+                    tb.push_msg(queue_msg.clone())
+                }
+                state.msg_queue_delayed.clear();
+            }
+        }
+        AppMessage::IncrementACDL(amount) => state.animation_count_down_latch += amount,
         AppMessage::Navigate(menu) => {
-            state.set_menu(menu);
-            Task::none()
+            state.menu = menu;
         }
         AppMessage::Host => {
             let local_ip = crate::server::local_ip();
             state.msg = format!("Hosting on {local_ip}");
             state.ip = local_ip;
 
-            state.set_menu(MenuState::Host);
-            Task::none()
+            state.menu = MenuState::Host;
         }
         AppMessage::HostNameChanged(name) => {
             state.host_name = name;
-            Task::none()
         }
         AppMessage::HostPlayerCountChanged(count) => {
             state.host_player_count = count;
@@ -61,15 +131,12 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = format!("Player count set to {count}");
                 }
             }
-            Task::none()
         }
         AppMessage::JoinNameChanged(name) => {
             state.join_name = name;
-            Task::none()
         }
         AppMessage::ServerAddressChanged(addr) => {
             state.ip = addr;
-            Task::none()
         }
         AppMessage::SendChat => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -82,11 +149,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.chat_input.clear();
                 }
             }
-            Task::none()
         }
         AppMessage::ChatInputChanged(input) => {
             state.chat_input = input;
-            Task::none()
         }
         AppMessage::CreateLobby => {
             if !state.connected {
@@ -115,8 +180,7 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = "Creating lobby...".to_string();
                 }
             }
-            state.set_menu(MenuState::Lobby);
-            Task::none()
+            state.menu = MenuState::Lobby;
         }
         AppMessage::Connect => {
             if !state.connected {
@@ -130,7 +194,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 state.msg = "Connecting...".into();
                 state.connecting = true;
             }
-            Task::none()
         }
 
         AppMessage::ToggleReady(player_to_toggle) => {
@@ -157,20 +220,34 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.last_msg = format!("Set ready: {new_ready_state}");
                 }
             }
-            Task::none()
         }
         AppMessage::StartGame => {
-            if let Ok(guard) = state.ws_tx.lock() {
-                if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::StartGame);
-                    state.last_msg = "Starting game...".to_string();
+            let can_start = if cfg!(feature = "wiz_debug") {
+                true
+            } else {
+                state.lobby.as_ref().is_some_and(|lobby| {
+                    lobby.players.len() == state.host_player_count.to_usize()
+                        && lobby.players.iter().all(|p| p.ready)
+                })
+            };
+            let is_host = state.my_id.is_some()
+                && state.my_id.unwrap()
+                    == state
+                        .lobby
+                        .as_ref()
+                        .and_then(|l| l.players.iter().find(|p| p.is_host).map(|p| p.id))
+                        .unwrap_or_default();
+            if can_start && is_host {
+                if let Ok(guard) = state.ws_tx.lock() {
+                    if let Some(ref tx) = *guard {
+                        let _ = tx.send(C::StartGame);
+                        state.last_msg = "Starting game...".to_string();
+                    }
                 }
             }
-            Task::none()
         }
         AppMessage::GameRules => {
-            state.set_menu(MenuState::Rules);
-            Task::none()
+            state.menu = MenuState::Rules;
         }
         AppMessage::BackToMenu => {
             // Stops the server if the player is the host; otherwise drops the connection.
@@ -230,18 +307,16 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             state.dealer = None;
             state.game_over = false;
             state.winner = None;
-            state.set_menu(MenuState::Main);
-            Task::none()
+            state.menu = MenuState::Main;
         }
         AppMessage::CloseGame => {
-            // Calls the Application exit.
+            // Calls the application to exit.
             std::process::exit(0);
         }
 
         // Gameplay message handlers
         AppMessage::BidInputChanged(input) => {
             state.bid_input = input;
-            Task::none()
         }
         AppMessage::SubmitBid => {
             if let Ok(amount) = state.bid_input.parse::<usize>() {
@@ -257,7 +332,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             } else {
                 state.last_msg = "Invalid bid - enter a number".to_string();
             }
-            Task::none()
         }
         AppMessage::PlayCard(card) => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -272,7 +346,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                 }
                 }
             }
-            Task::none()
         }
         AppMessage::SetTrump(suit) => {
             if let Ok(guard) = state.ws_tx.lock() {
@@ -284,170 +357,55 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     state.must_set_trump = false;
                 }
             }
-            Task::none()
         }
         AppMessage::ServerTick => {
             handle_tick(state);
-            Task::none()
+            tb.push_msg(ScoreBoardMessage::Update(state.scoreboard_info()));
         }
-        AppMessage::HandMessage(hand_msg) => {
-            state.viewable_hand.update_with_msg(hand_msg);
-            Task::none()
+        AppMessage::GameViewMessage(game_view_msg) => {
+            tb.push(state.game_view.update_with_msg(game_view_msg));
         }
         AppMessage::ButtonMessage(btn_msg) => {
-            // route to buttons (each button filters by id internally)
-            state.btn_host.update_with_msg(btn_msg.clone());
-            state.btn_join.update_with_msg(btn_msg.clone());
-            state.btn_rules.update_with_msg(btn_msg.clone());
-            state.btn_exit.update_with_msg(btn_msg.clone());
-            state.btn_options.update_with_msg(btn_msg.clone());
-
-            state.btn_create_lobby.update_with_msg(btn_msg.clone());
-            state.btn_back.update_with_msg(btn_msg.clone());
-            state.btn_connect.update_with_msg(btn_msg.clone());
-            state.btn_send_chat.update_with_msg(btn_msg.clone());
-            state.btn_start_game.update_with_msg(btn_msg.clone());
-            state.btn_back_to_menu.update_with_msg(btn_msg.clone());
-            state.btn_ready_owned.update_with_msg(btn_msg);
-            Task::none()
+            // Route to buttons (each button filters by id internally)
+            tb.push_mult([
+                state.btn_host.update_with_msg(btn_msg.clone()),
+                state.btn_join.update_with_msg(btn_msg.clone()),
+                state.btn_options.update_with_msg(btn_msg.clone()),
+                state.btn_rules.update_with_msg(btn_msg.clone()),
+                state.btn_close.update_with_msg(btn_msg.clone()),
+                state.btn_create_lobby.update_with_msg(btn_msg.clone()),
+                state.btn_back.update_with_msg(btn_msg.clone()),
+                state.btn_connect.update_with_msg(btn_msg.clone()),
+                state.btn_send_chat.update_with_msg(btn_msg.clone()),
+                state.btn_start_game.update_with_msg(btn_msg.clone()),
+                state.btn_back_to_menu.update_with_msg(btn_msg.clone()),
+                state.btn_ready_owned.update_with_msg(btn_msg.clone()),
+                state.game_view.update_buttons_with_msg(btn_msg.clone()),
+            ]);
         }
         AppMessage::AnimationTick => {
-            state.viewable_hand.update_animations();
+            tb.push_mult([
+                state.game_view.update_animations(),
+                // Update button animations
+                state.btn_host.update_animations(),
+                state.btn_join.update_animations(),
+                state.btn_options.update_animations(),
+                state.btn_close.update_animations(),
+                state.btn_rules.update_animations(),
+                state.btn_create_lobby.update_animations(),
+                state.btn_back.update_animations(),
+                state.btn_connect.update_animations(),
+                state.btn_send_chat.update_animations(),
+                state.btn_start_game.update_animations(),
+                state.btn_back_to_menu.update_animations(),
+                state.btn_ready_owned.update_animations(),
+            ]);
 
-            // Update button animations
-            state.btn_host.update_animations();
-            state.btn_join.update_animations();
-            state.btn_rules.update_animations();
-            state.btn_exit.update_animations();
-            state.btn_options.update_animations();
-
-            state.btn_create_lobby.update_animations();
-            state.btn_back.update_animations();
-            state.btn_connect.update_animations();
-            state.btn_send_chat.update_animations();
-            state.btn_start_game.update_animations();
-            state.btn_back_to_menu.update_animations();
-            state.btn_ready_owned.update_animations();
-
-            let mut pending_msgs: Vec<AppMessage> = Vec::new();
-
-            state.btn_host.check_click_end(|&_id| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                pending_msgs.push(AppMessage::Host);
-            });
-
-            state.btn_join.check_click_end(|_| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                pending_msgs.push(AppMessage::Navigate(MenuState::Join));
-            });
-
-            state.btn_rules.check_click_end(|_| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                pending_msgs.push(AppMessage::GameRules);
-            });
-
-            state.btn_exit.check_click_end(|_| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                pending_msgs.push(AppMessage::CloseGame);
-            });
-
-            state.btn_options.check_click_end(|_| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                pending_msgs.push(AppMessage::Navigate(MenuState::Options));
-            });
-            state.btn_create_lobby.check_click_end(|&_id| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                pending_msgs.push(AppMessage::CreateLobby);
-            });
-
-            state.btn_ready_owned.check_click_end(|&_id| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                if let Some(my_id) = state.my_id {
-                    pending_msgs.push(AppMessage::ToggleReady(my_id));
-                }
-            });
-
-            state.btn_back.check_click_end(|_| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                let prev_menu = match state.menu {
-                    MenuState::Rules => MenuState::Options,
-                    MenuState::Options => MenuState::Main,
-                    _ => MenuState::Main,
-                };
-                pending_msgs.push(AppMessage::Navigate(prev_menu));
-            });
-
-            state.btn_connect.check_click_end(|_| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                pending_msgs.push(AppMessage::Connect);
-            });
-
-            state.btn_send_chat.check_click_end(|_| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                pending_msgs.push(AppMessage::SendChat);
-            });
-
-            state.btn_start_game.check_click_end(|_| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                let can_start = if cfg!(feature = "wiz_debug") {
-                    true
-                } else {
-                    state.lobby.as_ref().is_some_and(|lobby| {
-                        lobby.players.len() == state.host_player_count.to_usize()
-                            && lobby.players.iter().all(|p| p.ready)
-                    })
-                };
-                let is_host = state.my_id.is_some()
-                    && state.my_id.unwrap()
-                        == state
-                            .lobby
-                            .as_ref()
-                            .and_then(|l| l.players.iter().find(|p| p.is_host).map(|p| p.id))
-                            .unwrap_or_default();
-                if can_start && is_host {
-                    pending_msgs.push(AppMessage::StartGame);
-                }
-            });
-
-            state.btn_back_to_menu.check_click_end(|_| {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-                pending_msgs.push(AppMessage::BackToMenu);
-            });
-
-            for msg in pending_msgs {
-                let _ = update(state, msg);
-            }
-
-            Task::none()
+            
         }
-        AppMessage::WindowResized(size) => {
-            state.window_size = size;
-            state.viewable_hand.update_size(size);
-            Task::none()
+        AppMessage::WindowResized(window_size) => {
+            state.window_size = window_size;
+            state.game_view.update_size(window_size);
         }
 
         AppMessage::MusicVolumeChanged(volume) => {
@@ -455,16 +413,15 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             if let Some(a) = &mut state.audio {
                 a.set_music_volume(volume);
             }
-            Task::none()
         }
         AppMessage::SfxVolumeChanged(volume) => {
             state.sfx_volume = volume as i32;
             if let Some(a) = &mut state.audio {
                 a.set_sfx_volume(volume);
             }
-            Task::none()
         }
     }
+    tb.batch()
 }
 
 fn handle_tick(state: &mut App) {
@@ -486,20 +443,29 @@ fn handle_tick(state: &mut App) {
             state.set_menu(MenuState::Lobby);
         }
     }
-    // Collects messages first to avoid borrowing issues.
-    let messages: Vec<ServerMessage> = if let Ok(guard) = state.server_rx.lock() {
-        if let Some(ref rx) = *guard {
-            let mut msgs = Vec::new();
-            while let Ok(msg) = rx.try_recv() {
-                println!("Received: {msg:?}");
-                msgs.push(msg);
+    // Detect if the connection was dropped externally (ws_tx went None while connected).
+    let mut messages: Vec<ServerMessage> = if state.connected {
+        if let Ok(guard) = state.ws_tx.lock() {
+            if guard.is_none() {
+                vec![ServerMessage::ConnectionClosed]
+            } else {
+                Vec::new()
             }
-            msgs
         } else {
             Vec::new()
         }
     } else {
         Vec::new()
+    };
+
+    // Collects messages first to avoid borrowing issues.
+    if let Ok(guard) = state.server_rx.lock() {
+        if let Some(ref rx) = *guard {
+            while let Ok(msg) = rx.try_recv() {
+                println!("Received: {msg:?}");
+                messages.push(msg);
+            }
+        }
     };
 
     for msg in messages {
@@ -509,6 +475,39 @@ fn handle_tick(state: &mut App) {
 
 fn handle_server_message(state: &mut App, msg: ServerMessage) {
     match msg {
+        ServerMessage::ConnectionClosed => {
+            println!("Connection lost, resetting state.");
+            state.connected = false;
+            state.connecting = false;
+            state.disconnected = true;
+            state.my_id = None;
+            state.lobby = Some(Lobby {
+                players: Vec::new(),
+                chat: Vec::new(),
+            });
+            state.chat_input.clear();
+            state.server_messages.clear();
+            state.last_msg = "Disconnected from server.".to_string();
+            state.game_log.clear();
+            state.hand.clear();
+            state.current_trick.clear();
+            state.trump = None;
+            state.round_number = 0;
+            state.is_my_turn = false;
+            state.is_bidding_phase = false;
+            state.must_set_trump = false;
+            state.current_player = None;
+            state.player_order.clear();
+            state.bids.clear();
+            state.tricks_won.clear();
+            state.scores.clear();
+            state.bid_input.clear();
+            state.valid_cards.clear();
+            state.dealer = None;
+            state.game_over = false;
+            state.winner = None;
+            state.menu = MenuState::Main;
+        }
         ServerMessage::Server(s) => match s {
             S::HandshakeConfirmation { version, supported } => {
                 let log = format!("[SERVER] Handshake: version {version}, supported {supported}");
@@ -520,6 +519,10 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.last_msg = log;
                 state.my_id = Some(id);
+                state
+                    .btn_ready_owned
+                    .set_on_click(AppMessage::ToggleReady(id));
+                state.disconnected = false;
             }
             S::Error { reason } => {
                 let log = format!("[ERROR] {reason}");
@@ -535,7 +538,11 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 }
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.hand = cards;
+                state.hand = cards.clone();
+
+                state
+                    .msg_queue
+                    .push(GameViewMessage::NewRound(state.trump, cards, Vec::new()).convert_msg());
             }
             S::TrumpRequest => {
                 let log = "[SERVER] You must set the trump suit!".to_string();
@@ -573,6 +580,10 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.is_my_turn = true;
                 state.is_bidding_phase = false;
                 state.valid_cards = valid_cards;
+                state.msg_queue.push(
+                    GameViewMessage::ChangeTurn(state.my_id.unwrap(), state.valid_cards.clone())
+                        .convert_msg(),
+                );
             }
             S::InvalidMove { reason } => {
                 let log = format!("[ERROR] Invalid move: {reason}");
@@ -624,9 +635,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 if let Some(ref lobby) = state.lobby {
                     if let Some(host) = lobby.players.iter().find(|p| p.is_host) {
                         if host.name == "wizard_master" {
-                            state.set_menu(MenuState::PlayingTest);
+                            state.menu = MenuState::PlayingTest;
                         } else {
-                            state.set_menu(MenuState::Playing);
+                            state.menu = MenuState::Playing;
                         }
                     }
                 }
@@ -634,6 +645,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.scores.clear();
                 state.bids.clear();
                 state.tricks_won.clear();
+                state
+                    .msg_queue
+                    .push(GameViewMessage::StartGame(state.game_start_info()).convert_msg());
             }
             B::RoundStarted {
                 round,
@@ -673,6 +687,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 if is_me {
                     state.must_set_trump = true;
                 }
+                state
+                    .msg_queue
+                    .push(TableMessage::ChangeTurn(dealer).convert_msg());
             }
             B::TrumpSet { suit, by_dealer } => {
                 let dealer_name = get_player_name(state, by_dealer);
@@ -680,8 +697,14 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 println!("{}", log);
                 state.game_log.push(log.clone());
                 state.last_msg = log;
-                state.trump = Some(suit);
+                state.trump = Some(Card {
+                    suit,
+                    value: Value::Number(1),
+                });
                 state.must_set_trump = false;
+                state
+                    .msg_queue
+                    .push(CardDeckMessage::ChangeGlow(state.trump.unwrap()).convert_msg())
             }
             B::BiddingStarted {
                 starting_player,
@@ -710,6 +733,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.game_log.push(log.clone());
                 state.last_msg = log;
                 state.current_player = Some(player);
+                state
+                    .msg_queue
+                    .push(TableMessage::ChangeTurn(player).convert_msg());
             }
             B::BidMade { player, amount } => {
                 let player_name = get_player_name(state, player);
@@ -749,6 +775,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 // Reset turn - only the leader who receives YourTurn should be able to play
                 state.is_my_turn = false;
                 state.valid_cards.clear();
+                state
+                    .msg_queue
+                    .push(GameViewMessage::NewTrick.convert_msg());
             }
             B::TurnChanged { player } => {
                 let is_me = state.my_id == Some(player);
@@ -762,6 +791,12 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.game_log.push(log.clone());
                 state.last_msg = log;
                 state.current_player = Some(player);
+                println!("~~~TURN CHANGE~~~");
+                if !is_me {
+                    state
+                        .msg_queue
+                        .push(GameViewMessage::ChangeTurn(player, Vec::new()).convert_msg());
+                }
             }
             B::CardPlayed { player, card } => {
                 let player_name = get_player_name(state, player);
@@ -776,6 +811,10 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 if state.my_id == Some(player) {
                     state.hand.retain(|c| *c != card);
                 }
+                state
+                    .msg_queue
+                    .push(GameViewMessage::CardPlayed(player, card).convert_msg());
+                state.msg_queue.push(AppMessage::IncrementACDL(1));
             }
             B::PoolFinished { winner, cards } => {
                 let is_me = state.my_id == Some(winner);
@@ -845,6 +884,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 }
                 state.game_over = true;
                 state.winner = Some(winner);
+                state
+                    .msg_queue
+                    .push(GameViewMessage::EndGame(winner).convert_msg());
             }
             B::ServerShutdown => {
                 println!("[SERVER] Server shutdown received");

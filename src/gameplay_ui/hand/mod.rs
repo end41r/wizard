@@ -1,135 +1,136 @@
-mod hand_card;
+pub mod hand_card;
 
-use crate::animation::{
-    animation_end_sensor::AnimationEndSensor, animation_starter::AnimationStarter,
-};
-use crate::client::AppMessage;
-use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableCard};
+use crate::animation::AnimationStarter;
+use crate::api::{Card, PlayerId};
+use crate::client::{AppMessage, TaskBatcher};
+use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableHandCard};
+use crate::gameplay_ui::{card_column_step_hand, card_row_step_hand, GameViewMessage};
 use crate::ui_element_traits::*;
 
 use iced::{
     widget::{container, pin, stack, Container, Pin, Stack},
-    Point, Size,
+    Point, Size, Task,
 };
-use indexmap::{map::MutableKeys, IndexMap};
-use std::num::NonZero;
-
-use crate::gameplay_ui::hand::hand_card::CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH;
-
-static CARD1_PATH: &str = "assets/cards/back.png";
-static CARD2_PATH: &str = "assets/cards/diamond.png";
-static CARD3_PATH: &str = "assets/cards/heart.png";
-static CARD4_PATH: &str = "assets/cards/spade.png";
-
-// Adjust this arbitrary value to manipulate the width of the hand relative to its size,
-// but be careful that the cards don't go out of screen.
-// If you want to manipulate the total hand size
-// change the value of hand_card::CARD_WIDTH_MULT_WITH_WINDOW_WIDTH.
-static CARD_STEP_MULT_WITH_CARD_WIDTH: f32 = 1.0 / 3.0;
-// Adjust this arbitrary value to manipulate the width of the hand,
-static CARD_ROW_STEP_MULT_WITH_WINDOW_WIDTH: f32 = CARD_HEIGHT_MULT_WITH_WINDOW_WIDTH * 0.43;
 
 #[derive(Debug, Clone)]
 pub enum HandMessage {
     CardMessage(CardMessage),
-    DrawCards(Vec<ViewableCard>),
+    PlayedCard(Card),
+    DeleteCard(Card),
+    DrawCards(Vec<Card>, Vec<Card>),
     HideCards,
     ShowCards,
     ShowPlayableStatus(bool),
+    ChangeTurn(PlayerId, Vec<Card>),
+    NobodiesTurn,
+    Draw(usize),
+}
+
+impl Message for HandMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        GameViewMessage::convert_msg_from(GameViewMessage::HandMessage(msg))
+    }
+}
+
+impl ReplaceUsize for HandMessage {
+    fn replace_usize(&self, value: usize) -> Self {
+        match &self {
+            HandMessage::Draw(_) => HandMessage::Draw(value),
+            _ => self.clone(),
+        }
+    }
+}
+
+use crate::animation::ReversableBasicAnimation;
+use derive_more::{Deref, DerefMut};
+
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct HideAnimationTracker(ReversableBasicAnimation);
+
+impl HideAnimationTracker {
+    pub fn new(duration: usize) -> Self {
+        Self(ReversableBasicAnimation::new(duration))
+    }
 }
 
 #[derive(Debug)]
 pub struct ViewableHand {
     window_size: Size,
-
-    pub cards: IndexMap<usize, ViewableCard>,
+    pub my_id: Option<PlayerId>,
+    pub cards: Vec<ViewableHandCard>,
     hovered_card_row_low: bool,
-    hovered_card_id: Option<usize>,
-    top_card_id_upper: Option<usize>,
-    top_card_id_lower: Option<usize>,
-    hide_animation_end_sensor: AnimationEndSensor<usize>,
+    allow_hover: bool,
+    played_card: Option<Card>,
+    top_card_upper: Option<Card>,
+    top_card_lower: Option<Card>,
+    hide_animation_tracker: HideAnimationTracker,
     // AI-Usage: Claude.ai for the idea of passing a union type for a generic
     //           where the type doesn't matter.
-    draw_animation_starter: AnimationStarter<()>,
+    draw_animation_starter: AnimationStarter<HandMessage, CardMessage>,
 }
 
 impl ViewableHand {
     pub fn new(window_size: Size) -> Self {
-        Self {
+        let mut vh = Self {
             window_size,
-            cards: IndexMap::from([]),
+            my_id: None,
+            cards: Vec::new(),
             hovered_card_row_low: true,
-            hovered_card_id: None,
-            top_card_id_upper: None,
-            top_card_id_lower: None,
-            // 12 is the duration of the hide animation.
-            hide_animation_end_sensor: AnimationEndSensor::new(12),
-            // 3 is the delay for the animation start.
-            draw_animation_starter: AnimationStarter::new(NonZero::new(3).unwrap()),
-        }
+            allow_hover: true,
+            played_card: None,
+            top_card_upper: None,
+            top_card_lower: None,
+            hide_animation_tracker: HideAnimationTracker::new(12),
+            draw_animation_starter: AnimationStarter::new(3, 10, HandMessage::Draw(0)),
+        };
+        vh.hide_animation_tracker
+            .on_end_reached(HandMessage::ShowCards.convert_msg());
+        vh
     }
 
-    pub fn build_test_cards(window_size: Size) -> Vec<ViewableCard> {
-        vec![
-            ViewableCard::new(0, CARD1_PATH, window_size, true),
-            ViewableCard::new(1, CARD3_PATH, window_size, false),
-            ViewableCard::new(2, CARD2_PATH, window_size, true),
-            ViewableCard::new(3, CARD1_PATH, window_size, true),
-            ViewableCard::new(4, CARD4_PATH, window_size, true),
-            ViewableCard::new(5, CARD2_PATH, window_size, true),
-            ViewableCard::new(6, CARD1_PATH, window_size, true),
-            ViewableCard::new(7, CARD3_PATH, window_size, false),
-            ViewableCard::new(8, CARD2_PATH, window_size, true),
-            ViewableCard::new(9, CARD1_PATH, window_size, true),
-            ViewableCard::new(10, CARD4_PATH, window_size, true),
-            ViewableCard::new(11, CARD2_PATH, window_size, true),
-            ViewableCard::new(12, CARD1_PATH, window_size, true),
-            ViewableCard::new(13, CARD4_PATH, window_size, false),
-            ViewableCard::new(14, CARD2_PATH, window_size, true),
-            ViewableCard::new(15, CARD1_PATH, window_size, true),
-            ViewableCard::new(16, CARD1_PATH, window_size, true),
-            ViewableCard::new(17, CARD2_PATH, window_size, true),
-            ViewableCard::new(18, CARD3_PATH, window_size, true),
-            ViewableCard::new(19, CARD3_PATH, window_size, true),
-        ]
-    }
-
-    pub fn set_cards(&mut self, cards: Vec<ViewableCard>) {
+    pub fn set_cards(&mut self, cards: Vec<Card>, valid_cards: Vec<Card>) {
         self.cards.clear();
-        for card in cards.iter() {
-            self.cards.insert(card.id, card.clone());
+        for card in self.create_viewable_cards(cards, valid_cards).iter() {
+            self.cards.push(card.clone());
         }
     }
 
-    pub fn card_ids(&self) -> Vec<usize> {
-        let mut card_ids: Vec<usize> = vec![];
-        for (id, _) in self.cards.iter() {
-            card_ids.push(*id);
-        }
-        card_ids
+    /// Create ViewableHandCards from game cards (static version for use in update functions)
+    pub fn create_viewable_cards(
+        &self,
+        game_cards: Vec<Card>,
+        valid_cards: Vec<Card>,
+    ) -> Vec<ViewableHandCard> {
+        game_cards
+            .iter()
+            .map(|card| {
+                let playable = valid_cards.contains(&card);
+                ViewableHandCard::new(card.clone(), self.window_size, playable)
+            })
+            .collect()
     }
 
     /// The return value represents the step length between cards in a row length of 10 cards.
     fn card_minimum_step(&self) -> f32 {
-        ViewableCard::width_for(self.window_size) * CARD_STEP_MULT_WITH_CARD_WIDTH
+        card_column_step_hand(ViewableHandCard::width_for(self.window_size))
     }
 
     /// A card would normally be rendered anchored to the top of the hand.
     /// This function calculates the correct y position for the card.
     /// This takes in consideration the row step and the hover animation offset.
     fn card_y_offset_correction(&self) -> f32 {
-        self.height() - ViewableCard::height_for(self.window_size)
+        self.height() - ViewableHandCard::height_for(self.window_size)
     }
 
     fn upper_row_card_step(&self) -> f32 {
         if self.upper_row_exists() {
             match self.cards.len() {
-                11..=14 => ViewableCard::width_for(self.window_size),
+                11..=14 => ViewableHandCard::width_for(self.window_size),
                 _ => {
                     // A negative value is ok.
                     let top_cards_without_last: f32 = self.cards.len() as f32 - 11.0;
                     let upper_row_length: f32 = top_cards_without_last * self.card_minimum_step()
-                        + ViewableCard::width_for(self.window_size);
+                        + ViewableHandCard::width_for(self.window_size);
 
                     self.card_minimum_step()
                         + (self.width_without_animations() - upper_row_length)
@@ -144,12 +145,12 @@ impl ViewableHand {
     fn lower_row_card_step(&self) -> f32 {
         if !self.upper_row_exists() {
             match self.cards.len() {
-                1..=4 => ViewableCard::width_for(self.window_size),
+                1..=4 => ViewableHandCard::width_for(self.window_size),
                 _ => {
                     // A negative value is ok.
                     let cards_without_last: f32 = self.cards.len() as f32 - 1.0;
                     let upper_row_length: f32 = cards_without_last * self.card_minimum_step()
-                        + ViewableCard::width_for(self.window_size);
+                        + ViewableHandCard::width_for(self.window_size);
 
                     self.card_minimum_step()
                         + (self.width_without_animations() - upper_row_length) / cards_without_last
@@ -170,7 +171,7 @@ impl ViewableHand {
             // All cards are only shown within the range of the card step except one focused card.
             let row_len: f32 = ((self.upper_row_card_count() as f32) - 1.0)
                 * self.upper_row_card_step()
-                + ViewableCard::width_for(self.window_size);
+                + ViewableHandCard::width_for(self.window_size);
             row_x_offset = (max_row_len - row_len) / 2.0;
         }
 
@@ -185,7 +186,7 @@ impl ViewableHand {
         if !self.cards.is_empty() {
             // All cards are only shown within the range of the card step except one focused card.
             row_len = ((cards_in_row as f32) - 1.0) * self.lower_row_card_step()
-                + ViewableCard::width_for(self.window_size);
+                + ViewableHandCard::width_for(self.window_size);
         };
         let row_x_offset: f32 = (max_row_len - row_len) / 2.0;
         let row_y_offset: f32 = 0.0;
@@ -194,7 +195,7 @@ impl ViewableHand {
     }
 
     fn row_step(&self) -> f32 {
-        -self.window_size.width * CARD_ROW_STEP_MULT_WITH_WINDOW_WIDTH
+        -card_row_step_hand(self.window_size)
     }
 
     fn upper_row_exists(&self) -> bool {
@@ -215,13 +216,13 @@ impl ViewableHand {
         // The hand reaches its maximum size with 10 cards.
         self.card_minimum_step() * 9.0 +  // 9 cards only viewed within their offset
         // Only one card is fully visible (the hovered card).
-        ViewableCard::width_for(self.window_size)
+        ViewableHandCard::width_for(self.window_size)
     }
 
     fn width_overflow_one_side(&self) -> f32 {
         // A card can reach a max size bigger times 1.1 via the hover animation.
         // So it may increase the hand size on one side by self.card_base_size.width * 0.05.
-        ViewableCard::width_for(self.window_size) * 0.05
+        ViewableHandCard::width_for(self.window_size) * 0.05
     }
 
     fn width_overflow(&self) -> f32 {
@@ -229,126 +230,136 @@ impl ViewableHand {
         self.width_overflow_one_side() * 2.0
     }
 
-    fn update_cards_with_msg(&mut self, msg: CardMessage) {
-        for (_, card) in self.cards.iter_mut() {
-            card.update_with_msg(msg.clone());
+    fn update_cards_with_msg(&mut self, msg: CardMessage) -> Task<AppMessage> {
+        let mut tb = TaskBatcher::new();
+        for card in self.cards.iter_mut() {
+            tb.push(card.update_with_msg(msg.clone()))
         }
+        tb.batch()
     }
 }
 
-impl Message for ViewableHand {
+impl Notifiable for ViewableHand {
     type OwnMessage = HandMessage;
 
-    fn convert_to_app_message(msg: HandMessage) -> AppMessage {
-        AppMessage::HandMessage(msg)
-    }
-
-    fn update_with_msg(&mut self, msg: HandMessage) {
+    fn update_with_msg(&mut self, msg: HandMessage) -> Task<AppMessage> {
+        let mut tb = TaskBatcher::new();
         match msg {
             HandMessage::CardMessage(card_msg) => {
                 match card_msg {
-                    CardMessage::Hovered(id) => {
-                        if !self.hide_animation_end_sensor.active() {
-                            self.update_cards_with_msg(card_msg);
-                            self.hovered_card_id = Some(id);
+                    CardMessage::Hovered(card) => {
+                        if self.allow_hover {
+                            tb.push(self.update_cards_with_msg(card_msg));
                             if self.upper_row_exists() &&
                                // AI-Usage: Claude.ai for learning how to see if value is in a vec
                                //           without the last few elements.
-                               self.card_ids()[..self.upper_row_card_count()].contains(&id)
+                               self.cards[..self.upper_row_card_count()].iter().map(|vhc| vhc.card).any(|ls_card| ls_card == card)
                             {
                                 self.hovered_card_row_low = false;
-                                self.top_card_id_upper = Some(id);
+                                self.top_card_upper = Some(card);
                             } else {
                                 self.hovered_card_row_low = true;
-                                self.top_card_id_lower = Some(id);
+                                self.top_card_lower = Some(card);
                             }
                         }
                     }
-                    CardMessage::Played(id) => {
-                        if !self.draw_animation_starter.active() {
-                            self.update_cards_with_msg(card_msg);
-                            self.update_with_msg(HandMessage::HideCards);
-                            self.hide_animation_end_sensor.start(Some(id));
-                        }
+                    CardMessage::Clicked(card) => {
+                        self.played_card = Some(card);
+                        tb.push(self.update_cards_with_msg(card_msg));
                     }
                     _ => {
-                        self.update_cards_with_msg(card_msg);
+                        tb.push(self.update_cards_with_msg(card_msg));
+                    }
+                }
+            }
+            HandMessage::Draw(card_number) => {
+                if card_number <= self.cards.len() {
+                    self.cards[card_number].draw_animation.start()
+                }
+            }
+            HandMessage::PlayedCard(played_card) => {
+                for card in self.cards.iter() {
+                    if played_card == card.card {
+                        tb.push(CardMessage::Played(played_card).convert_msg_to_task());
+                        tb.push(HandMessage::HideCards.convert_msg_to_task());
                     }
                 }
             }
             HandMessage::HideCards => {
-                for (id, card) in self.cards.iter_mut() {
-                    if !card.play_animation.moving_forward() {
-                        card.update_with_msg(CardMessage::Hide(*id));
+                self.allow_hover = false;
+                for card in self.cards.iter_mut() {
+                    if self.played_card.is_some() && self.played_card.unwrap() != card.card {
+                        tb.push(card.update_with_msg(CardMessage::Hide(card.card)));
+                    }
+                }
+                self.played_card = None;
+                self.hide_animation_tracker.start()
+            }
+            HandMessage::DeleteCard(card) => {
+                self.cards.retain(|vhc| vhc.card != card);
+            }
+            HandMessage::ShowCards => {
+                self.hide_animation_tracker.reset();
+                self.allow_hover = true;
+                for card in self.cards.iter_mut() {
+                    tb.push(card.update_with_msg(CardMessage::Show(card.card)));
+                }
+            }
+            HandMessage::DrawCards(cards, valid_cards) => {
+                self.set_cards(cards, valid_cards);
+                self.hovered_card_row_low = true;
+                self.top_card_lower = None;
+                self.top_card_upper = None;
+                self.update_size(self.window_size);
+                tb.push(self.draw_animation_starter.start(self.cards.len()));
+            }
+            HandMessage::ShowPlayableStatus(do_show) => {
+                for card in self.cards.iter_mut() {
+                    tb.push(
+                        card.update_with_msg(CardMessage::ShowPlayableStatus(card.card, do_show)),
+                    );
+                }
+            }
+            HandMessage::ChangeTurn(player_id, valid_cards) => {
+                if player_id == self.my_id.unwrap() {
+                    for card in self.cards.iter_mut() {
+                        println!("~~~###~~~VALID CARDS~~~###~~~");
+                        println!("{:?}", valid_cards);
+                        card.my_turn = true;
+                        card.validate(valid_cards.clone());
+                    }
+                } else {
+                    for card in self.cards.iter_mut() {
+                        card.my_turn = false;
                     }
                 }
             }
-            HandMessage::ShowCards => {
-                for (id, card) in self.cards.iter_mut() {
-                    card.update_with_msg(CardMessage::Show(*id));
-                }
-            }
-            HandMessage::DrawCards(cards) => {
-                self.set_cards(cards.clone());
-                self.hovered_card_row_low = true;
-                self.hovered_card_id = None;
-                self.top_card_id_lower = None;
-                self.top_card_id_upper = None;
-                self.draw_animation_starter.reset();
-                self.hide_animation_end_sensor.reset();
-                self.update_size(self.window_size);
-                self.draw_animation_starter
-                    .start(None, NonZero::new(self.cards.len()).unwrap());
-            }
-            HandMessage::ShowPlayableStatus(do_show) => {
-                for (id, card) in self.cards.iter_mut() {
-                    card.update_with_msg(CardMessage::ShowPlayableStatus(*id, do_show));
+            HandMessage::NobodiesTurn => {
+                for card in self.cards.iter_mut() {
+                    card.my_turn = false;
                 }
             }
         }
+        tb.batch()
     }
 }
 
 impl Animated for ViewableHand {
-    fn update_animations(&mut self) {
-        self.draw_animation_starter
-            .check(|d: &mut AnimationStarter<()>| {
-                let id: usize = self.cards[d.cycle()].id;
-                self.cards[d.cycle()].update_with_msg(CardMessage::Draw(id));
-            });
-
-        for (id, card) in self.cards.iter_mut2() {
-            card.update_animations();
-            // Sometimes on_exit for a viewed card won't register
-            // and won't send the CardNotHoverd msg.
-            // To ensure that an unhovered card is not sticking up all the time
-            // following if-statement tries to check for this unwanted state
-            // and instead sends the msg itself.
-            if self.hovered_card_id.is_some()
-                && *id != self.hovered_card_id.unwrap()
-                && card.hover_animation.get_offset(self.window_size) != 0.0
-                && card.hover_animation.not_moving()
-            {
-                card.update_with_msg(CardMessage::NotHovered(*id));
-            }
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        let mut tb = TaskBatcher::new();
+        tb.push(self.draw_animation_starter.next_frame());
+        tb.push(self.hide_animation_tracker.next_frame());
+        for card in self.cards.iter_mut() {
+            tb.push(card.update_animations());
         }
-
-        if self
-            .hide_animation_end_sensor
-            .check(|h: &mut AnimationEndSensor<usize>| {
-                let key: &usize = h.content().unwrap();
-                self.cards.shift_remove(key);
-            })
-        {
-            self.update_with_msg(HandMessage::ShowCards);
-        };
+        tb.batch()
     }
 }
 
 impl Resizable for ViewableHand {
     fn update_size(&mut self, window_size: Size) {
         self.window_size = window_size;
-        for (_, card) in self.cards.iter_mut2() {
+        for card in self.cards.iter_mut() {
             card.update_size(window_size);
         }
     }
@@ -356,10 +367,10 @@ impl Resizable for ViewableHand {
         self.width_without_animations() + self.width_overflow()
     }
     fn height(&self) -> f32 {
-        ViewableCard::height_for(self.window_size) -  // Upper card height
+        ViewableHandCard::height_for(self.window_size) -  // Upper card height
         self.row_step() +  // Upper card spawn offset
         // The upper card may have an increased size via the hover animation max_offset.
-        ViewableCard::height_for(self.window_size) * 0.15
+        ViewableHandCard::height_for(self.window_size) * 0.15
     }
 }
 
@@ -392,7 +403,7 @@ impl Viewable for ViewableHand {
         }
 
         // Add all cards to their corresponding row.
-        for (i, (card_id, card)) in self.cards.iter().enumerate() {
+        for (i, card) in self.cards.iter().enumerate() {
             let viewable_card: Container<'_, AppMessage> =
                 card.view_and_move(x_pos + x_pos_offset, y_pos + y_pos_correction);
 
@@ -409,10 +420,10 @@ impl Viewable for ViewableHand {
             }
 
             // The top card of the current row is reached.
-            if (self.top_card_id_upper.is_some()
-                && (!move_lower_card_row && *card_id == self.top_card_id_upper.unwrap()))
-                || (self.top_card_id_lower.is_some()
-                    && (move_lower_card_row && *card_id == self.top_card_id_lower.unwrap()))
+            if (self.top_card_upper.is_some()
+                && (!move_lower_card_row && card.card == self.top_card_upper.unwrap()))
+                || (self.top_card_lower.is_some()
+                    && (move_lower_card_row && card.card == self.top_card_lower.unwrap()))
             {
                 push_lower = true;
             }

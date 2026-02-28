@@ -1,4 +1,4 @@
-use crate::api::{Lobby, Player, ServerMessage, B, C, S};
+use crate::api::{AvatarKind, Lobby, Player, PlayerId, ServerMessage, B, C, S};
 use crate::gamelogic::game::Game;
 use crate::gamelogic::GameEvent;
 
@@ -9,6 +9,7 @@ use axum::{
     Router,
 };
 use futures::{SinkExt, StreamExt};
+use rand::seq::IndexedRandom;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -17,8 +18,8 @@ use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
 use uuid::Uuid;
 
-type Clients = Arc<RwLock<HashMap<u64, mpsc::UnboundedSender<ServerMessage>>>>;
-type PlayerList = Arc<RwLock<HashMap<u64, Player>>>;
+type Clients = Arc<RwLock<HashMap<PlayerId, mpsc::UnboundedSender<ServerMessage>>>>;
+type PlayerList = Arc<RwLock<HashMap<PlayerId, Player>>>;
 type SharedGame = Arc<RwLock<Game>>;
 
 const SVERSION: usize = 1;
@@ -230,14 +231,14 @@ async fn broadcast(clients: &Clients, _players: &PlayerList, msg: B) {
     }
 }
 
-async fn send(clients: &Clients, player_id: u64, msg: S) {
+async fn send(clients: &Clients, player_id: PlayerId, msg: S) {
     if let Some(tx) = clients.read().await.get(&player_id) {
         let _ = tx.send(ServerMessage::Server(msg));
     }
 }
 
 async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList, game: SharedGame) {
-    let id = Uuid::new_v4().as_u128() as u64;
+    let id: PlayerId = Uuid::new_v4().as_u128() as u64;
     println!("New connection: player {id}");
 
     let (mut sender, mut receiver) = socket.split();
@@ -311,9 +312,16 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList,
                         }
                         drop(players_map);
                         let is_host = players_clone.read().await.is_empty(); // thats really unsafe
+                        let avatar_kinds: [AvatarKind; 4] = [
+                            AvatarKind::Elf,
+                            AvatarKind::Knight,
+                            AvatarKind::Mage,
+                            AvatarKind::Witch,
+                        ];
                         let player = Player {
                             id,
                             name: name.clone(),
+                            avatar: *avatar_kinds.choose(&mut rand::rng()).unwrap(),
                             ready: false,
                             is_host,
                         };

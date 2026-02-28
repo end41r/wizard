@@ -1,0 +1,440 @@
+use std::collections::HashMap;
+
+use iced::{
+    widget::{button, column, container, row, text, text_input, Column, Container, Image},
+    Border, Color,
+    Length::Shrink,
+    Size, Task,
+};
+
+use crate::{
+    api::{Lobby, PlayerId, Suit},
+    client::{views::Button, AppMessage},
+    gameplay_ui::{GameViewMessage, SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH},
+    ui_element_traits::{Animated, Message, Notifiable, ResizableDynHeight, Viewable},
+};
+
+#[derive(Clone, Debug)]
+pub struct ScoreBoardInfo {
+    round_number: usize,
+    player_order: Vec<PlayerId>,
+    scores: HashMap<PlayerId, i32>,
+    tricks_won: HashMap<PlayerId, usize>,
+    bids: HashMap<PlayerId, usize>,
+    my_id: Option<PlayerId>,
+    lobby: Option<Lobby>,
+    must_set_trump: bool,
+    dealer: Option<PlayerId>,
+    is_bidding_phase: bool,
+    is_my_turn: bool,
+    bid_input: String,
+    current_player: Option<PlayerId>,
+}
+
+impl Default for ScoreBoardInfo {
+    fn default() -> Self {
+        Self {
+            round_number: 0,
+            player_order: Vec::new(),
+            scores: HashMap::new(),
+            tricks_won: HashMap::new(),
+            bids: HashMap::new(),
+            my_id: None,
+            lobby: None,
+            must_set_trump: false,
+            dealer: None,
+            is_bidding_phase: false,
+            is_my_turn: false,
+            bid_input: String::new(),
+            current_player: None,
+        }
+    }
+}
+
+impl ScoreBoardInfo {
+    pub fn new(
+        round_number: usize,
+        player_order: Vec<PlayerId>,
+        scores: HashMap<PlayerId, i32>,
+        tricks_won: HashMap<PlayerId, usize>,
+        bids: HashMap<PlayerId, usize>,
+        my_id: Option<PlayerId>,
+        lobby: Option<Lobby>,
+        must_set_trump: bool,
+        dealer: Option<PlayerId>,
+        is_bidding_phase: bool,
+        is_my_turn: bool,
+        bid_input: String,
+        current_player: Option<PlayerId>,
+    ) -> Self {
+        Self {
+            round_number,
+            player_order,
+            scores,
+            tricks_won,
+            bids,
+            my_id,
+            lobby,
+            must_set_trump,
+            dealer,
+            is_bidding_phase,
+            is_my_turn,
+            bid_input,
+            current_player,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum ScoreBoardMessage {
+    Update(ScoreBoardInfo),
+}
+
+impl Message for ScoreBoardMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        GameViewMessage::convert_msg_from(GameViewMessage::ScoreBoardMessage(msg))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ScoreBoard {
+    window_size: Size,
+    pub btn_submit_bid: Button,
+    info: ScoreBoardInfo,
+}
+
+impl ScoreBoard {
+    /// AI Usage: write this function to get player order sorted by score
+    fn sorted_player_order_by_score(&self) -> Vec<PlayerId> {
+        let mut players: Vec<PlayerId> = self.info.player_order.clone();
+        players.sort_by_key(|pid| std::cmp::Reverse(*self.info.scores.get(pid).unwrap_or(&0)));
+        players
+    }
+    pub fn new(window_size: Size, info: ScoreBoardInfo) -> Self {
+        Self {
+            window_size,
+            btn_submit_bid: Button::new_submit_bid_button(21, 110, 36),
+            info,
+        }
+    }
+
+    fn scoreboard_row<'a>(
+        &self,
+        name: &str,
+        score: &str,
+        tricks: &str,
+        bid: &str,
+        is_header: bool,
+        is_current_turn: bool,
+    ) -> Container<'a, AppMessage> {
+        let text_color = if is_current_turn {
+            Color::from_rgb(1.0, 0.85, 0.4)
+        } else {
+            Color::WHITE
+        };
+
+        let cell = |content: String| {
+            container(
+                text(content)
+                    .size(if is_header {
+                        self.size_small()
+                    } else {
+                        self.size_middle()
+                    })
+                    .color(text_color),
+            )
+            .width(iced::Length::FillPortion(1))
+            .padding(4)
+        };
+
+        let name_cell = |content: String| {
+            container(
+                text(content)
+                    .size(if is_header {
+                        self.size_small()
+                    } else {
+                        self.size_middle()
+                    })
+                    .color(text_color),
+            )
+            .width(iced::Length::FillPortion(2))
+            .padding(4)
+        };
+
+        let row_content = row![
+            name_cell(name.to_string()),
+            cell(score.to_string()),
+            cell(tricks.to_string()),
+            cell(bid.to_string()),
+        ]
+        .width(self.width());
+
+        container(row_content)
+            .width(self.width())
+            .style(move |_theme| container::Style {
+                background: Some(if is_current_turn {
+                    Color::from_rgba(1.0, 0.85, 0.4, 0.15).into()
+                } else {
+                    Color::from_rgba(0.0, 0.0, 0.0, if is_header { 0.4 } else { 0.2 }).into()
+                }),
+                border: Border {
+                    color: if is_current_turn {
+                        Color::from_rgba(1.0, 0.85, 0.4, 0.5)
+                    } else {
+                        Color::from_rgba(1.0, 1.0, 1.0, 0.2)
+                    },
+                    width: if is_current_turn { 1.5 } else { 1.0 },
+                    radius: 2.0.into(),
+                },
+                ..Default::default()
+            })
+    }
+
+    fn build_bidding_panel<'a>(&self) -> Container<'a, AppMessage> {
+        if !self.info.is_bidding_phase || !self.info.is_my_turn || self.info.must_set_trump {
+            return container(None::<&str>);
+        }
+        let max_bid = self.info.round_number + 1;
+
+        let is_valid_bid = if let Ok(bid) = self.info.bid_input.parse::<usize>() {
+            if bid > max_bid {
+                false
+            } else {
+                if max_bid != 1 {
+                    // enforce sum != max_bid for the last bidder
+                    let num_players = self.info.player_order.len();
+                    let bids_placed = self.info.bids.len();
+                    if bids_placed + 1 == num_players { // last bidder
+                        let sum_existing: usize = self.info.bids.values().sum();
+                        sum_existing + bid != max_bid
+                    } else {
+                        true
+                    }
+                } else {
+                    true // in the 1st round the sum can be 1
+                }
+            }
+        } else {
+            false
+        };
+
+        let bid_hint = if !self.info.bid_input.is_empty() {
+            if let Ok(bid) = self.info.bid_input.parse::<usize>() {
+                if bid > max_bid {
+                    format!("Max bid is {max_bid}")
+                } else if !is_valid_bid {
+                    let sum_existing: usize = self.info.bids.values().sum();
+                    let forbidden = max_bid - sum_existing;
+                    format!("Can't bid {forbidden} as last bidder")
+                } else {
+                    format!("(0 to {max_bid})")
+                }
+            } else {
+                "Enter a number".to_string()
+            }
+        } else {
+            format!("(0 to {max_bid})")
+        };
+
+        let submit_button: iced::Element<'a, AppMessage> = if is_valid_bid {
+            self.btn_submit_bid.view().into()
+        } else {
+            container(None::<&str>).into()
+        };
+
+        let panel = column![
+            text("Bid:").size(16).color(Color::WHITE),
+            row![
+                text_input("Enter bid", &self.info.bid_input)
+                    .on_input(AppMessage::BidInputChanged)
+                    .width(80),
+                submit_button,
+            ]
+            .spacing(6),
+            text(bid_hint)
+                .size(12)
+                .color(if is_valid_bid || self.info.bid_input.is_empty() {
+                    Color::from_rgba(1.0, 1.0, 1.0, 0.7)
+                } else {
+                    Color::from_rgba(1.0, 0.4, 0.4, 0.9)
+                }),
+        ]
+        .spacing(6);
+
+        container(panel).padding([8, 0])
+    }
+
+    fn build_trump_panel<'a>(&self) -> Container<'a, AppMessage> {
+        // Show only if dealer and must_set_trump
+        if !self.info.must_set_trump || self.info.dealer != self.info.my_id {
+            return container(None::<&str>);
+        }
+
+        let panel = column![
+            text("Select Trump Suit:").size(16).color(Color::WHITE),
+            row![
+                button(Image::new("assets/cards/variations/red_1.png"))
+                    .width(80)
+                    .height(120)
+                    .on_press(GameViewMessage::TryChooseSuit(Suit::Red).convert_msg())
+                    .padding(0),
+                button(Image::new("assets/cards/variations/green_1.png"))
+                    .width(80)
+                    .height(120)
+                    .on_press(GameViewMessage::TryChooseSuit(Suit::Green).convert_msg())
+                    .padding(0),
+                button(Image::new("assets/cards/variations/blue_1.png"))
+                    .width(80)
+                    .height(120)
+                    .on_press(GameViewMessage::TryChooseSuit(Suit::Blue).convert_msg())
+                    .padding(0),
+                button(Image::new("assets/cards/variations/yellow_1.png"))
+                    .width(80)
+                    .height(120)
+                    .on_press(GameViewMessage::TryChooseSuit(Suit::Yellow).convert_msg())
+                    .padding(0),
+            ]
+            .spacing(6),
+        ]
+        .spacing(6);
+
+        container(panel).padding([8, 0])
+    }
+
+    /// Get player name from ID using lobby data
+    pub fn get_player_name(&self, player_id: PlayerId) -> String {
+        if self.info.my_id == Some(player_id) {
+            return "You".to_string();
+        }
+        if let Some(ref lobby) = self.info.lobby {
+            if let Some(player) = lobby.players.iter().find(|p| p.id == player_id) {
+                return player.name.clone();
+            }
+        }
+        format!("Player {}", player_id)
+    }
+
+    fn size_small(&self) -> f32 {
+        self.width() / 22.0
+    }
+    fn size_middle(&self) -> f32 {
+        self.width() / 19.0
+    }
+    fn size_big(&self) -> f32 {
+        self.width() / 16.0
+    }
+    fn size_huge(&self) -> f32 {
+        self.width() / 10.0
+    }
+}
+
+impl Notifiable for ScoreBoard {
+    type OwnMessage = ScoreBoardMessage;
+    fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
+        match msg {
+            ScoreBoardMessage::Update(info) => {
+                self.info = info;
+            }
+        }
+        Task::none()
+    }
+}
+
+impl ResizableDynHeight for ScoreBoard {
+    fn update_size(&mut self, window_size: Size) {
+        self.window_size = window_size
+    }
+    fn width(&self) -> f32 {
+        SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH * self.window_size.width
+    }
+}
+
+impl Animated for ScoreBoard {
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        self.btn_submit_bid.update_animations()
+    }
+}
+
+impl Viewable for ScoreBoard {
+    // AI Usage: overwrite the view so that the scoreboard is placed correctly
+    // and uses rows+cells instead of rows+format strings
+    fn view<'a>(&self) -> Container<'a, AppMessage> {
+        let mut scores_col = Column::new().spacing(2);
+
+        scores_col = scores_col.push(
+            container(
+                text("Scoreboard")
+                    .size(self.size_huge())
+                    .color(Color::WHITE),
+            )
+            .padding(5),
+        );
+
+        scores_col = scores_col.push(
+            container(
+                text(format!("Round {}", self.info.round_number + 1))
+                    .size(self.size_big())
+                    .color(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+            )
+            .padding([0, 5]),
+        );
+
+        // Header row
+        scores_col = scores_col.push(self.scoreboard_row("Name", "Pkt", "Won", "Bid", true, false));
+
+        for player_id in self.sorted_player_order_by_score() {
+            let mut player_name = self.get_player_name(player_id);
+            let score = self.info.scores.get(&player_id).unwrap_or(&0);
+            let tricks = self.info.tricks_won.get(&player_id).unwrap_or(&0);
+            let bid = self.info.bids.get(&player_id).unwrap_or(&0);
+            let is_current_turn = self.info.current_player == Some(player_id);
+
+            if player_name.is_empty() {
+                player_name = "???".to_string();
+            }
+
+            scores_col = scores_col.push(self.scoreboard_row(
+                &player_name,
+                &score.to_string(),
+                &tricks.to_string(),
+                &bid.to_string(),
+                false,
+                is_current_turn,
+            ));
+        }
+
+        scores_col = scores_col.push(
+            container(
+                text("Bids for current round")
+                    .size(self.size_small())
+                    .color(Color::from_rgba(1.0, 1.0, 1.0, 0.5)),
+            )
+            .padding([8, 0]),
+        );
+
+        if self.info.must_set_trump && self.info.dealer == self.info.my_id {
+            scores_col = scores_col
+                .push(self.build_trump_panel())
+                .align_x(iced::Center);
+        } else if !self.info.must_set_trump {
+            scores_col = scores_col
+                .push(self.build_bidding_panel())
+                .align_x(iced::Center);
+        }
+
+        // Wrap in a styled container
+        container(scores_col)
+            .width(self.width())
+            .height(Shrink)
+            .padding([24.0, 24.0])
+            .style(|_theme| container::Style {
+                background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.6).into()),
+                border: Border {
+                    color: Color::from_rgba(1.0, 0.85, 0.4, 0.5),
+                    width: 2.0,
+                    radius: 8.0.into(),
+                },
+                ..Default::default()
+            })
+    }
+}

@@ -10,7 +10,8 @@ use crate::client::{App, AppMessage};
 
 pub const TITLE_FONT: Font = Font::with_name("Magic School One");
 
-use crate::api::{Card, Value};
+use crate::api::{Card, PlayerId, Value, TextColor};
+
 
 /// Format a card for display (e.g., "5 Red", "Wizard", "Jester").
 pub fn format_card(card: &Card) -> String {
@@ -21,7 +22,7 @@ pub fn format_card(card: &Card) -> String {
     }
 }
 
-pub fn get_player_name(state: &App, player_id: u64) -> String {
+pub fn get_player_name(state: &App, player_id: PlayerId) -> String {
     state
         .lobby
         .as_ref()
@@ -45,9 +46,10 @@ pub fn png_dimensions(path: &str) -> Option<(u32, u32)> {
     Some((width, height))
 }
 
-/// Creates a full-screen background with the specified image.
-pub fn background_image(path: &'static str) -> Image<iced::widget::image::Handle> {
-    Image::new(path)
+pub fn background_image(
+    handle: &iced::widget::image::Handle,
+) -> Image<iced::widget::image::Handle> {
+    Image::new(handle.clone())
         .width(iced::Length::Fill)
         .height(iced::Length::Fill)
         .content_fit(ContentFit::Cover)
@@ -59,12 +61,12 @@ pub fn menu_panel<'a>(
     body: Element<'a, AppMessage>,
     footer: Option<Element<'a, AppMessage>>,
 ) -> Element<'a, AppMessage> {
-    let (intr_w, intr_h) = png_dimensions("assets/menu/menu_container.png").unwrap_or((560, 440));
+    let (intr_w, intr_h) = png_dimensions("assets/menu_container.png").unwrap_or((560, 440));
     let max_w = (state.window_size.width * 0.9) as u32;
     let max_h = (state.window_size.height * 0.9) as u32;
 
-    let scale = ((max_w as f32) / (intr_w as f32))
-        .min((max_h as f32) / (intr_h as f32))
+    let scale = ((max_w as f32) / (intr_w as f32).max(1.0))
+        .min((max_h as f32) / (intr_h as f32).max(1.0))
         .min(1.0);
 
     let menu_w = (intr_w as f32 * scale).round() as u32;
@@ -85,7 +87,7 @@ pub fn menu_panel<'a>(
 
     stack![
         container(
-            Image::new("assets/menu/menu_container.png")
+            Image::new(state.img_menu_container.clone())
                 .width(menu_w)
                 .height(menu_h)
         )
@@ -101,9 +103,9 @@ pub fn menu_panel<'a>(
                         text(title)
                             .size(38)
                             .font(TITLE_FONT)
-                            .color(iced::Color::from_rgb(0.0, 0.0, 0.0)),
+                            .white(),
                     )
-                    .height(48u32)
+                    .height(48 as u32)
                     .center_x(iced::Fill),
                 ),
         )

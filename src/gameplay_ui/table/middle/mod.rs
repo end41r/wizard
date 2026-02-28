@@ -1,0 +1,100 @@
+pub mod card_deck;
+pub mod card_stack;
+
+use crate::{
+    client::{AppMessage, TaskBatcher},
+    gameplay_ui::table::{
+        middle::{
+            card_deck::{CardDeckMessage, ViewableCardDeck},
+            card_stack::{CardStackMessage, ViewableCardStack},
+        },
+        TableMessage,
+    },
+    ui_element_traits::*,
+};
+use iced::{
+    widget::{row, Container},
+    Size, Task,
+};
+
+#[derive(Debug, Clone)]
+pub enum TableMiddleMessage {
+    CardDeckMessage(CardDeckMessage),
+    CardStackMessage(CardStackMessage),
+}
+
+impl Message for TableMiddleMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        TableMessage::convert_msg_from(TableMessage::TableMiddleMessage(msg))
+    }
+}
+
+pub struct ViewableTableMiddle {
+    window_size: Size,
+    card_deck: ViewableCardDeck,
+    card_stack: ViewableCardStack,
+}
+
+impl ViewableTableMiddle {
+    pub fn new(window_size: Size) -> Self {
+        Self {
+            window_size,
+            card_deck: ViewableCardDeck::new(window_size),
+            card_stack: ViewableCardStack::new(window_size),
+        }
+    }
+}
+
+impl Notifiable for ViewableTableMiddle {
+    type OwnMessage = TableMiddleMessage;
+
+    fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
+        match msg {
+            TableMiddleMessage::CardDeckMessage(card_deck_msg) => {
+                self.card_deck.update_with_msg(card_deck_msg)
+            }
+            TableMiddleMessage::CardStackMessage(card_stack_msg) => {
+                self.card_stack.update_with_msg(card_stack_msg)
+            }
+        }
+    }
+}
+
+impl Animated for ViewableTableMiddle {
+    fn update_animations(&mut self) -> Task<AppMessage> {
+        TaskBatcher::instant_batch([
+            self.card_deck.update_animations(),
+            self.card_stack.update_animations(),
+        ])
+    }
+}
+
+impl Resizable for ViewableTableMiddle {
+    fn height(&self) -> f32 {
+        f32_max(vec![self.card_stack.height(), self.card_deck.height()]).unwrap()
+    }
+    fn width(&self) -> f32 {
+        self.card_deck.width() + self.card_stack.width()
+    }
+    fn update_size(&mut self, window_size: Size) {
+        self.window_size = window_size;
+        self.card_deck.update_size(window_size);
+        self.card_stack.update_size(window_size);
+    }
+}
+
+impl Viewable for ViewableTableMiddle {
+    fn view<'a>(&self) -> Container<'a, AppMessage> {
+        Container::new(row![self.card_stack.view(), self.card_deck.view()])
+    }
+}
+
+fn f32_max(numbers: Vec<f32>) -> Option<f32> {
+    let mut max: Option<f32> = None;
+    for number in numbers.iter() {
+        if max.is_none() || max.unwrap() < *number {
+            max = Some(*number)
+        };
+    }
+    max
+}

@@ -1,14 +1,18 @@
 mod update;
-mod views;
+pub mod views;
 mod ws;
 mod audio;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
-use crate::gameplay_ui::hand::{HandMessage, ViewableHand};
-use iced::{time, window, Size, Subscription};
+use crate::client::views::Button;
+use crate::gameplay_ui::scoreboard::ScoreBoardInfo;
+use crate::gameplay_ui::{GameStartInfo, GameView, GameViewMessage};
+use crate::ui_element_traits::Message;
+use iced::{time, widget::image, window, Size, Subscription, Task};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use strum::IntoEnumIterator;
 
 pub use update::update;
 pub use views::view;
@@ -22,7 +26,7 @@ pub enum PlayerCount {
     P6,
 }
 
-const TITLE_FONT: &[u8] = include_bytes!("../../assets/menu/MagicSchoolOne.ttf");
+const TITLE_FONT: &[u8] = include_bytes!("../../assets/MagicSchoolOne.ttf");
 
 impl PlayerCount {
     pub fn to_usize(self) -> usize {
@@ -58,11 +62,22 @@ pub enum MenuState {
     #[allow(dead_code)]
     PlayingTest,
 }
+
+impl Message for MenuState {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        AppMessage::Navigate(msg)
+    }
+}
+
 pub struct App {
     window_size: Size,
+    pub msg_queue: Vec<AppMessage>,
+    pub msg_queue_delayed: Vec<AppMessage>,
+    pub animation_count_down_latch: usize,
 
     pub connected: bool,
     pub connecting: bool,
+    pub disconnected: bool,
     pub ws_tx: WsConnection,
     pub server_rx: ServerMsgReceiver,
     pub msg: String,
@@ -84,7 +99,7 @@ pub struct App {
     pub game_log: Vec<String>,
     pub hand: Vec<Card>,
     pub current_trick: Vec<(PlayerId, Card)>,
-    pub trump: Option<Suit>,
+    pub trump: Option<Card>,
     pub round_number: usize,
     pub is_my_turn: bool,
     pub is_bidding_phase: bool,
@@ -101,14 +116,14 @@ pub struct App {
     pub winner: Option<PlayerId>,
 
     // Gameplay view state
-    pub viewable_hand: ViewableHand,
+    pub game_view: GameView,
 
     // UI Buttons (main menu)
     pub btn_host: crate::client::views::Button,
     pub btn_join: crate::client::views::Button,
     pub btn_rules: crate::client::views::Button,
-    pub btn_exit: crate::client::views::Button,
     pub btn_options: crate::client::views::Button,
+    pub btn_close: crate::client::views::Button,
 
     // Buttons for other menus
     pub btn_create_lobby: crate::client::views::Button,
@@ -124,6 +139,67 @@ pub struct App {
     pub audio: Option<crate::client::audio::Audio>,
     pub music_volume: i32,
     pub sfx_volume: i32,
+    pub img_main_menu: image::Handle,
+    pub img_lobby_menu: image::Handle,
+    pub img_background: image::Handle,
+    pub img_menu_container: image::Handle,
+
+    #[allow(dead_code)]
+    pub card_images: HashMap<Card, image::Handle>,
+}
+
+impl App {
+    pub fn scoreboard_info(&self) -> ScoreBoardInfo {
+        ScoreBoardInfo::new(
+            self.round_number,
+            self.player_order.clone(),
+            self.scores.clone(),
+            self.tricks_won.clone(),
+            self.bids.clone(),
+            self.my_id,
+            self.lobby.clone(),
+            self.must_set_trump,
+            self.dealer,
+            self.is_bidding_phase,
+            self.is_my_turn,
+            self.bid_input.clone(),
+            self.current_player,
+        )
+    }
+
+    pub fn game_start_info(&self) -> GameStartInfo {
+        GameStartInfo::new(self)
+    }
+
+    fn preload_card_images() -> HashMap<Card, image::Handle> {
+        let mut map = HashMap::new();
+
+        map.insert(
+            Card::new(Suit::Red, crate::api::Value::Jester),
+            image::Handle::from_path("assets/cards/variations/jester.png"),
+        );
+        map.insert(
+            Card::new(Suit::Red, crate::api::Value::Wizard),
+            image::Handle::from_path("assets/cards/variations/wizard.png"),
+        );
+
+        for suit in Suit::iter() {
+            for num in 1..=13 {
+                let card = Card::new(suit, crate::api::Value::Number(num));
+                let path = card.img_path();
+                map.insert(card, image::Handle::from_path(path));
+            }
+        }
+
+        map
+    }
+
+    pub fn get_card_image(&self, card: Card) -> image::Handle {
+        self.card_images.get(&card).cloned().unwrap_or_else(|| {
+            //just in case
+            image::Handle::from_path(card.img_path())
+        })
+    }
 }
 
 
@@ -133,9 +209,13 @@ impl Default for App {
         let window_size: Size = Size::new(640.0, 480.0);
         let mut app = Self {
             window_size,
+            msg_queue: Vec::new(),
+            msg_queue_delayed: Vec::new(),
+            animation_count_down_latch: 0,
 
             connected: false,
             connecting: false,
+            disconnected: false,
             ws_tx: Arc::new(Mutex::new(None)),
             server_rx: Arc::new(Mutex::new(None)),
             msg: String::new(),
@@ -146,7 +226,7 @@ impl Default for App {
             join_name: "".to_string(),
 
             my_id: None,
-
+            game_view: GameView::new(window_size),
             lobby: Some(Lobby {
                 players: Vec::new(),
                 chat: Vec::new(),
@@ -176,90 +256,29 @@ impl Default for App {
             game_over: false,
             winner: None,
 
-            viewable_hand: ViewableHand::new(window_size),
-
+            
             //Buttons
-            btn_host: crate::client::views::Button::new(0, "Host", "assets/menu/button1.png", 180, 44),
-            btn_join: crate::client::views::Button::new(
-                1,
-                "Beitreten",
-                "assets/menu/button1.png",
-                180,
-                44,
-            ),
-            btn_options: crate::client::views::Button::new(
-                4,
-                "Optionen",
-                "assets/menu/button1.png",
-                180,
-                44,
-            ),
-            btn_rules: crate::client::views::Button::new(
-                2,
-                "Spielregeln",
-                "assets/menu/button1.png",
-                180,
-                44,
-            ),
-            btn_exit: crate::client::views::Button::new(
-                3,
-                "Spiel verlassen",
-                "assets/menu/button1.png",
-                180,
-                44,
-            ),
+            btn_host: Button::new_host_button(0, 180, 44),
+            btn_join: Button::new_join_button(1, 180, 44),
+            btn_options: Button::new_options_button(4, 180, 44),
+            btn_rules: Button::new_rules_button(2, 180, 44),
+            btn_close: Button::new_close_button(3, 180, 44),
+            
+            btn_create_lobby: Button::new_create_lobby_button(10, 160, 40),
+            btn_back: Button::new_back_button(11, 100, 36),
+            btn_connect: Button::new_connect_button(12, 140, 40),
+            btn_send_chat: Button::new_send_chat_button(13, 100, 36),
+            btn_start_game: Button::new_start_game_button(14, 140, 40),
+            btn_back_to_menu: Button::new_back_to_menu_button(15, 160, 40),
 
-            btn_create_lobby: crate::client::views::Button::new(
-                10,
-                "Lobby erstellen",
-                "assets/menu/button1.png",
-                160,
-                40,
-            ),
-            btn_back: crate::client::views::Button::new(
-                11,
-                "zurück",
-                "assets/menu/button1.png",
-                100,
-                36,
-            ),
-            btn_connect: crate::client::views::Button::new(
-                12,
-                "Verbinden",
-                "assets/menu/button1.png",
-                140,
-                40,
-            ),
-            btn_send_chat: crate::client::views::Button::new(
-                13,
-                "Senden",
-                "assets/menu/button1.png",
-                100,
-                36,
-            ),
-            btn_start_game: crate::client::views::Button::new(
-                14,
-                "Starten",
-                "assets/menu/button1.png",
-                140,
-                40,
-            ),
-            btn_back_to_menu: crate::client::views::Button::new(
-                15,
-                "Zurück zum Menü",
-                "assets/menu/button1.png",
-                160,
-                40,
-            ),
-
-            btn_ready_owned: crate::client::views::Button::new(
-                20,
-                "Bereit",
-                "assets/menu/button1.png",
-                100,
-                36,
-            ),
-
+            btn_ready_owned: Button::new_ready_owned_button(20, 100, 36),
+            
+            img_main_menu: image::Handle::from_path("assets/wizard_main_menu.png"),
+            img_lobby_menu: image::Handle::from_path("assets/wizard_lobby_menu.png"),
+            img_background: image::Handle::from_path("assets/background_forall.png"),
+            img_menu_container: image::Handle::from_path("assets/menu_container.png"),
+            
+            card_images: Self::preload_card_images(),
             audio: None,
             music_volume: 100,
             sfx_volume: 100,
@@ -278,7 +297,6 @@ impl Default for App {
             a.play_music(crate::client::audio::Music::Menu);
             app.audio = Some(a); 
         }
-
         app
     }
 }
@@ -321,7 +339,7 @@ pub enum AppMessage {
 
     CreateLobby,
     Connect,
-    ToggleReady(u64),
+    ToggleReady(PlayerId),
     StartGame,
 
     ServerTick,
@@ -337,8 +355,8 @@ pub enum AppMessage {
     BackToMenu,
     CloseGame,
 
-    // Gameplay view messages
-    HandMessage(HandMessage),
+    // Gameview messages
+    GameViewMessage(GameViewMessage),
 
     // Button messages from view widgets
     ButtonMessage(crate::client::views::ButtonMessage),
@@ -346,6 +364,44 @@ pub enum AppMessage {
     // Audio messages
     MusicVolumeChanged(f32),
     SfxVolumeChanged(f32),
+    // Animation Count Down Letch
+    IncrementACDL(usize),
+    DecrementACDL(usize),
+}
+
+impl Message for AppMessage {
+    fn convert_msg_from(msg: Self) -> AppMessage {
+        msg
+    }
+}
+
+pub struct TaskBatcher {
+    tasks: Vec<Task<AppMessage>>,
+}
+
+impl TaskBatcher {
+    pub fn new() -> Self {
+        Self { tasks: vec![] }
+    }
+    pub fn push(&mut self, task: Task<AppMessage>) {
+        if task.units() != 0 {
+            self.tasks.push(task)
+        }
+    }
+    pub fn push_msg(&mut self, task: impl Message) {
+        self.push(task.convert_msg_to_task())
+    }
+    pub fn push_mult<const SIZE: usize>(&mut self, tasks: [Task<AppMessage>; SIZE]) {
+        self.tasks
+            .extend(tasks.into_iter().filter(|task| task.units() != 0));
+    }
+    pub fn batch(self) -> Task<AppMessage> {
+        Task::batch(self.tasks)
+    }
+    // AI-Usage: Gemini for learning how to put an array into a function and filter it.
+    pub fn instant_batch<const SIZE: usize>(tasks: [Task<AppMessage>; SIZE]) -> Task<AppMessage> {
+        Task::batch(tasks.into_iter().filter(|task| task.units() != 0))
+    }
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {

@@ -20,7 +20,7 @@ pub enum GameEvent {
     RoundStarted {
         round: usize,
         cards_per_player: usize,
-        trump: Option<Suit>,
+        trump: Option<Card>,
     },
     RoundFinished {
         scores: HashMap<PlayerId, i32>,

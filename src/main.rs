@@ -1,6 +1,5 @@
-// Enable only in release before the final build.
 // Disables the console window on Windows.
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(not(feature = "wiz_debug"), windows_subsystem = "windows")]
 
 mod animation;
 mod api;

@@ -25,7 +25,7 @@ pub struct Round {
     pub current_trick: Vec<(PlayerId, Card)>,
     pub dealer: PlayerId,
     pub current_player: PlayerId,
-    pub trump: Option<Suit>,
+    pub trump: Option<Card>,
     pub dealer_needs_to_set_trump: bool,
     pub is_over: bool,
     pub bidding_phase: bool,
@@ -37,14 +37,7 @@ impl Round {
         if player_ids.is_empty() {
             panic!("Cannot create a round with no players");
         }
-        let mut deck = vec![];
-        for suit in Suit::iter() {
-            deck.push(Card::new(suit, Value::Jester));
-            deck.push(Card::new(suit, Value::Wizard));
-            for num in 1..=13 {
-                deck.push(Card::new(suit, Value::Number(num)));
-            }
-        }
+        let mut deck: Vec<Card> = build_deck();
 
         let mut players = HashMap::new();
         for id in player_ids {
@@ -75,9 +68,9 @@ impl Round {
         let mut dealer_needs_to_set_trump = false;
         if !deck.is_empty() {
             let trump_card = draw_random_card(&mut deck);
-            if trump_card.value != Value::Jester && trump_card.value != Value::Wizard {
-                trump = Some(trump_card.suit);
-            }
+
+            trump = Some(trump_card);
+
             dealer_needs_to_set_trump = trump_card.value == Value::Wizard;
         }
 
@@ -140,7 +133,10 @@ impl Round {
         if !self.dealer_needs_to_set_trump {
             return Err("Trump has already been set for this round");
         }
-        self.trump = Some(suit);
+        self.trump = Some(Card {
+            suit,
+            value: Value::Number(1),
+        });
         self.dealer_needs_to_set_trump = false;
         Ok(())
     }
@@ -259,7 +255,7 @@ impl Round {
             Value::Wizard => 100, // Wizard always highest
         };
 
-        let is_trump = self.trump.map(|t| card.suit == t).unwrap_or(false);
+        let is_trump = self.trump.map(|t| card.suit == t.suit).unwrap_or(false);
         let is_lead = lead_suit.map(|l| card.suit == l).unwrap_or(false);
 
         // just to be sure :)
@@ -294,6 +290,18 @@ impl Round {
     }
 }
 
+fn build_deck() -> Vec<Card> {
+    let mut deck = vec![];
+    for suit in Suit::iter() {
+        deck.push(Card::new(suit, Value::Jester));
+        deck.push(Card::new(suit, Value::Wizard));
+        for num in 1..=13 {
+            deck.push(Card::new(suit, Value::Number(num)));
+        }
+    }
+    deck
+}
+
 fn draw_random_cards(deck: &mut Vec<Card>, count: usize) -> Vec<Card> {
     let mut cards = vec![];
 
@@ -308,4 +316,9 @@ fn draw_random_card(deck: &mut Vec<Card>) -> Card {
     let mut rng: rand::prelude::ThreadRng = rng();
     let index = rng.random_range(0..deck.len());
     deck.remove(index)
+}
+
+// A temporary function for getting a random card used for ViewableCard::build_test_cards.
+pub fn random_card() -> Card {
+    draw_random_card(build_deck().as_mut())
 }

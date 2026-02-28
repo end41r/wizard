@@ -1,7 +1,7 @@
 use crate::animation::{CircularAutoReversingAnimation, Easing};
 use derive_more::{Deref, DerefMut};
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Clone, Debug, Deref, DerefMut)]
 pub struct FocusAnimation(CircularAutoReversingAnimation);
 
 impl FocusAnimation {
