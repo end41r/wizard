@@ -3,7 +3,7 @@ pub mod stack_card;
 use std::ops::Not;
 
 use crate::{
-    animation::{AnimationStarter, Easing, ReversableBasicAnimation},
+    animation::{Easing, ReversableBasicAnimation},
     api::Card,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
@@ -27,7 +27,6 @@ use iced::{
 pub enum CardStackMessage {
     CardPlayed(Card),
     HideAllCards,
-    HideCard(usize),
     RemoveAllCards,
     ShowPlayedCards,
     HidePlayedCards,
@@ -37,20 +36,6 @@ pub enum CardStackMessage {
 impl Message for CardStackMessage {
     fn convert_msg_from(msg: Self) -> AppMessage {
         TableMiddleMessage::convert_msg_from(TableMiddleMessage::CardStackMessage(msg))
-    }
-}
-
-impl ReplaceUsize for CardStackMessage {
-    fn replace_usize(&self, value: usize) -> Self {
-        match self {
-            CardStackMessage::HideCard(_) => CardStackMessage::HideCard(value),
-            CardStackMessage::HideAllCards => self.clone(),
-            CardStackMessage::CardPlayed(_) => self.clone(),
-            CardStackMessage::RemoveAllCards => self.clone(),
-            CardStackMessage::ShowPlayedCards => self.clone(),
-            CardStackMessage::HidePlayedCards => self.clone(),
-            CardStackMessage::SwitchAlwaysShowPlayedCards => self.clone(),
-        }
     }
 }
 
@@ -74,26 +59,16 @@ pub struct ViewableCardStack {
     cards: Vec<ViewableStackCard>,
     always_show_played_cards: bool,
     view_played_cards_animation: ViewPlayedCardsAnimation,
-    clear_card_stack_animation_starter: AnimationStarter<CardStackMessage, CardStackMessage>,
 }
 
 impl ViewableCardStack {
     pub fn new(window_size: Size) -> Self {
-        let mut viewable_stack_card = Self {
+        Self {
             window_size,
             cards: Vec::new(),
             always_show_played_cards: false,
             view_played_cards_animation: ViewPlayedCardsAnimation::new(40),
-            clear_card_stack_animation_starter: AnimationStarter::new(
-                10,
-                20,
-                CardStackMessage::HideCard(0),
-            ),
-        };
-        viewable_stack_card
-            .clear_card_stack_animation_starter
-            .on_all_ended(CardStackMessage::RemoveAllCards);
-        viewable_stack_card
+        }
     }
 }
 
@@ -114,15 +89,9 @@ impl Notifiable for ViewableCardStack {
                 return tb.batch();
             }
             CardStackMessage::HideAllCards => {
-                if self.cards.len() > 0 {
-                    return self
-                        .clear_card_stack_animation_starter
-                        .start(self.cards.len().max(1) - 1);
+                for card in self.cards.iter_mut() {
+                    card.remove_animation.start();
                 }
-            }
-            CardStackMessage::HideCard(id) => {
-                let card_count: usize = self.cards.len();
-                self.cards[card_count - 1 - id].remove_animation.start();
             }
             CardStackMessage::RemoveAllCards => {
                 self.cards.clear();
@@ -152,7 +121,6 @@ impl Animated for ViewableCardStack {
     fn update_animations(&mut self) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
         tb.push(self.view_played_cards_animation.next_frame());
-        tb.push(self.clear_card_stack_animation_starter.next_frame());
         for card in self.cards.iter_mut() {
             tb.push(card.update_animations());
         }

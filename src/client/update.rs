@@ -55,7 +55,6 @@ fn is_msg_not_ready(state: &App, msg: AppMessage) -> bool {
 }
 
 pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
-    println!("{}", state.animation_count_down_latch);
     match msg_unaltered.clone() {
         AppMessage::AnimationTick => (),
         AppMessage::ServerTick => (),
