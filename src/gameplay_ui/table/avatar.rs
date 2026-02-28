@@ -238,6 +238,7 @@ impl Notifiable for ViewableAvatar {
                     self.shards -= 1;
                     self.interpolation = false;
                     self.play_shard_animation.reset();
+                    return AppMessage::DecrementACDL(1).convert_msg_to_task();
                 }
             }
             AvatarMessage::ChangeTurn(id) => {

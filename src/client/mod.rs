@@ -161,6 +161,36 @@ impl App {
     pub fn game_start_info(&self) -> GameStartInfo {
         GameStartInfo::new(self)
     }
+
+    fn preload_card_images() -> HashMap<Card, image::Handle> {
+        let mut map = HashMap::new();
+
+        map.insert(
+            Card::new(Suit::Red, crate::api::Value::Jester),
+            image::Handle::from_path("assets/cards/variations/jester.png"),
+        );
+        map.insert(
+            Card::new(Suit::Red, crate::api::Value::Wizard),
+            image::Handle::from_path("assets/cards/variations/wizard.png"),
+        );
+
+        for suit in Suit::iter() {
+            for num in 1..=13 {
+                let card = Card::new(suit, crate::api::Value::Number(num));
+                let path = card.img_path();
+                map.insert(card, image::Handle::from_path(path));
+            }
+        }
+
+        map
+    }
+
+    pub fn get_card_image(&self, card: Card) -> image::Handle {
+        self.card_images.get(&card).cloned().unwrap_or_else(|| {
+            //just in case
+            image::Handle::from_path(card.img_path())
+        })
+    }
 }
 
 impl Default for App {
@@ -242,38 +272,6 @@ impl Default for App {
     }
 }
 
-impl App {
-    fn preload_card_images() -> HashMap<Card, image::Handle> {
-        let mut map = HashMap::new();
-
-        map.insert(
-            Card::new(Suit::Red, crate::api::Value::Jester),
-            image::Handle::from_path("assets/cards/variations/jester.png"),
-        );
-        map.insert(
-            Card::new(Suit::Red, crate::api::Value::Wizard),
-            image::Handle::from_path("assets/cards/variations/wizard.png"),
-        );
-
-        for suit in Suit::iter() {
-            for num in 1..=13 {
-                let card = Card::new(suit, crate::api::Value::Number(num));
-                let path = card.img_path();
-                map.insert(card, image::Handle::from_path(path));
-            }
-        }
-
-        map
-    }
-
-    pub fn get_card_image(&self, card: Card) -> image::Handle {
-        self.card_images.get(&card).cloned().unwrap_or_else(|| {
-            //just in case
-            image::Handle::from_path(card.img_path())
-        })
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum AppMessage {
     WindowResized(Size),
@@ -314,8 +312,8 @@ pub enum AppMessage {
     ButtonMessage(crate::client::views::ButtonMessage),
 
     // Animation Count Down Letch
-    IncrementACDL,
-    DecrementACDL,
+    IncrementACDL(usize),
+    DecrementACDL(usize),
 }
 
 impl Message for AppMessage {

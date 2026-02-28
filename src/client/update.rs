@@ -55,7 +55,7 @@ fn is_msg_not_ready(state: &App, msg: AppMessage) -> bool {
 }
 
 pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
-    // println!("{}", state.animation_count_down_latch);
+    println!("{}", state.animation_count_down_latch);
     match msg_unaltered.clone() {
         AppMessage::AnimationTick => (),
         AppMessage::ServerTick => (),
@@ -80,8 +80,7 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         tb.push_msg(queue_msg.clone())
     }
     state.msg_queue.clear();
-    // Deactivate this for now
-    if false && is_msg_not_ready(state, msg_unaltered.clone()) {
+    if is_msg_not_ready(state, msg_unaltered.clone()) {
         state.msg_queue_delayed.push(msg_unaltered);
         return tb.batch();
     }
@@ -94,17 +93,20 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         _ => msg_unaltered,
     };
     match msg {
-        AppMessage::DecrementACDL => {
-            state.animation_count_down_latch -= 1;
-            // Deactivate this for now
-            if false && state.animation_count_down_latch == 0 {
+        AppMessage::DecrementACDL(amount) => {
+            if state.animation_count_down_latch >= amount {
+                state.animation_count_down_latch -= amount;
+            } else {
+                state.animation_count_down_latch = 0;
+            }
+            if state.animation_count_down_latch == 0 {
                 for queue_msg in state.msg_queue_delayed.iter() {
                     tb.push_msg(queue_msg.clone())
                 }
                 state.msg_queue_delayed.clear();
             }
         }
-        AppMessage::IncrementACDL => state.animation_count_down_latch += 1,
+        AppMessage::IncrementACDL(amount) => state.animation_count_down_latch += amount,
         AppMessage::Navigate(menu) => {
             state.menu = menu;
         }
@@ -704,6 +706,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 // Reset turn - only the leader who receives YourTurn should be able to play
                 state.is_my_turn = false;
                 state.valid_cards.clear();
+                state
+                    .msg_queue
+                    .push(GameViewMessage::NewTrick.convert_msg());
             }
             B::TurnChanged { player } => {
                 let is_me = state.my_id == Some(player);
@@ -740,6 +745,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state
                     .msg_queue
                     .push(GameViewMessage::CardPlayed(player, card).convert_msg());
+                state.msg_queue.push(AppMessage::IncrementACDL(1));
             }
             B::PoolFinished { winner, cards } => {
                 let is_me = state.my_id == Some(winner);
