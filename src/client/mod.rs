@@ -314,7 +314,7 @@ impl App {
             MenuState::Lobby => Some(Music::Lobby),
             MenuState::Playing | MenuState::PlayingTest => Some(Music::InGame),
         };
-        
+
         // Only restart music if it's different from what's currently playing
         if target_music != self.current_music {
             if let Some(a) = &mut self.audio {
@@ -324,7 +324,7 @@ impl App {
             }
             self.current_music = target_music;
         }
-        
+
         self.menu = menu;
     }
 }
