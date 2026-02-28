@@ -25,7 +25,6 @@ pub enum AvatarMessage {
     PlayShard(PlayerId),
     InterpolationEnded(PlayerId),
     ChangeTurn(PlayerId),
-    NobodiesTurn,
 }
 
 impl Message for AvatarMessage {
@@ -239,6 +238,7 @@ impl Notifiable for ViewableAvatar {
                     self.shards -= 1;
                     self.interpolation = false;
                     self.play_shard_animation.reset();
+                    return AppMessage::DecrementACDL(1).convert_msg_to_task();
                 }
             }
             AvatarMessage::ChangeTurn(id) => {
@@ -247,9 +247,6 @@ impl Notifiable for ViewableAvatar {
                 } else {
                     self.my_turn = false;
                 }
-            }
-            AvatarMessage::NobodiesTurn => {
-                self.my_turn = false;
             }
         }
         Task::none()

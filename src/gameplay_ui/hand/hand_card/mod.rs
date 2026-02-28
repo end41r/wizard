@@ -126,18 +126,16 @@ impl Notifiable for ViewableHandCard {
                     tb.push(CardMessage::NotHovered(self.card).convert_msg_to_task())
                 };
             }
+            // Comes from Server, so this needs no checks.
             CardMessage::Played(card) => {
                 if card == self.card {
-                    if self.playable {
-                        self.play_animation.start();
-                    } else {
-                        self.false_played_animation.start();
-                    }
+                    self.play_animation.start();
                 };
             }
             CardMessage::Clicked(card) => {
                 if card == self.card {
                     if self.playable {
+                        self.my_turn = false;
                         tb.push(GameViewMessage::TryPlayCard(self.card).convert_msg_to_task())
                     } else {
                         self.false_played_animation.start();

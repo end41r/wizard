@@ -7,6 +7,8 @@ use crate::client::TaskBatcher;
 use crate::gameplay_ui::hand::hand_card::CardMessage;
 use crate::gameplay_ui::hand::HandMessage;
 use crate::gameplay_ui::scoreboard::ScoreBoardMessage;
+use crate::gameplay_ui::table::middle::card_deck::CardDeckMessage;
+use crate::gameplay_ui::table::TableMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
 
@@ -54,19 +56,18 @@ fn is_msg_not_ready(state: &App, msg: AppMessage) -> bool {
 }
 
 pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
-    // println!("{}", state.animation_count_down_latch);
     match msg_unaltered.clone() {
         AppMessage::AnimationTick => (),
         AppMessage::ServerTick => (),
         AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
             ScoreBoardMessage::Update(_),
         )) => (),
-        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
+        /* AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::Hovered(_),
         ))) => (),
         AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::NotHovered(_),
-        ))) => (),
+        ))) => (), */
         AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
             CardMessage::CursorMoved(_, _),
         ))) => (),
@@ -79,8 +80,7 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         tb.push_msg(queue_msg.clone())
     }
     state.msg_queue.clear();
-    // Deactivate this for now
-    if false && is_msg_not_ready(state, msg_unaltered.clone()) {
+    if is_msg_not_ready(state, msg_unaltered.clone()) {
         state.msg_queue_delayed.push(msg_unaltered);
         return tb.batch();
     }
@@ -93,17 +93,20 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         _ => msg_unaltered,
     };
     match msg {
-        AppMessage::DecrementACDL => {
-            state.animation_count_down_latch -= 1;
-            // Deactivate this for now
-            if false && state.animation_count_down_latch == 0 {
+        AppMessage::DecrementACDL(amount) => {
+            if state.animation_count_down_latch >= amount {
+                state.animation_count_down_latch -= amount;
+            } else {
+                state.animation_count_down_latch = 0;
+            }
+            if state.animation_count_down_latch == 0 {
                 for queue_msg in state.msg_queue_delayed.iter() {
                     tb.push_msg(queue_msg.clone())
                 }
                 state.msg_queue_delayed.clear();
             }
         }
-        AppMessage::IncrementACDL => state.animation_count_down_latch += 1,
+        AppMessage::IncrementACDL(amount) => state.animation_count_down_latch += amount,
         AppMessage::Navigate(menu) => {
             state.menu = menu;
         }
@@ -661,6 +664,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 if is_me {
                     state.must_set_trump = true;
                 }
+                state
+                    .msg_queue
+                    .push(TableMessage::ChangeTurn(dealer).convert_msg());
             }
             B::TrumpSet { suit, by_dealer } => {
                 let dealer_name = get_player_name(state, by_dealer);
@@ -673,6 +679,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                     value: Value::Number(1),
                 });
                 state.must_set_trump = false;
+                state
+                    .msg_queue
+                    .push(CardDeckMessage::ChangeGlow(state.trump.unwrap()).convert_msg())
             }
             B::BiddingStarted {
                 starting_player,
@@ -701,6 +710,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state.game_log.push(log.clone());
                 state.last_msg = log;
                 state.current_player = Some(player);
+                state
+                    .msg_queue
+                    .push(TableMessage::ChangeTurn(player).convert_msg());
             }
             B::BidMade { player, amount } => {
                 let player_name = get_player_name(state, player);
@@ -779,6 +791,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 state
                     .msg_queue
                     .push(GameViewMessage::CardPlayed(player, card).convert_msg());
+                state.msg_queue.push(AppMessage::IncrementACDL(1));
             }
             B::PoolFinished { winner, cards } => {
                 let is_me = state.my_id == Some(winner);
@@ -845,6 +858,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 }
                 state.game_over = true;
                 state.winner = Some(winner);
+                state
+                    .msg_queue
+                    .push(GameViewMessage::EndGame(winner).convert_msg());
             }
             B::ServerShutdown => {
                 println!("[SERVER] Server shutdown received");

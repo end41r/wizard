@@ -341,10 +341,15 @@ impl Card {
     }
 
     pub fn glow_path(&self) -> String {
-        let mut path: String = "assets/cards/".to_owned();
-        if self.value == Value::Jester || self.value == Value::Wizard {
-            path.push_str("");
+        if self.value == Value::Jester {
+            // glow card will treat this as no existant glow yet
+            "".to_string()
+        } else if self.value == Value::Wizard {
+            // glow card will treat this as a existant glow bu won't find the image,
+            // so glow is invisible
+            "NOT VALID".to_string()
         } else {
+            let mut path: String = "assets/cards/".to_owned();
             match self.suit {
                 Suit::Blue => {
                     path.push_str("glow_blue");
@@ -359,9 +364,9 @@ impl Card {
                     path.push_str("glow_yellow");
                 }
             }
+            path.push_str(".png");
+            path
         }
-        path.push_str(".png");
-        path
     }
 }
 

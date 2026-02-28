@@ -446,39 +446,3 @@ impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEn
             .convert_msg_to_task()
     }
 }
-
-#[derive(Clone, Debug)]
-pub struct AnimationChainGuardian {
-    tick: usize,
-    max_tick: usize,
-    is_moving: bool,
-}
-
-impl AnimationChainGuardian {
-    pub fn new() -> Self {
-        Self {
-            tick: 0,
-            max_tick: 0,
-            is_moving: false,
-        }
-    }
-    pub fn start(&mut self, chain_duration: usize) -> Task<AppMessage> {
-        self.is_moving = true;
-        self.tick = 0;
-        self.max_tick = chain_duration;
-        AppMessage::IncrementACDL.convert_msg_to_task()
-    }
-    pub fn next_frame(&mut self) -> Task<AppMessage> {
-        if self.is_moving {
-            if self.tick < self.max_tick {
-                self.tick += 1;
-            } else {
-                self.is_moving = false;
-                self.tick = 0;
-                self.max_tick = 0;
-                return AppMessage::DecrementACDL.convert_msg_to_task();
-            }
-        }
-        Task::none()
-    }
-}

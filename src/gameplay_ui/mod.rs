@@ -2,13 +2,16 @@ pub mod hand;
 pub mod scoreboard;
 pub mod table;
 
+use derive_more::{Deref, DerefMut};
 use iced::{
     widget::{container, image, stack, Container},
-    ContentFit, Point, Size, Task,
+    ContentFit,
+    Length::Fill,
+    Point, Size, Task,
 };
 
 use crate::{
-    animation::AnimationChainGuardian,
+    animation::{BasicAnimation, Easing},
     api::{Card, Player, PlayerId, Suit},
     client::{views::ButtonMessage, App, AppMessage, TaskBatcher},
     gameplay_ui::{
@@ -128,6 +131,18 @@ pub enum GameViewMessage {
     TryChooseSuit(Suit),
 }
 
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct BlackScreenFadeInAnimation(BasicAnimation);
+
+impl BlackScreenFadeInAnimation {
+    pub fn new(duration: usize) -> Self {
+        Self(BasicAnimation::new(duration))
+    }
+    pub fn get_opacity(&self) -> f32 {
+        self.progress(Easing::InSine) * 0.7
+    }
+}
+
 impl Message for GameViewMessage {
     fn convert_msg_from(msg: Self) -> crate::client::AppMessage {
         AppMessage::GameViewMessage(msg)
@@ -140,14 +155,13 @@ pub struct GameView {
 
     // game data
     my_id: Option<PlayerId>,
+    game_ended: bool,
+    game_ended_animation: BlackScreenFadeInAnimation,
 
     // gui elements
     viewable_hand: ViewableHand,
     viewable_table: ViewableTable,
     scoreboard: ScoreBoard,
-
-    // animation chain guardians
-    card_played_guardian: AnimationChainGuardian,
 }
 
 impl GameView {
@@ -156,17 +170,15 @@ impl GameView {
             window_size,
             img_ingame_background: image::Handle::from_path("assets/ingame_background.png"),
             my_id: None,
+            game_ended: false,
+            game_ended_animation: BlackScreenFadeInAnimation::new(400),
             viewable_hand: ViewableHand::new(window_size),
             viewable_table: ViewableTable::new(window_size),
             scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
-            card_played_guardian: AnimationChainGuardian::new(),
         }
     }
     pub fn update_buttons_with_msg(&mut self, btn_msg: ButtonMessage) -> Task<AppMessage> {
         self.scoreboard.btn_submit_bid.update_with_msg(btn_msg)
-    }
-    pub fn card_played_duration(&self) -> usize {
-        100
     }
 }
 
@@ -196,7 +208,6 @@ impl Notifiable for GameView {
             }
             GameViewMessage::CardPlayed(played_by, card) => {
                 let mut tb = TaskBatcher::new();
-                tb.push(self.card_played_guardian.start(self.card_played_duration()));
                 tb.push_msg(CardStackMessage::CardPlayed(card));
                 tb.push_msg(AvatarMessage::PlayShard(played_by));
                 if played_by == self.my_id.unwrap() {
@@ -211,7 +222,6 @@ impl Notifiable for GameView {
                 tb.push_msg(CardStackMessage::HideAllCards);
                 tb.push_msg(CardDeckMessage::Deal(hand_cards_len, trump_card));
                 tb.push_msg(TableMessage::DrawShards(hand_cards_len));
-                tb.push_msg(TableMessage::NobodiesTurn);
                 tb.push_msg(HandMessage::NobodiesTurn);
                 tb.batch()
             }
@@ -225,7 +235,11 @@ impl Notifiable for GameView {
             GameViewMessage::TryChooseSuit(suit) => {
                 AppMessage::SetTrump(suit).convert_msg_to_task()
             }
-            _ => Task::none(),
+            GameViewMessage::EndGame(_) => {
+                self.game_ended = true;
+                self.game_ended_animation.start();
+                Task::none()
+            }
         }
     }
 }
@@ -236,7 +250,6 @@ impl Animated for GameView {
             self.viewable_hand.update_animations(),
             self.viewable_table.update_animations(),
             self.scoreboard.update_animations(),
-            self.card_played_guardian.next_frame(),
         ])
     }
 }
@@ -277,6 +290,12 @@ impl Viewable for GameView {
             (self.width() - self.viewable_hand.width()) / 2.0,
             self.height() - self.viewable_hand.height(),
         ));
+        if self.game_ended {
+            content = content
+                .push(image("assets/black_screen").opacity(self.game_ended_animation.get_opacity()))
+                .width(Fill)
+                .height(Fill)
+        }
         container(content)
     }
 }

@@ -40,7 +40,6 @@ pub enum CardDeckMessage {
     TrumpCardMessage(TrumpCardMessage),
     ChangeGlow(Card),
     GlowMessage(GlowMessage),
-    ShowGlow,
 }
 
 impl Message for CardDeckMessage {
@@ -62,7 +61,6 @@ impl ReplaceUsize for CardDeckMessage {
             CardDeckMessage::Shuffle => self.clone(),
             CardDeckMessage::ChangeGlow(_) => self.clone(),
             CardDeckMessage::GlowMessage(_) => self.clone(),
-            CardDeckMessage::ShowGlow => self.clone(),
         }
     }
 }
@@ -166,18 +164,12 @@ impl Notifiable for ViewableCardDeck {
                     return trump_card.update_with_msg(trump_card_msg);
                 }
             }
-            CardDeckMessage::Shuffle => {
-                self.glow.reveal_animation.reverse();
-                return TrumpCardMessage::RemovePart1.convert_msg_to_task();
-            }
+            CardDeckMessage::Shuffle => return TrumpCardMessage::RemovePart1.convert_msg_to_task(),
             CardDeckMessage::ChangeGlow(card) => {
                 self.glow.change_color(card);
             }
             CardDeckMessage::GlowMessage(glow_msg) => {
                 return self.glow.update_with_msg(glow_msg);
-            }
-            CardDeckMessage::ShowGlow => {
-                self.glow.reveal_animation.start_force();
             }
         }
         Task::none()
