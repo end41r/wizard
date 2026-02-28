@@ -135,8 +135,8 @@ impl Notifiable for ViewableHandCard {
             CardMessage::Clicked(card) => {
                 if card == self.card {
                     if self.playable {
-                        self.my_turn = false;
-                        tb.push(GameViewMessage::TryPlayCard(self.card).convert_msg_to_task())
+                        tb.push_msg(HandMessage::NotMyTurn);
+                        tb.push_msg(GameViewMessage::TryPlayCard(self.card))
                     } else {
                         self.false_played_animation.start();
                     }
