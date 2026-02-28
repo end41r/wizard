@@ -2,15 +2,21 @@ use std::collections::HashMap;
 
 use iced::{
     mouse::Interaction,
-    widget::{column, container, mouse_area, row, text, text_input, Column, Container, Image},
+    widget::{
+        column, container, image::FilterMethod, mouse_area, row, text, text_input, Column,
+        Container, Image,
+    },
     Border, Color,
     Length::Shrink,
     Size, Task,
 };
 
+use crate::animation::{Easing, ReversableBasicAnimation};
+use derive_more::{Deref, DerefMut};
+
 use crate::{
     api::{Lobby, PlayerId, Suit},
-    client::{views::Button, AppMessage},
+    client::{views::Button, AppMessage, TaskBatcher},
     gameplay_ui::{
         GameViewMessage, CARD_WIDTH_HEIGHT_RATIO, SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH,
     },
@@ -87,6 +93,8 @@ impl ScoreBoardInfo {
 #[derive(Clone, Debug)]
 pub enum ScoreBoardMessage {
     Update(ScoreBoardInfo),
+    SuitHovered(Suit),
+    SuitNotHovered(Suit),
 }
 
 impl Message for ScoreBoardMessage {
@@ -95,11 +103,28 @@ impl Message for ScoreBoardMessage {
     }
 }
 
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct HoverAnimation(ReversableBasicAnimation);
+
+impl HoverAnimation {
+    pub fn new(duration: usize) -> Self {
+        Self(ReversableBasicAnimation::new(duration))
+    }
+    pub fn get_scale(&self) -> f32 {
+        0.8 + 0.2 * self.progress(Easing::InOutSine)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ScoreBoard {
     window_size: Size,
     pub btn_submit_bid: Button,
     info: ScoreBoardInfo,
+    showing_trump_select: bool,
+    hover_animation_red: HoverAnimation,
+    hover_animation_green: HoverAnimation,
+    hover_animation_blue: HoverAnimation,
+    hover_animation_yellow: HoverAnimation,
 }
 
 impl ScoreBoard {
@@ -108,6 +133,11 @@ impl ScoreBoard {
             window_size,
             btn_submit_bid: Button::new_submit_bid_button(21, 110, 36),
             info,
+            showing_trump_select: false,
+            hover_animation_red: HoverAnimation::new(20),
+            hover_animation_green: HoverAnimation::new(20),
+            hover_animation_blue: HoverAnimation::new(20),
+            hover_animation_yellow: HoverAnimation::new(20),
         }
     }
 
@@ -183,8 +213,20 @@ impl ScoreBoard {
             })
     }
 
+    fn reset_animations(&mut self) {
+        self.hover_animation_blue.reset();
+        self.hover_animation_green.reset();
+        self.hover_animation_red.reset();
+        self.hover_animation_yellow.reset();
+    }
+    fn not_show_trump_pannel(&self) -> bool {
+        !self.info.must_set_trump || self.info.dealer != self.info.my_id
+    }
+    fn not_show_bidding_pannel(&self) -> bool {
+        !self.info.is_bidding_phase || !self.info.is_my_turn || self.info.must_set_trump
+    }
     fn build_bidding_panel<'a>(&self) -> Container<'a, AppMessage> {
-        if !self.info.is_bidding_phase || !self.info.is_my_turn || self.info.must_set_trump {
+        if self.not_show_bidding_pannel() {
             return container(None::<&str>);
         }
         let max_bid = self.info.round_number + 1;
@@ -211,10 +253,9 @@ impl ScoreBoard {
 
     fn build_trump_panel<'a>(&self) -> Container<'a, AppMessage> {
         // Show only if dealer and must_set_trump
-        if !self.info.must_set_trump || self.info.dealer != self.info.my_id {
+        if self.not_show_trump_pannel() {
             return container(None::<&str>);
         }
-
         let panel = column![
             text("Select Trump Suit:")
                 .size(self.size_big())
@@ -222,32 +263,48 @@ impl ScoreBoard {
             row![
                 mouse_area(
                     Image::new("assets/suits/red.png")
+                        .filter_method(FilterMethod::Nearest)
                         .width(self.card_width())
                         .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
+                        .scale(self.hover_animation_red.get_scale())
                 )
                 .interaction(Interaction::Pointer)
-                .on_press(GameViewMessage::TryChooseSuit(Suit::Red).convert_msg()),
+                .on_press(GameViewMessage::TryChooseSuit(Suit::Red).convert_msg())
+                .on_enter(ScoreBoardMessage::SuitHovered(Suit::Red).convert_msg())
+                .on_exit(ScoreBoardMessage::SuitNotHovered(Suit::Red).convert_msg()),
                 mouse_area(
                     Image::new("assets/suits/green.png")
+                        .filter_method(FilterMethod::Nearest)
                         .width(self.card_width())
                         .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
+                        .scale(self.hover_animation_green.get_scale())
                 )
                 .interaction(Interaction::Pointer)
-                .on_press(GameViewMessage::TryChooseSuit(Suit::Green).convert_msg()),
+                .on_press(GameViewMessage::TryChooseSuit(Suit::Green).convert_msg())
+                .on_enter(ScoreBoardMessage::SuitHovered(Suit::Green).convert_msg())
+                .on_exit(ScoreBoardMessage::SuitNotHovered(Suit::Green).convert_msg()),
                 mouse_area(
                     Image::new("assets/suits/blue.png")
+                        .filter_method(FilterMethod::Nearest)
                         .width(self.card_width())
                         .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
+                        .scale(self.hover_animation_blue.get_scale())
                 )
                 .interaction(Interaction::Pointer)
-                .on_press(GameViewMessage::TryChooseSuit(Suit::Blue).convert_msg()),
+                .on_press(GameViewMessage::TryChooseSuit(Suit::Blue).convert_msg())
+                .on_enter(ScoreBoardMessage::SuitHovered(Suit::Blue).convert_msg())
+                .on_exit(ScoreBoardMessage::SuitNotHovered(Suit::Blue).convert_msg()),
                 mouse_area(
                     Image::new("assets/suits/yellow.png")
+                        .filter_method(FilterMethod::Nearest)
                         .width(self.card_width())
                         .height(self.card_width() * CARD_WIDTH_HEIGHT_RATIO)
+                        .scale(self.hover_animation_yellow.get_scale())
                 )
                 .interaction(Interaction::Pointer)
-                .on_press(GameViewMessage::TryChooseSuit(Suit::Yellow).convert_msg()),
+                .on_press(GameViewMessage::TryChooseSuit(Suit::Yellow).convert_msg())
+                .on_enter(ScoreBoardMessage::SuitHovered(Suit::Yellow).convert_msg())
+                .on_exit(ScoreBoardMessage::SuitNotHovered(Suit::Yellow).convert_msg()),
             ]
             .spacing(6),
         ]
@@ -295,7 +352,41 @@ impl Notifiable for ScoreBoard {
         match msg {
             ScoreBoardMessage::Update(info) => {
                 self.info = info;
+                if !self.not_show_trump_pannel() && self.showing_trump_select == false {
+                    self.showing_trump_select = true;
+                } else {
+                    self.showing_trump_select = false;
+                    self.reset_animations();
+                }
             }
+            ScoreBoardMessage::SuitHovered(suit) => match suit {
+                Suit::Red => {
+                    self.hover_animation_red.start();
+                }
+                Suit::Blue => {
+                    self.hover_animation_blue.start();
+                }
+                Suit::Green => {
+                    self.hover_animation_green.start();
+                }
+                Suit::Yellow => {
+                    self.hover_animation_yellow.start();
+                }
+            },
+            ScoreBoardMessage::SuitNotHovered(suit) => match suit {
+                Suit::Red => {
+                    self.hover_animation_red.reverse();
+                }
+                Suit::Blue => {
+                    self.hover_animation_blue.reverse();
+                }
+                Suit::Green => {
+                    self.hover_animation_green.reverse();
+                }
+                Suit::Yellow => {
+                    self.hover_animation_yellow.reverse();
+                }
+            },
         }
         Task::none()
     }
@@ -312,7 +403,13 @@ impl ResizableDynHeight for ScoreBoard {
 
 impl Animated for ScoreBoard {
     fn update_animations(&mut self) -> Task<AppMessage> {
-        self.btn_submit_bid.update_animations()
+        TaskBatcher::instant_batch([
+            self.btn_submit_bid.update_animations(),
+            self.hover_animation_blue.next_frame(),
+            self.hover_animation_green.next_frame(),
+            self.hover_animation_red.next_frame(),
+            self.hover_animation_yellow.next_frame(),
+        ])
     }
 }
 
@@ -373,7 +470,7 @@ impl Viewable for ScoreBoard {
             .padding([8, 0]),
         );
 
-        if self.info.must_set_trump && self.info.dealer == self.info.my_id {
+        if !self.not_show_trump_pannel() {
             scores_col = scores_col
                 .push(self.build_trump_panel())
                 .align_x(iced::Center);
