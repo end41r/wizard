@@ -245,7 +245,7 @@ pub enum AvatarKind {
 }
 
 impl AvatarKind {
-    pub fn to_avatar(&self) -> Avatar {
+    pub fn as_avatar(&self) -> Avatar {
         Avatar::new(*self)
     }
     pub fn img_path(&self, pose: AvatarPose) -> String {

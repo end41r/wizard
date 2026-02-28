@@ -23,80 +23,26 @@ use crate::{
     ui_element_traits::{Animated, Message, Notifiable, ResizableDynHeight, Viewable},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ScoreBoardInfo {
-    round_number: usize,
-    player_order: Vec<PlayerId>,
-    scores: HashMap<PlayerId, i32>,
-    tricks_won: HashMap<PlayerId, usize>,
-    bids: HashMap<PlayerId, usize>,
-    my_id: Option<PlayerId>,
-    lobby: Option<Lobby>,
-    must_set_trump: bool,
-    dealer: Option<PlayerId>,
-    is_bidding_phase: bool,
-    is_my_turn: bool,
-    bid_input: String,
-    current_player: Option<PlayerId>,
-}
-
-impl Default for ScoreBoardInfo {
-    fn default() -> Self {
-        Self {
-            round_number: 0,
-            player_order: Vec::new(),
-            scores: HashMap::new(),
-            tricks_won: HashMap::new(),
-            bids: HashMap::new(),
-            my_id: None,
-            lobby: None,
-            must_set_trump: false,
-            dealer: None,
-            is_bidding_phase: false,
-            is_my_turn: false,
-            bid_input: String::new(),
-            current_player: None,
-        }
-    }
-}
-
-impl ScoreBoardInfo {
-    pub fn new(
-        round_number: usize,
-        player_order: Vec<PlayerId>,
-        scores: HashMap<PlayerId, i32>,
-        tricks_won: HashMap<PlayerId, usize>,
-        bids: HashMap<PlayerId, usize>,
-        my_id: Option<PlayerId>,
-        lobby: Option<Lobby>,
-        must_set_trump: bool,
-        dealer: Option<PlayerId>,
-        is_bidding_phase: bool,
-        is_my_turn: bool,
-        bid_input: String,
-        current_player: Option<PlayerId>,
-    ) -> Self {
-        Self {
-            round_number,
-            player_order,
-            scores,
-            tricks_won,
-            bids,
-            my_id,
-            lobby,
-            must_set_trump,
-            dealer,
-            is_bidding_phase,
-            is_my_turn,
-            bid_input,
-            current_player,
-        }
-    }
+    pub round_number: usize,
+    pub player_order: Vec<PlayerId>,
+    pub scores: HashMap<PlayerId, i32>,
+    pub tricks_won: HashMap<PlayerId, usize>,
+    pub bids: HashMap<PlayerId, usize>,
+    pub my_id: Option<PlayerId>,
+    pub lobby: Option<Lobby>,
+    pub must_set_trump: bool,
+    pub dealer: Option<PlayerId>,
+    pub is_bidding_phase: bool,
+    pub is_my_turn: bool,
+    pub bid_input: String,
+    pub current_player: Option<PlayerId>,
 }
 
 #[derive(Clone, Debug)]
 pub enum ScoreBoardMessage {
-    Update(ScoreBoardInfo),
+    Update(Box<ScoreBoardInfo>),
     SuitHovered(Suit),
     SuitNotHovered(Suit),
 }
@@ -241,53 +187,6 @@ impl ScoreBoard {
         }
         let max_bid = self.info.round_number + 1;
 
-        let is_valid_bid = if let Ok(bid) = self.info.bid_input.parse::<usize>() {
-            if bid > max_bid {
-                false
-            } else {
-                if max_bid != 1 {
-                    // enforce sum != max_bid for the last bidder
-                    let num_players = self.info.player_order.len();
-                    let bids_placed = self.info.bids.len();
-                    if bids_placed + 1 == num_players {
-                        // last bidder
-                        let sum_existing: usize = self.info.bids.values().sum();
-                        sum_existing + bid != max_bid
-                    } else {
-                        true
-                    }
-                } else {
-                    true // in the 1st round the sum can be 1
-                }
-            }
-        } else {
-            false
-        };
-
-        let bid_hint = if !self.info.bid_input.is_empty() {
-            if let Ok(bid) = self.info.bid_input.parse::<usize>() {
-                if bid > max_bid {
-                    format!("Max bid is {max_bid}")
-                } else if !is_valid_bid {
-                    let sum_existing: usize = self.info.bids.values().sum();
-                    let forbidden = max_bid - sum_existing;
-                    format!("Can't bid {forbidden} as last bidder")
-                } else {
-                    format!("(0 to {max_bid})")
-                }
-            } else {
-                "Enter a number".to_string()
-            }
-        } else {
-            format!("(0 to {max_bid})")
-        };
-
-        let submit_button: iced::Element<'a, AppMessage> = if is_valid_bid {
-            self.btn_submit_bid.view().into()
-        } else {
-            container(None::<&str>).into()
-        };
-
         let panel = column![
             text("Bid:")
                 .size(self.size_big())
@@ -408,8 +307,8 @@ impl Notifiable for ScoreBoard {
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
             ScoreBoardMessage::Update(info) => {
-                self.info = info;
-                if !self.not_show_trump_pannel() && self.showing_trump_select == false {
+                self.info = *info;
+                if !self.not_show_trump_pannel() && !self.showing_trump_select {
                     self.showing_trump_select = true;
                 } else {
                     self.showing_trump_select = false;

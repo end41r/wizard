@@ -105,8 +105,8 @@ impl ViewableHand {
         game_cards
             .iter()
             .map(|card| {
-                let playable = valid_cards.contains(&card);
-                ViewableHandCard::new(card.clone(), self.window_size, playable)
+                let playable = valid_cards.contains(card);
+                ViewableHandCard::new(*card, self.window_size, playable)
             })
             .collect()
     }

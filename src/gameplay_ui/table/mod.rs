@@ -85,7 +85,7 @@ impl Notifiable for ViewableTable {
             TableMessage::ChangeTurn(id) => {
                 let mut tb = TaskBatcher::new();
                 for avatar in self.avatars.iter_mut() {
-                    tb.push(avatar.update_with_msg(AvatarMessage::ChangeTurn(id.clone())))
+                    tb.push(avatar.update_with_msg(AvatarMessage::ChangeTurn(id)))
                 }
                 tb.batch()
             }
@@ -131,7 +131,7 @@ impl Viewable for ViewableTable {
         // Player Avatars
         let avatar_size: f32 = ViewableAvatar::width_for(self.window_size);
         let sec_col_x_spawn: f32 = self.width() - avatar_size;
-        if self.avatars.len() > 0 {
+        if !self.avatars.is_empty() {
             content = content.push(self.avatars[0].view());
             content = content.push(self.avatars[1].view_and_move(sec_col_x_spawn, 0.0));
             content = content.push(self.avatars[2].view_and_move(0.0, avatar_size * 1.5));

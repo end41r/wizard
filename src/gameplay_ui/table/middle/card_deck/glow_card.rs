@@ -65,7 +65,7 @@ impl CardStackGlow {
         }
     }
     pub fn change_color(&mut self, card: Card) {
-        if self.img_path == "".to_string() {
+        if self.img_path.is_empty() {
             self.img_path = card.glow_path();
             self.reveal_animation.start();
         }

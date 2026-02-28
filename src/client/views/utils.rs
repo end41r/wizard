@@ -99,7 +99,7 @@ pub fn menu_panel<'a>(
                 .push(container(Column::new()).height(title_top_offset))
                 .push(
                     container(text(title).size(38).font(TITLE_FONT).white(),)
-                        .height(48 as u32)
+                        .height(48_u32)
                         .center_x(iced::Fill),
                 ),
         )

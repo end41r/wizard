@@ -171,7 +171,7 @@ impl Viewable for ViewableCardStack {
         );
         content = content.push(pin(card_stack).position(Point::new(0.0, 0.0)));
 
-        if self.cards.len() > 0 {
+        if !self.cards.is_empty() {
             let mut cards = Stack::new();
             let card_width: f32 = self.width() / 6.0; // There can be 6 cards played at max.
             let card_height: f32 = card_width * CARD_WIDTH_HEIGHT_RATIO;
