@@ -200,14 +200,18 @@ impl ScoreBoard {
             if bid > max_bid {
                 false
             } else {
-                // enforce sum != max_bid for the last bidder
-                let num_players = self.info.player_order.len();
-                let bids_placed = self.info.bids.len();
-                if bids_placed + 1 == num_players {
-                    let sum_existing: usize = self.info.bids.values().sum();
-                    sum_existing + bid != max_bid
+                if max_bid != 1 {
+                    // enforce sum != max_bid for the last bidder
+                    let num_players = self.info.player_order.len();
+                    let bids_placed = self.info.bids.len();
+                    if bids_placed + 1 == num_players { // last bidder
+                        let sum_existing: usize = self.info.bids.values().sum();
+                        sum_existing + bid != max_bid
+                    } else {
+                        true
+                    }
                 } else {
-                    true
+                    true // in the 1st round the sum can be 1
                 }
             }
         } else {
