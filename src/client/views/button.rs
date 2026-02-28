@@ -3,7 +3,7 @@ use iced::widget::{container, stack, text, Image, MouseArea};
 use iced::Task;
 
 use crate::animation::{BasicAnimation, Easing, ReversableBasicAnimation};
-use crate::api::{PlayerId, BUTTON1_PATH};
+use crate::api::{PlayerId, BUTTON1_PATH, TextColor};
 use crate::client::{AppMessage, MenuState, TaskBatcher};
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable};
@@ -230,7 +230,7 @@ impl Button {
 
         let content = stack![
             img,
-            container(text(label).size(txt_size))
+            container(text(label).size(txt_size).white())
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
                 .center_x(iced::Fill)

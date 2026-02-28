@@ -12,6 +12,16 @@ pub static FALSE_PLAYED_PATH: &str = "assets/cards/false_played.png";
 pub type PlayerId = u64;
 pub type SessionId = u64;
 
+pub trait TextColor {
+    fn white(self) -> Self;
+}
+
+impl <'a> TextColor for iced::widget::Text<'a> {
+    fn white(self) -> Self {
+        self.color(iced::Color::WHITE)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ServerMessage {
     Server(S),
