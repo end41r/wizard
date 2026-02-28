@@ -388,8 +388,8 @@ impl TaskBatcher {
             self.tasks.push(task)
         }
     }
-    pub fn push_msg(&mut self, task: impl Message) {
-        self.push(task.convert_msg_to_task())
+    pub fn push_msg(&mut self, msg: impl Message) {
+        self.push(msg.convert_msg_to_task())
     }
     pub fn push_mult<const SIZE: usize>(&mut self, tasks: [Task<AppMessage>; SIZE]) {
         self.tasks
