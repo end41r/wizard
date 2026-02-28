@@ -5,7 +5,7 @@ pub mod table;
 
 use derive_more::{Deref, DerefMut};
 use iced::{
-    widget::{container, image, stack, Container},
+    widget::{container, image, mouse_area, pin, stack, Container},
     ContentFit,
     Length::Fill,
     Point, Size, Task,
@@ -140,7 +140,7 @@ impl BlackScreenFadeInAnimation {
         Self(BasicAnimation::new(duration))
     }
     pub fn get_opacity(&self) -> f32 {
-        self.progress(Easing::InSine) * 0.7
+        self.progress(Easing::InSine)
     }
 }
 
@@ -193,6 +193,7 @@ impl Notifiable for GameView {
             }
             GameViewMessage::ScoreBoardMessage(sb_msg) => self.scoreboard.update_with_msg(sb_msg),
             GameViewMessage::StartGame(info) => {
+                // ONLY FOR TESTING
                 let mut tb = TaskBatcher::new();
                 self.my_id = Some(info.my_id);
                 self.viewable_hand.my_id = Some(info.my_id);
@@ -247,6 +248,7 @@ impl Animated for GameView {
             self.viewable_hand.update_animations(),
             self.viewable_table.update_animations(),
             self.scoreboard.update_animations(),
+            self.game_ended_animation.next_frame(),
         ])
     }
 }
@@ -288,10 +290,23 @@ impl Viewable for GameView {
             self.height() - self.viewable_hand.height(),
         ));
         if self.game_ended {
-            content = content
-                .push(image("assets/black_screen").opacity(self.game_ended_animation.get_opacity()))
-                .width(Fill)
-                .height(Fill)
+            let mut winner_avatar = self.viewable_table.my_avatar(self.my_id.unwrap()).unwrap();
+            winner_avatar.turn_frame_animation.reset();
+            winner_avatar.turn_frame_glow_animation.reset();
+            winner_avatar.shards = 0;
+            content = content.push(mouse_area(
+                image("assets/black_screen.png")
+                    .content_fit(ContentFit::Fill)
+                    .opacity(self.game_ended_animation.get_opacity())
+                    .width(Fill)
+                    .height(Fill),
+            ));
+            content = content.push(
+                pin(self.scoreboard.view_as_game_end_board(winner_avatar)).position(Point::new(
+                    (self.width() - self.scoreboard.width()) * 0.5,
+                    self.height() * 0.2,
+                )),
+            );
         }
         container(content)
     }

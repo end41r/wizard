@@ -58,6 +58,15 @@ impl ViewableTable {
             ));
         }
     }
+
+    pub fn my_avatar(&self, my_id: PlayerId) -> Option<ViewableAvatar> {
+        for avatar in self.avatars.iter() {
+            if avatar.id() == my_id {
+                return Some(avatar.clone());
+            }
+        }
+        None
+    }
 }
 
 impl Notifiable for ViewableTable {

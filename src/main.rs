@@ -1,4 +1,4 @@
-// Disables the console window on Windows.
+// Disables the console widndow on Windows.
 #![cfg_attr(not(feature = "wiz_debug"), windows_subsystem = "windows")]
 
 mod animation;

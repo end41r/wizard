@@ -6,12 +6,16 @@ use iced::{
         column, container, image::FilterMethod, mouse_area, row, text, text_input, Column,
         Container, Image,
     },
+    Alignment::Center,
     Border, Color,
     Length::Shrink,
     Size, Task,
 };
 
-use crate::animation::{Easing, ReversableBasicAnimation};
+use crate::{
+    animation::{Easing, ReversableBasicAnimation},
+    gameplay_ui::table::avatar::ViewableAvatar,
+};
 use derive_more::{Deref, DerefMut};
 
 use crate::{
@@ -95,6 +99,58 @@ impl ScoreBoard {
             hover_animation_blue: HoverAnimation::new(20),
             hover_animation_yellow: HoverAnimation::new(20),
         }
+    }
+
+    pub fn view_as_game_end_board<'a>(
+        &self,
+        winner_avatar: ViewableAvatar,
+    ) -> Container<'a, AppMessage> {
+        let mut scores_col = Column::new().spacing(2);
+
+        scores_col = scores_col.push(winner_avatar.view()).align_x(Center);
+
+        scores_col = scores_col.push(
+            container(text("has won!").size(self.size_huge()).color(Color::WHITE)).padding(5),
+        );
+
+        // Header row
+        scores_col = scores_col.push(self.scoreboard_row("Name", "Pkt", "Won", "Bid", true, false));
+
+        for player_id in self.sorted_player_order_by_score() {
+            let mut player_name = self.get_player_name(player_id);
+            let score = self.info.scores.get(&player_id).unwrap_or(&0);
+            let tricks = self.info.tricks_won.get(&player_id).unwrap_or(&0);
+            let bid = self.info.bids.get(&player_id).unwrap_or(&0);
+            let is_current_turn = self.info.current_player == Some(player_id);
+
+            if player_name.is_empty() {
+                player_name = "???".to_string();
+            }
+
+            scores_col = scores_col.push(self.scoreboard_row(
+                &player_name,
+                &score.to_string(),
+                &tricks.to_string(),
+                &bid.to_string(),
+                false,
+                is_current_turn,
+            ));
+        }
+
+        // Wrap in a styled container
+        container(scores_col)
+            .width(self.width())
+            .height(Shrink)
+            .padding([24.0, 24.0])
+            .style(|_theme| container::Style {
+                background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.6).into()),
+                border: Border {
+                    color: Color::from_rgba(1.0, 0.85, 0.4, 0.5),
+                    width: 2.0,
+                    radius: 8.0.into(),
+                },
+                ..Default::default()
+            })
     }
 
     fn scoreboard_row<'a>(

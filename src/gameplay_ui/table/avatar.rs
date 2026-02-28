@@ -131,18 +131,18 @@ impl TurnFrameGlowAnimation {
 pub struct ViewableAvatar {
     window_size: Size,
     id: PlayerId,
-    name: String,
+    pub name: String,
     my_turn: bool,
     avatar: Avatar,
-    shards: usize,
+    pub shards: usize,
     interpolation: bool,
     sprite_animation: SpriteAnimation,
     reveal_animation: RevealAnimation,
     play_shard_animation: PlayShardAnimation,
     shard_rotation_animation: ShardRotationAnimation,
     interpolation_animation: InterpolationAnimation,
-    turn_frame_animation: TurnFrameAnimation,
-    turn_frame_glow_animation: TurnFrameGlowAnimation,
+    pub turn_frame_animation: TurnFrameAnimation,
+    pub turn_frame_glow_animation: TurnFrameGlowAnimation,
 }
 
 impl ViewableAvatar {
