@@ -65,6 +65,8 @@ pub struct Button {
     on_click: AppMessage,
 }
 
+
+
 impl Button {
     fn new(
         id: usize,
@@ -103,6 +105,17 @@ impl Button {
             AppMessage::Navigate(MenuState::Join),
         )
     }
+    pub fn new_options_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Optionen",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::Navigate(MenuState::Options),
+        )
+    }
+
     pub fn new_rules_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,

@@ -18,6 +18,7 @@ pub fn view(state: &App) -> Element<'_, AppMessage> {
         MenuState::Host => menu::view_host_menu(state),
         MenuState::Join => menu::view_join_menu(state),
         MenuState::Rules => menu::view_rules_menu(state),
+        MenuState::Options => menu::view_options_menu(state),
         MenuState::Lobby => lobby::view_lobby_menu(state),
         MenuState::Playing => state.game_view.view().into(),
         MenuState::PlayingTest => debug_gameplay::view_debug_gameplay(state),

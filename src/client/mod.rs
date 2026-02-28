@@ -1,6 +1,7 @@
 mod update;
 pub mod views;
 mod ws;
+mod audio;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
 use crate::client::views::Button;
@@ -57,6 +58,7 @@ pub enum MenuState {
     Rules,
     Lobby,
     Playing,
+    Options,
     #[allow(dead_code)]
     PlayingTest,
 }
@@ -120,6 +122,7 @@ pub struct App {
     pub btn_host: crate::client::views::Button,
     pub btn_join: crate::client::views::Button,
     pub btn_rules: crate::client::views::Button,
+    pub btn_options: crate::client::views::Button,
     pub btn_close: crate::client::views::Button,
 
     // Buttons for other menus
@@ -132,6 +135,10 @@ pub struct App {
 
     pub btn_ready_owned: crate::client::views::Button,
 
+    // Audio
+    pub audio: Option<crate::client::audio::Audio>,
+    pub music_volume: i32,
+    pub sfx_volume: i32,
     pub img_main_menu: image::Handle,
     pub img_lobby_menu: image::Handle,
     pub img_background: image::Handle,
@@ -195,11 +202,12 @@ impl App {
     }
 }
 
+
 impl Default for App {
     fn default() -> Self {
         // Keep this value ins sync with the window size of the main function.
         let window_size: Size = Size::new(640.0, 480.0);
-        Self {
+        let mut app = Self {
             window_size,
             msg_queue: Vec::new(),
             msg_queue_delayed: Vec::new(),
@@ -218,7 +226,7 @@ impl Default for App {
             join_name: "".to_string(),
 
             my_id: None,
-
+            game_view: GameView::new(window_size),
             lobby: Some(Lobby {
                 players: Vec::new(),
                 chat: Vec::new(),
@@ -248,14 +256,14 @@ impl Default for App {
             game_over: false,
             winner: None,
 
-            game_view: GameView::new(window_size),
-
+            
             //Buttons
             btn_host: Button::new_host_button(0, 180, 44),
             btn_join: Button::new_join_button(1, 180, 44),
+            btn_options: Button::new_options_button(4, 180, 44),
             btn_rules: Button::new_rules_button(2, 180, 44),
             btn_close: Button::new_close_button(3, 180, 44),
-
+            
             btn_create_lobby: Button::new_create_lobby_button(10, 160, 40),
             btn_back: Button::new_back_button(11, 100, 36),
             btn_connect: Button::new_connect_button(12, 140, 40),
@@ -264,14 +272,53 @@ impl Default for App {
             btn_back_to_menu: Button::new_back_to_menu_button(15, 160, 40),
 
             btn_ready_owned: Button::new_ready_owned_button(20, 100, 36),
-
+            
             img_main_menu: image::Handle::from_path("assets/wizard_main_menu.png"),
             img_lobby_menu: image::Handle::from_path("assets/wizard_lobby_menu.png"),
             img_background: image::Handle::from_path("assets/background_forall.png"),
             img_menu_container: image::Handle::from_path("assets/menu_container.png"),
-
+            
             card_images: Self::preload_card_images(),
+            audio: None,
+            music_volume: 100,
+            sfx_volume: 100,
+        };
+
+        if let Ok(mut a) = crate::client::audio::Audio::new() {
+            let _ = a.load_clip("menu", "assets/audio/wizard_black_shores.mp3");
+            let _ = a.load_clip("lobby", "assets/audio/wizard_clash_of_mages.mp3");
+            let _ = a.load_clip("ingame", "assets/audio/wizard_peaceful.mp3");
+
+            let _ = a.load_clip("click", "assets/audio/sfx_click.mp3");
+            let _ = a.load_clip("card_place", "assets/audio/sfx_place_cards.mp3");
+            let _ = a.load_clip("game_over", "assets/audio/sfx_game_over.mp3");
+  
+
+            a.play_music(crate::client::audio::Music::Menu);
+            app.audio = Some(a); 
         }
+        app
+    }
+}
+
+impl App {
+    /// Set the current menu and make sure the correct music plays for that screen.
+    pub fn set_menu(&mut self, menu: MenuState) {
+        // decide music first (avoids moving `menu` before we use it)
+        if let Some(a) = &mut self.audio {
+            match menu {
+                MenuState::Main | MenuState::Host | MenuState::Join | MenuState::Rules | MenuState::Options => {
+                    a.play_music(crate::client::audio::Music::Menu);
+                }
+                MenuState::Lobby => {
+                    a.play_music(crate::client::audio::Music::Lobby);
+                }
+                MenuState::Playing | MenuState::PlayingTest => {
+                    a.play_music(crate::client::audio::Music::InGame);
+                }
+            }
+        }
+        self.menu = menu;
     }
 }
 
@@ -314,6 +361,9 @@ pub enum AppMessage {
     // Button messages from view widgets
     ButtonMessage(crate::client::views::ButtonMessage),
 
+    // Audio messages
+    MusicVolumeChanged(f32),
+    SfxVolumeChanged(f32),
     // Animation Count Down Letch
     IncrementACDL(usize),
     DecrementACDL(usize),

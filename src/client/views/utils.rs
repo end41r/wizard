@@ -12,6 +12,7 @@ pub const TITLE_FONT: Font = Font::with_name("Magic School One");
 
 use crate::api::{Card, PlayerId, Value, TextColor};
 
+
 /// Format a card for display (e.g., "5 Red", "Wizard", "Jester").
 pub fn format_card(card: &Card) -> String {
     match card.value {
@@ -104,7 +105,7 @@ pub fn menu_panel<'a>(
                             .font(TITLE_FONT)
                             .white(),
                     )
-                    .height(48u32)
+                    .height(48 as u32)
                     .center_x(iced::Fill),
                 ),
         )

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub mod hand;
 pub mod scoreboard;
 pub mod table;

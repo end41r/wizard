@@ -1,8 +1,7 @@
 use iced::{
-    widget::{
-        column, container, pick_list, row, scrollable, stack, text, text_input, Column, Image, Row,
-    },
-    ContentFit, Element,
+    ContentFit, Element, widget::{
+        column, container, pick_list, row, scrollable, stack, text, text_input, Column, Image, Row, slider,
+    }
 };
 
 use crate::client::{App, AppMessage, PlayerCount};
@@ -25,7 +24,7 @@ pub fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     .align_x(iced::alignment::Horizontal::Left);
 
     let menu_right: Column<'a, AppMessage> = column![
-        state.btn_rules.view().padding(10),
+        state.btn_options.view().padding(10),
         state.btn_close.view().padding(10),
     ]
     .spacing(100)
@@ -143,6 +142,39 @@ pub fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     ]
     .into()
 }
+
+pub fn view_options_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
+    let content = column![
+        text("Musiklautstärke:"),
+        slider(0.0..=100.0, state.music_volume as f32, AppMessage::MusicVolumeChanged)
+            .step(1.0)
+            .width(iced::Length::Fill),
+        text(format!("{}%", state.music_volume)),
+        text("SFX Lautstärke:"),
+        slider(0.0..=100.0, state.sfx_volume as f32, AppMessage::SfxVolumeChanged)
+            .step(1.0)
+            .width(iced::Length::Fill),
+        text(format!("{}%", state.sfx_volume)),
+        state.btn_rules.view().padding(0),
+
+    ]
+    .spacing(10)
+    .padding(20)
+    .width(400)
+    .align_x(iced::alignment::Horizontal::Left);
+
+    stack![
+        background_image(&state.img_background),
+        menu_panel(
+            state,
+            "Optionen:",
+            content.into(),
+            back_button_footer(state)
+        )
+    ]
+    .into()
+}
+
 
 pub fn view_rules_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let rules_body = column![

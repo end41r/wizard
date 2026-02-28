@@ -11,6 +11,7 @@ use crate::gameplay_ui::table::middle::card_deck::CardDeckMessage;
 use crate::gameplay_ui::table::TableMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
+use crate::client::audio::Sfx;
 
 /// Get player name from ID using lobby data
 fn get_player_name(state: &App, player_id: PlayerId) -> String {
@@ -245,7 +246,6 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
                 }
             }
         }
-
         AppMessage::GameRules => {
             state.menu = MenuState::Rules;
         }
@@ -340,6 +340,10 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
                     let log = format!("[YOU] Playing card: {:?} of {:?}", card.value, card.suit);
                     println!("{}", log);
                     state.game_log.push(log);
+                    //sound effect, testing needed!!
+                    if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 }
             }
         }
@@ -363,9 +367,20 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::ButtonMessage(btn_msg) => {
             // Route to buttons (each button filters by id internally)
+            match btn_msg {
+                super::views::ButtonMessage::ClickEnded(_) => {
+                    //sound effect, testing needed!!
+                    if let Some(audio) = &state.audio {
+                        audio.play_sfx_enum(Sfx::Click);
+                    }
+                }
+                _ => (),
+            }
+
             tb.push_mult([
                 state.btn_host.update_with_msg(btn_msg.clone()),
                 state.btn_join.update_with_msg(btn_msg.clone()),
+                state.btn_options.update_with_msg(btn_msg.clone()),
                 state.btn_rules.update_with_msg(btn_msg.clone()),
                 state.btn_close.update_with_msg(btn_msg.clone()),
                 state.btn_create_lobby.update_with_msg(btn_msg.clone()),
@@ -380,12 +395,12 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::AnimationTick => {
             tb.push_mult([
-                state.game_view.update_animations(),
-                // Update button animations
                 state.btn_host.update_animations(),
                 state.btn_join.update_animations(),
                 state.btn_rules.update_animations(),
                 state.btn_close.update_animations(),
+                state.btn_options.update_animations(),
+
                 state.btn_create_lobby.update_animations(),
                 state.btn_back.update_animations(),
                 state.btn_connect.update_animations(),
@@ -394,10 +409,25 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
                 state.btn_back_to_menu.update_animations(),
                 state.btn_ready_owned.update_animations(),
             ]);
+
         }
+
         AppMessage::WindowResized(window_size) => {
             state.window_size = window_size;
             state.game_view.update_size(window_size);
+        }
+
+        AppMessage::MusicVolumeChanged(volume) => {
+            state.music_volume = volume as i32;
+            if let Some(a) = &mut state.audio {
+                a.set_music_volume(volume);
+            }
+        }
+        AppMessage::SfxVolumeChanged(volume) => {
+            state.sfx_volume = volume as i32;
+            if let Some(a) = &mut state.audio {
+                a.set_sfx_volume(volume);
+            }
         }
     }
     tb.batch()
@@ -406,18 +436,20 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
 fn handle_tick(state: &mut App) {
     if state.connecting && !state.connected {
         state.last_msg = "Connecting".to_string();
+        let mut should_navigate_lobby = false;
         if let Ok(guard) = state.ws_tx.lock() {
             if guard.is_some() {
                 state.connected = true;
                 state.connecting = false;
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::JoinLobby {
-                        name: state.join_name.clone(),
-                    });
+                    let _ = tx.send(C::JoinLobby { name: state.join_name.clone() });
                     state.last_msg = "Joining lobby...".to_string();
-                    state.menu = MenuState::Lobby;
+                    should_navigate_lobby = true;
                 }
             }
+        }
+        if should_navigate_lobby {
+            state.set_menu(MenuState::Lobby);
         }
     }
     // Detect if the connection was dropped externally (ws_tx went None while connected).
@@ -837,6 +869,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 final_scores,
                 winner,
             } => {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::GameOver);
+                }
                 let is_me = state.my_id == Some(winner);
                 let winner_name = get_player_name(state, winner);
                 let scores_with_names: Vec<String> = final_scores
@@ -865,7 +900,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
             B::ServerShutdown => {
                 println!("[SERVER] Server shutdown received");
                 state.last_msg = "Lost connection to host".to_string();
-                state.menu = MenuState::Main;
+                state.set_menu(MenuState::Main);
                 state.connected = false;
                 state.connecting = false;
                 state.my_id = None;
