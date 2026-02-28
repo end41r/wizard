@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
+use crate::client::audio::Sfx;
 use crate::client::TaskBatcher;
 use crate::gameplay_ui::hand::hand_card::CardMessage;
 use crate::gameplay_ui::hand::HandMessage;
@@ -11,7 +12,6 @@ use crate::gameplay_ui::table::middle::card_deck::CardDeckMessage;
 use crate::gameplay_ui::table::TableMessage;
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable, Resizable};
-use crate::client::audio::Sfx;
 
 /// Get player name from ID using lobby data
 fn get_player_name(state: &App, player_id: PlayerId) -> String {
@@ -342,8 +342,8 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
                     state.game_log.push(log);
                     //sound effect, testing needed!!
                     if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
+                        audio.play_sfx_enum(Sfx::Click);
+                    }
                 }
             }
         }
@@ -401,7 +401,6 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
                 state.btn_rules.update_animations(),
                 state.btn_close.update_animations(),
                 state.btn_options.update_animations(),
-
                 state.btn_create_lobby.update_animations(),
                 state.btn_back.update_animations(),
                 state.btn_connect.update_animations(),
@@ -410,7 +409,6 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
                 state.btn_back_to_menu.update_animations(),
                 state.btn_ready_owned.update_animations(),
             ]);
-
         }
 
         AppMessage::WindowResized(window_size) => {
@@ -443,7 +441,9 @@ fn handle_tick(state: &mut App) {
                 state.connected = true;
                 state.connecting = false;
                 if let Some(ref tx) = *guard {
-                    let _ = tx.send(C::JoinLobby { name: state.join_name.clone() });
+                    let _ = tx.send(C::JoinLobby {
+                        name: state.join_name.clone(),
+                    });
                     state.last_msg = "Joining lobby...".to_string();
                     should_navigate_lobby = true;
                 }

@@ -16,7 +16,7 @@ pub trait TextColor {
     fn white(self) -> Self;
 }
 
-impl <'a> TextColor for iced::widget::Text<'a> {
+impl<'a> TextColor for iced::widget::Text<'a> {
     fn white(self) -> Self {
         self.color(iced::Color::WHITE)
     }

@@ -249,7 +249,8 @@ impl ScoreBoard {
                     // enforce sum != max_bid for the last bidder
                     let num_players = self.info.player_order.len();
                     let bids_placed = self.info.bids.len();
-                    if bids_placed + 1 == num_players { // last bidder
+                    if bids_placed + 1 == num_players {
+                        // last bidder
                         let sum_existing: usize = self.info.bids.values().sum();
                         sum_existing + bid != max_bid
                     } else {
