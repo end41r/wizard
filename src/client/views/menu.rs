@@ -1,12 +1,14 @@
 use iced::{
-    ContentFit, Element, widget::{
-        column, container, pick_list, row, scrollable, stack, text, text_input, Column, Image, Row, slider,
-    }
+    widget::{
+        column, container, pick_list, row, scrollable, slider, stack, text, text_input, Column,
+        Image, Row,
+    },
+    ContentFit, Element,
 };
 
-use crate::client::{App, AppMessage, PlayerCount};
-use crate::api::{TextColor};
 use super::utils::{back_button_footer, background_image, menu_panel, TITLE_FONT};
+use crate::api::TextColor;
+use crate::client::{App, AppMessage, PlayerCount};
 
 pub fn view_main_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let title = text("Wizard")
@@ -146,17 +148,24 @@ pub fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
 pub fn view_options_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = column![
         text("Musiklautstärke:").white(),
-        slider(0.0..=100.0, state.music_volume as f32, AppMessage::MusicVolumeChanged)
-            .step(1.0)
-            .width(iced::Length::Fill),
+        slider(
+            0.0..=100.0,
+            state.music_volume as f32,
+            AppMessage::MusicVolumeChanged
+        )
+        .step(1.0)
+        .width(iced::Length::Fill),
         text(format!("{}%", state.music_volume)).white(),
         text("SFX Lautstärke:").white(),
-        slider(0.0..=100.0, state.sfx_volume as f32, AppMessage::SfxVolumeChanged)
-            .step(1.0)
-            .width(iced::Length::Fill),
+        slider(
+            0.0..=100.0,
+            state.sfx_volume as f32,
+            AppMessage::SfxVolumeChanged
+        )
+        .step(1.0)
+        .width(iced::Length::Fill),
         text(format!("{}%", state.sfx_volume)).white(),
         state.btn_rules.view().padding(0),
-
     ]
     .spacing(10)
     .padding(20)
@@ -174,7 +183,6 @@ pub fn view_options_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     ]
     .into()
 }
-
 
 pub fn view_rules_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let rules_body = column![

@@ -1,9 +1,18 @@
-use std::{collections::HashMap, fs::File, io::Read, io::Cursor, path::PathBuf, sync::Arc, error::Error};
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
+use std::{
+    collections::HashMap, error::Error, fs::File, io::Cursor, io::Read, path::PathBuf, sync::Arc,
+};
 
-pub enum Music { Menu, Lobby, InGame }
+pub enum Music {
+    Menu,
+    Lobby,
+    InGame,
+}
 
-pub enum Sfx { Click, GameOver}
+pub enum Sfx {
+    Click,
+    GameOver,
+}
 
 impl Sfx {
     pub fn key(&self) -> &'static str {
@@ -35,7 +44,11 @@ impl Audio {
         })
     }
 
-    pub fn load_clip(&mut self, name: &str, path: impl Into<PathBuf>) -> Result<(), Box<dyn Error>> {
+    pub fn load_clip(
+        &mut self,
+        name: &str,
+        path: impl Into<PathBuf>,
+    ) -> Result<(), Box<dyn Error>> {
         let path = path.into();
         let mut f = File::open(&path)?;
         let mut buf = Vec::new();
@@ -44,7 +57,9 @@ impl Audio {
         Ok(())
     }
 
-    fn make_decoder_from_arc(bytes: Arc<Vec<u8>>) -> Result<Decoder<Cursor<Vec<u8>>>, Box<dyn Error>> {
+    fn make_decoder_from_arc(
+        bytes: Arc<Vec<u8>>,
+    ) -> Result<Decoder<Cursor<Vec<u8>>>, Box<dyn Error>> {
         let vec = (&*bytes).clone();
         let cursor = Cursor::new(vec);
         Ok(Decoder::try_from(cursor)?)
@@ -57,7 +72,7 @@ impl Audio {
                 let sink = Sink::connect_new(&self.stream_handle.mixer());
                 sink.set_volume(self.sfx_volume);
                 sink.append(source);
-                sink.detach(); 
+                sink.detach();
             }
         }
     }

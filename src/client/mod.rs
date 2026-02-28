@@ -1,7 +1,7 @@
+mod audio;
 mod update;
 pub mod views;
 mod ws;
-mod audio;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
 use crate::client::views::Button;
@@ -202,7 +202,6 @@ impl App {
     }
 }
 
-
 impl Default for App {
     fn default() -> Self {
         // Keep this value ins sync with the window size of the main function.
@@ -254,16 +253,16 @@ impl Default for App {
             dealer: None,
             game_over: false,
             winner: None,
-            
+
             game_view: GameView::new(window_size),
-            
+
             //Buttons
             btn_host: Button::new_host_button(0, 180, 44),
             btn_join: Button::new_join_button(1, 180, 44),
             btn_options: Button::new_options_button(4, 180, 44),
             btn_rules: Button::new_rules_button(2, 180, 44),
             btn_close: Button::new_close_button(3, 180, 44),
-            
+
             btn_create_lobby: Button::new_create_lobby_button(10, 160, 40),
             btn_back: Button::new_back_button(11, 100, 36),
             btn_connect: Button::new_connect_button(12, 140, 40),
@@ -272,12 +271,12 @@ impl Default for App {
             btn_back_to_menu: Button::new_back_to_menu_button(15, 160, 40),
 
             btn_ready_owned: Button::new_ready_owned_button(20, 100, 36),
-            
+
             img_main_menu: image::Handle::from_path("assets/wizard_main_menu.png"),
             img_lobby_menu: image::Handle::from_path("assets/wizard_lobby_menu.png"),
             img_background: image::Handle::from_path("assets/background_forall.png"),
             img_menu_container: image::Handle::from_path("assets/menu_container.png"),
-            
+
             card_images: Self::preload_card_images(),
             audio: None,
             music_volume: 100,
@@ -292,10 +291,9 @@ impl Default for App {
             let _ = a.load_clip("click", "assets/audio/sfx_click.mp3");
             let _ = a.load_clip("card_place", "assets/audio/sfx_place_cards.mp3");
             let _ = a.load_clip("game_over", "assets/audio/sfx_game_over.mp3");
-  
 
             a.play_music(crate::client::audio::Music::Menu);
-            app.audio = Some(a); 
+            app.audio = Some(a);
         }
         app
     }
@@ -307,7 +305,11 @@ impl App {
         // decide music first (avoids moving `menu` before we use it)
         if let Some(a) = &mut self.audio {
             match menu {
-                MenuState::Main | MenuState::Host | MenuState::Join | MenuState::Rules | MenuState::Options => {
+                MenuState::Main
+                | MenuState::Host
+                | MenuState::Join
+                | MenuState::Rules
+                | MenuState::Options => {
                     a.play_music(crate::client::audio::Music::Menu);
                 }
                 MenuState::Lobby => {

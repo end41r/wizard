@@ -27,8 +27,7 @@ fn view_not_connected<'a>(state: &'a App) -> Element<'a, AppMessage> {
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
         container(column![
-            text("Nicht verbunden zum Server. / IP wurde falsch eingegeben")
-            .white(),
+            text("Nicht verbunden zum Server. / IP wurde falsch eingegeben").white(),
             state.btn_back.view().padding(0)
         ])
         .width(iced::Length::Fill)
@@ -46,8 +45,7 @@ fn view_no_lobby<'a>(state: &'a App) -> Element<'a, AppMessage> {
             .height(iced::Length::Fill)
             .content_fit(ContentFit::Cover),
         container(column![
-            text("Keine Lobby vorhanden")
-            .white(),
+            text("Keine Lobby vorhanden").white(),
             state.btn_back.view().padding(0)
         ])
         .width(iced::Length::Fill)
@@ -74,7 +72,8 @@ fn view_lobby_content<'a>(state: &'a App, lobby: &'a Lobby) -> Element<'a, AppMe
             "Spieler: {}/{}",
             lobby.players.len(),
             state.host_player_count.to_usize()
-        )).white(),
+        ))
+        .white(),
         player_rows,
         scrollable(chat_block).height(150).width(400),
         row![
@@ -117,7 +116,8 @@ fn build_player_rows<'a>(state: &'a App, lobby: &'a Lobby) -> Column<'a, AppMess
                 "{}{}",
                 if p.is_host { "(Host) " } else { "" },
                 p.name
-            )).white(),
+            ))
+            .white(),
             toggle
         ];
         player_rows = player_rows.push(row);
