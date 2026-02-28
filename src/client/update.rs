@@ -43,12 +43,13 @@ fn format_card(card: &Card) -> String {
 fn is_msg_not_ready(state: &App, msg: AppMessage) -> bool {
     if state.animation_count_down_latch > 0 {
         match msg {
-            AppMessage::GameViewMessage(GameViewMessage::NewRound(_, _, _)) => true,
-            AppMessage::GameViewMessage(GameViewMessage::ChangeTurn(_, _)) => true,
-            AppMessage::GameViewMessage(GameViewMessage::NewTrick) => true,
-            AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
-                ScoreBoardMessage::Update(_),
-            )) => true,
+            AppMessage::GameViewMessage(inner) => match &*inner {
+                GameViewMessage::NewRound(_, _, _) => true,
+                GameViewMessage::ChangeTurn(_, _) => true,
+                GameViewMessage::NewTrick => true,
+                GameViewMessage::ScoreBoardMessage(ScoreBoardMessage::Update(_)) => true,
+                _ => false,
+            },
             _ => false,
         }
     } else {
@@ -60,18 +61,14 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
     match msg_unaltered.clone() {
         AppMessage::AnimationTick => (),
         AppMessage::ServerTick => (),
-        AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
-            ScoreBoardMessage::Update(_),
-        )) => (),
-        /* AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
-            CardMessage::Hovered(_),
-        ))) => (),
-        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
-            CardMessage::NotHovered(_),
-        ))) => (), */
-        AppMessage::GameViewMessage(GameViewMessage::HandMessage(HandMessage::CardMessage(
-            CardMessage::CursorMoved(_, _),
-        ))) => (),
+        AppMessage::GameViewMessage(inner) => match &*inner {
+            GameViewMessage::ScoreBoardMessage(ScoreBoardMessage::Update(_)) => (),
+            GameViewMessage::HandMessage(HandMessage::CardMessage(CardMessage::CursorMoved(
+                _,
+                _,
+            ))) => (),
+            _ => println!("{:?}", msg_unaltered),
+        },
         _ => {
             println!("{:?}", msg_unaltered)
         }
@@ -86,11 +83,14 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         return tb.batch();
     }
     let msg = match msg_unaltered.clone() {
-        AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
-            ScoreBoardMessage::Update(_),
-        )) => AppMessage::GameViewMessage(GameViewMessage::ScoreBoardMessage(
-            ScoreBoardMessage::Update(state.scoreboard_info()),
-        )),
+        AppMessage::GameViewMessage(inner) => match &*inner {
+            GameViewMessage::ScoreBoardMessage(ScoreBoardMessage::Update(_)) => {
+                AppMessage::GameViewMessage(Box::new(GameViewMessage::ScoreBoardMessage(
+                    ScoreBoardMessage::Update(Box::new(state.scoreboard_info())),
+                )))
+            }
+            _ => msg_unaltered,
+        },
         _ => msg_unaltered,
     };
     match msg {
@@ -360,21 +360,18 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::ServerTick => {
             handle_tick(state);
-            tb.push_msg(ScoreBoardMessage::Update(state.scoreboard_info()));
+            tb.push_msg(ScoreBoardMessage::Update(Box::new(state.scoreboard_info())));
         }
-        AppMessage::GameViewMessage(game_view_msg) => {
-            tb.push(state.game_view.update_with_msg(game_view_msg));
+        AppMessage::GameViewMessage(inner) => {
+            tb.push(state.game_view.update_with_msg(*inner));
         }
         AppMessage::ButtonMessage(btn_msg) => {
             // Route to buttons (each button filters by id internally)
-            match btn_msg {
-                super::views::ButtonMessage::ClickEnded(_) => {
-                    //sound effect, testing needed!!
-                    if let Some(audio) = &state.audio {
-                        audio.play_sfx_enum(Sfx::Click);
-                    }
+            if let super::views::ButtonMessage::ClickEnded(_) = btn_msg {
+                //sound effect, testing needed!!
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
                 }
-                _ => (),
             }
 
             tb.push_mult([

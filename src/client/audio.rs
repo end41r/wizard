@@ -34,7 +34,7 @@ pub struct Audio {
 impl Audio {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         let stream_handle = OutputStreamBuilder::open_default_stream()?;
-        let music_sink = Sink::connect_new(&stream_handle.mixer());
+        let music_sink = Sink::connect_new(stream_handle.mixer());
         Ok(Self {
             stream_handle,
             music_sink,
@@ -60,7 +60,7 @@ impl Audio {
     fn make_decoder_from_arc(
         bytes: Arc<Vec<u8>>,
     ) -> Result<Decoder<Cursor<Vec<u8>>>, Box<dyn Error>> {
-        let vec = (&*bytes).clone();
+        let vec = (*bytes).clone();
         let cursor = Cursor::new(vec);
         Ok(Decoder::try_from(cursor)?)
     }
@@ -69,7 +69,7 @@ impl Audio {
         if let Some(bytes) = self.clips.get(name) {
             if let Ok(decoder) = Self::make_decoder_from_arc(bytes.clone()) {
                 let source = decoder.buffered();
-                let sink = Sink::connect_new(&self.stream_handle.mixer());
+                let sink = Sink::connect_new(self.stream_handle.mixer());
                 sink.set_volume(self.sfx_volume);
                 sink.append(source);
                 sink.detach();
@@ -83,7 +83,7 @@ impl Audio {
 
     pub fn play_music(&mut self, kind: Music) {
         self.music_sink.stop();
-        self.music_sink = Sink::connect_new(&self.stream_handle.mixer());
+        self.music_sink = Sink::connect_new(self.stream_handle.mixer());
         let key = match kind {
             Music::Menu => "menu",
             Music::Lobby => "lobby",

@@ -123,7 +123,7 @@ impl ViewableAvatar {
             id,
             name,
             my_turn: false,
-            avatar: avatar_kind.to_avatar(),
+            avatar: avatar_kind.as_avatar(),
             shards: 20,
             interpolation: false,
             sprite_animation: SpriteAnimation::new(),
@@ -162,7 +162,7 @@ impl ViewableAvatar {
     }
     fn shard_position_rotation_angle(&self, shard_number: i64, adjust: i64) -> f32 {
         // The angle is scaled from 0.0 to PI, not from 0.0 to 1.0.
-        (((shard_number as i64 + adjust) as f32 / (self.shards as i64 + adjust) as f32) * 2.0 * PI
+        (((shard_number + adjust) as f32 / (self.shards as i64 + adjust) as f32) * 2.0 * PI
             + self.shard_rotation_animation.get_rotation())
             - (PI / 2.0) // To start on top of the circle.
     }
@@ -190,7 +190,7 @@ impl ViewableAvatar {
         }
     }
     fn shard_rotation_helper(&self, shard_number: i64, adjust: i64) -> f32 {
-        ((shard_number as i64 + adjust) as f32 / (self.shards as i64 + adjust) as f32) * 2.0 * PI
+        ((shard_number + adjust) as f32 / (self.shards as i64 + adjust) as f32) * 2.0 * PI
             + self.shard_rotation_animation.get_rotation()
     }
     fn sprite_size(&self) -> f32 {
@@ -242,11 +242,7 @@ impl Notifiable for ViewableAvatar {
                 }
             }
             AvatarMessage::ChangeTurn(id) => {
-                if id == self.id {
-                    self.my_turn = true;
-                } else {
-                    self.my_turn = false;
-                }
+                self.my_turn = id == self.id;
             }
         }
         Task::none()
@@ -258,11 +254,11 @@ impl Animated for ViewableAvatar {
         let mut tb = TaskBatcher::new();
 
         tb.push(self.sprite_animation.next_frame());
-        if !self.avatar.is_casting() && self.sprite_animation.new_frame() {
+        if (!self.avatar.is_casting() && self.sprite_animation.new_frame())
+            || (self.avatar.is_casting() && self.sprite_animation.new_casting_frame())
+        {
             self.avatar.next_pose();
-        } else if self.avatar.is_casting() && self.sprite_animation.new_casting_frame() {
-            self.avatar.next_pose();
-        };
+        }
 
         tb.push(self.reveal_animation.next_frame());
         tb.push(self.play_shard_animation.next_frame());

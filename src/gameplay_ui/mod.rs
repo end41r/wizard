@@ -105,7 +105,7 @@ impl GameStartInfo {
     pub fn new(app: &App) -> Self {
         Self {
             players: app.lobby.as_ref().unwrap().players.clone(),
-            my_id: app.my_id.as_ref().unwrap().clone(),
+            my_id: *app.my_id.as_ref().unwrap(),
             sb_info: app.scoreboard_info(),
         }
     }
@@ -146,7 +146,7 @@ impl BlackScreenFadeInAnimation {
 
 impl Message for GameViewMessage {
     fn convert_msg_from(msg: Self) -> crate::client::AppMessage {
-        AppMessage::GameViewMessage(msg)
+        AppMessage::GameViewMessage(Box::new(msg))
     }
 }
 
@@ -187,22 +187,18 @@ impl Notifiable for GameView {
     type OwnMessage = GameViewMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
-            GameViewMessage::HandMessage(hand_msg) => {
-                return self.viewable_hand.update_with_msg(hand_msg)
-            }
+            GameViewMessage::HandMessage(hand_msg) => self.viewable_hand.update_with_msg(hand_msg),
             GameViewMessage::TableMessage(table_msg) => {
-                return self.viewable_table.update_with_msg(table_msg)
+                self.viewable_table.update_with_msg(table_msg)
             }
-            GameViewMessage::ScoreBoardMessage(sb_msg) => {
-                return self.scoreboard.update_with_msg(sb_msg)
-            }
+            GameViewMessage::ScoreBoardMessage(sb_msg) => self.scoreboard.update_with_msg(sb_msg),
             GameViewMessage::StartGame(info) => {
                 let mut tb = TaskBatcher::new();
                 self.my_id = Some(info.my_id);
                 self.viewable_hand.my_id = Some(info.my_id);
                 tb.push(
                     self.scoreboard
-                        .update_with_msg(ScoreBoardMessage::Update(info.sb_info)),
+                        .update_with_msg(ScoreBoardMessage::Update(Box::new(info.sb_info))),
                 );
                 self.viewable_table.build_avatars(info.players);
                 tb.batch()

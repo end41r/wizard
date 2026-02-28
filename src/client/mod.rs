@@ -150,21 +150,21 @@ pub struct App {
 
 impl App {
     pub fn scoreboard_info(&self) -> ScoreBoardInfo {
-        ScoreBoardInfo::new(
-            self.round_number,
-            self.player_order.clone(),
-            self.scores.clone(),
-            self.tricks_won.clone(),
-            self.bids.clone(),
-            self.my_id,
-            self.lobby.clone(),
-            self.must_set_trump,
-            self.dealer,
-            self.is_bidding_phase,
-            self.is_my_turn,
-            self.bid_input.clone(),
-            self.current_player,
-        )
+        ScoreBoardInfo {
+            round_number: self.round_number,
+            player_order: self.player_order.clone(),
+            scores: self.scores.clone(),
+            tricks_won: self.tricks_won.clone(),
+            bids: self.bids.clone(),
+            my_id: self.my_id,
+            lobby: self.lobby.clone(),
+            must_set_trump: self.must_set_trump,
+            dealer: self.dealer,
+            is_bidding_phase: self.is_bidding_phase,
+            is_my_turn: self.is_my_turn,
+            bid_input: self.bid_input.clone(),
+            current_player: self.current_player,
+        }
     }
 
     pub fn game_start_info(&self) -> GameStartInfo {
@@ -358,7 +358,7 @@ pub enum AppMessage {
     CloseGame,
 
     // Gameview messages
-    GameViewMessage(GameViewMessage),
+    GameViewMessage(Box<GameViewMessage>),
 
     // Button messages from view widgets
     ButtonMessage(crate::client::views::ButtonMessage),

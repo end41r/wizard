@@ -100,11 +100,7 @@ impl ViewableHandCard {
         viewable_card
     }
     pub fn validate(&mut self, valid_cards: Vec<Card>) {
-        if valid_cards.contains(&self.card) {
-            self.playable = true;
-        } else {
-            self.playable = false;
-        }
+        self.playable = valid_cards.contains(&self.card);
     }
 }
 
