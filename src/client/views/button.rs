@@ -65,6 +65,8 @@ pub struct Button {
     on_click: AppMessage,
 }
 
+
+
 impl Button {
     fn new(
         id: usize,

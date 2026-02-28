@@ -367,6 +367,16 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::ButtonMessage(btn_msg) => {
             // Route to buttons (each button filters by id internally)
+            match btn_msg {
+                super::views::ButtonMessage::ClickEnded(_) => {
+                    //sound effect, testing needed!!
+                    if let Some(audio) = &state.audio {
+                        audio.play_sfx_enum(Sfx::Click);
+                    }
+                }
+                _ => (),
+            }
+
             tb.push_mult([
                 state.btn_host.update_with_msg(btn_msg.clone()),
                 state.btn_join.update_with_msg(btn_msg.clone()),
@@ -385,13 +395,12 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::AnimationTick => {
             tb.push_mult([
-                state.game_view.update_animations(),
-                // Update button animations
                 state.btn_host.update_animations(),
                 state.btn_join.update_animations(),
-                state.btn_options.update_animations(),
-                state.btn_close.update_animations(),
                 state.btn_rules.update_animations(),
+                state.btn_close.update_animations(),
+                state.btn_options.update_animations(),
+
                 state.btn_create_lobby.update_animations(),
                 state.btn_back.update_animations(),
                 state.btn_connect.update_animations(),
@@ -401,8 +410,8 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
                 state.btn_ready_owned.update_animations(),
             ]);
 
-            
         }
+
         AppMessage::WindowResized(window_size) => {
             state.window_size = window_size;
             state.game_view.update_size(window_size);
