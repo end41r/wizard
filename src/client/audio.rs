@@ -1,18 +1,10 @@
+use std::{collections::HashMap, fs::File, io::Read, io::Cursor, path::PathBuf, sync::Arc, error::Error};
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
-use std::{
-    collections::HashMap, error::Error, fs::File, io::Cursor, io::Read, path::PathBuf, sync::Arc,
-};
 
-pub enum Music {
-    Menu,
-    Lobby,
-    InGame,
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Music { Menu, Lobby, InGame }
 
-pub enum Sfx {
-    Click,
-    GameOver,
-}
+pub enum Sfx { Click, GameOver}
 
 impl Sfx {
     pub fn key(&self) -> &'static str {
@@ -34,7 +26,7 @@ pub struct Audio {
 impl Audio {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         let stream_handle = OutputStreamBuilder::open_default_stream()?;
-        let music_sink = Sink::connect_new(stream_handle.mixer());
+        let music_sink = Sink::connect_new(&stream_handle.mixer());
         Ok(Self {
             stream_handle,
             music_sink,
@@ -44,11 +36,7 @@ impl Audio {
         })
     }
 
-    pub fn load_clip(
-        &mut self,
-        name: &str,
-        path: impl Into<PathBuf>,
-    ) -> Result<(), Box<dyn Error>> {
+    pub fn load_clip(&mut self, name: &str, path: impl Into<PathBuf>) -> Result<(), Box<dyn Error>> {
         let path = path.into();
         let mut f = File::open(&path)?;
         let mut buf = Vec::new();
@@ -57,10 +45,8 @@ impl Audio {
         Ok(())
     }
 
-    fn make_decoder_from_arc(
-        bytes: Arc<Vec<u8>>,
-    ) -> Result<Decoder<Cursor<Vec<u8>>>, Box<dyn Error>> {
-        let vec = (*bytes).clone();
+    fn make_decoder_from_arc(bytes: Arc<Vec<u8>>) -> Result<Decoder<Cursor<Vec<u8>>>, Box<dyn Error>> {
+        let vec = (&*bytes).clone();
         let cursor = Cursor::new(vec);
         Ok(Decoder::try_from(cursor)?)
     }
@@ -69,21 +55,21 @@ impl Audio {
         if let Some(bytes) = self.clips.get(name) {
             if let Ok(decoder) = Self::make_decoder_from_arc(bytes.clone()) {
                 let source = decoder.buffered();
-                let sink = Sink::connect_new(self.stream_handle.mixer());
+                let sink = Sink::connect_new(&self.stream_handle.mixer());
                 sink.set_volume(self.sfx_volume);
                 sink.append(source);
-                sink.detach();
+                sink.detach(); 
             }
         }
     }
-
+    //for type safety and convenience
     pub fn play_sfx_enum(&self, sfx: Sfx) {
         self.play_sfx(sfx.key());
     }
 
     pub fn play_music(&mut self, kind: Music) {
         self.music_sink.stop();
-        self.music_sink = Sink::connect_new(self.stream_handle.mixer());
+        self.music_sink = Sink::connect_new(&self.stream_handle.mixer());
         let key = match kind {
             Music::Menu => "menu",
             Music::Lobby => "lobby",

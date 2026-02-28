@@ -109,14 +109,14 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::IncrementACDL(amount) => state.animation_count_down_latch += amount,
         AppMessage::Navigate(menu) => {
-            state.menu = menu;
+            state.set_menu(menu);
         }
         AppMessage::Host => {
             let local_ip = crate::server::local_ip();
             state.msg = format!("Hosting on {local_ip}");
             state.ip = local_ip;
 
-            state.menu = MenuState::Host;
+            state.set_menu(MenuState::Host);
         }
         AppMessage::HostNameChanged(name) => {
             state.host_name = name;
@@ -180,7 +180,7 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
                     state.last_msg = "Creating lobby...".to_string();
                 }
             }
-            state.menu = MenuState::Lobby;
+            state.set_menu(MenuState::Lobby);
         }
         AppMessage::Connect => {
             if !state.connected {
@@ -247,7 +247,7 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
             }
         }
         AppMessage::GameRules => {
-            state.menu = MenuState::Rules;
+            state.set_menu(MenuState::Rules);
         }
         AppMessage::BackToMenu => {
             // Stops the server if the player is the host; otherwise drops the connection.
@@ -307,7 +307,7 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
             state.dealer = None;
             state.game_over = false;
             state.winner = None;
-            state.menu = MenuState::Main;
+            state.set_menu(MenuState::Main);
         }
         AppMessage::CloseGame => {
             // Calls the application to exit.
@@ -513,7 +513,7 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
             state.dealer = None;
             state.game_over = false;
             state.winner = None;
-            state.menu = MenuState::Main;
+            state.set_menu(MenuState::Main);
         }
         ServerMessage::Server(s) => match s {
             S::HandshakeConfirmation { version, supported } => {
@@ -642,9 +642,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 if let Some(ref lobby) = state.lobby {
                     if let Some(host) = lobby.players.iter().find(|p| p.is_host) {
                         if host.name == "wizard_master" {
-                            state.menu = MenuState::PlayingTest;
+                            state.set_menu(MenuState::PlayingTest);
                         } else {
-                            state.menu = MenuState::Playing;
+                            state.set_menu(MenuState::Playing);
                         }
                     }
                 }

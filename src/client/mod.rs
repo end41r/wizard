@@ -4,6 +4,7 @@ pub mod views;
 mod ws;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
+use crate::client::audio::Music;
 use crate::client::views::Button;
 use crate::gameplay_ui::scoreboard::ScoreBoardInfo;
 use crate::gameplay_ui::{GameStartInfo, GameView, GameViewMessage};
@@ -139,6 +140,7 @@ pub struct App {
     pub audio: Option<crate::client::audio::Audio>,
     pub music_volume: i32,
     pub sfx_volume: i32,
+    current_music: Option<Music>,
     pub img_main_menu: image::Handle,
     pub img_lobby_menu: image::Handle,
     pub img_background: image::Handle,
@@ -281,6 +283,7 @@ impl Default for App {
             audio: None,
             music_volume: 100,
             sfx_volume: 100,
+            current_music: None,
         };
 
         if let Ok(mut a) = crate::client::audio::Audio::new() {
@@ -300,26 +303,28 @@ impl Default for App {
 }
 
 impl App {
-    /// Set the current menu and make sure the correct music plays for that screen.
     pub fn set_menu(&mut self, menu: MenuState) {
-        // decide music first (avoids moving `menu` before we use it)
-        if let Some(a) = &mut self.audio {
-            match menu {
-                MenuState::Main
-                | MenuState::Host
-                | MenuState::Join
-                | MenuState::Rules
-                | MenuState::Options => {
-                    a.play_music(crate::client::audio::Music::Menu);
-                }
-                MenuState::Lobby => {
-                    a.play_music(crate::client::audio::Music::Lobby);
-                }
-                MenuState::Playing | MenuState::PlayingTest => {
-                    a.play_music(crate::client::audio::Music::InGame);
+        // Determine what music should play for this menu
+        let target_music = match menu {
+            MenuState::Main
+            | MenuState::Host
+            | MenuState::Join
+            | MenuState::Rules
+            | MenuState::Options => Some(Music::Menu),
+            MenuState::Lobby => Some(Music::Lobby),
+            MenuState::Playing | MenuState::PlayingTest => Some(Music::InGame),
+        };
+        
+        // Only restart music if it's different from what's currently playing
+        if target_music != self.current_music {
+            if let Some(a) = &mut self.audio {
+                if let Some(music) = target_music {
+                    a.play_music(music);
                 }
             }
+            self.current_music = target_music;
         }
+        
         self.menu = menu;
     }
 }
