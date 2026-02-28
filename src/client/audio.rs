@@ -3,22 +3,18 @@ use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 
 pub enum Music { Menu, Lobby, InGame }
 
-pub enum Sfx { click, card_place, win, lose }
+pub enum Sfx { Click, GameOver}
 
 impl Sfx {
-    /// Return the clip key (filename key) for this SFX.
     pub fn key(&self) -> &'static str {
         match self {
-            Sfx::click => "click",
-            Sfx::card_place => "card_place",
-            Sfx::win => "win",
-            Sfx::lose => "lose",
+            Sfx::Click => "click",
+            Sfx::GameOver => "game_over",
         }
     }
 }
 
 pub struct Audio {
-    // keep the output stream alive while playing
     stream_handle: OutputStream,
     music_sink: Sink,
     clips: HashMap<String, Arc<Vec<u8>>>,
@@ -28,7 +24,6 @@ pub struct Audio {
 
 impl Audio {
     pub fn new() -> Result<Self, Box<dyn Error>> {
-        // use the newer rodio API that returns an `OutputStream`.
         let stream_handle = OutputStreamBuilder::open_default_stream()?;
         let music_sink = Sink::connect_new(&stream_handle.mixer());
         Ok(Self {
@@ -50,8 +45,6 @@ impl Audio {
     }
 
     fn make_decoder_from_arc(bytes: Arc<Vec<u8>>) -> Result<Decoder<Cursor<Vec<u8>>>, Box<dyn Error>> {
-        // Decoder requires a Read+Seek value; clone the bytes into an owned Vec for the decoder.
-        // This copies but keeps the public API simple and correct.
         let vec = (&*bytes).clone();
         let cursor = Cursor::new(vec);
         Ok(Decoder::try_from(cursor)?)
@@ -59,14 +52,12 @@ impl Audio {
 
     pub fn play_sfx(&self, name: &str) {
         if let Some(bytes) = self.clips.get(name) {
-            // create a fresh decoder per play and buffer it so playback does not borrow
-            // the original bytes while decoding. Buffered source is safer for short SFX.
             if let Ok(decoder) = Self::make_decoder_from_arc(bytes.clone()) {
                 let source = decoder.buffered();
                 let sink = Sink::connect_new(&self.stream_handle.mixer());
                 sink.set_volume(self.sfx_volume);
                 sink.append(source);
-                sink.detach(); // detach so it continues playing after this function returns
+                sink.detach(); 
             }
         }
     }
@@ -97,14 +88,8 @@ impl Audio {
         self.music_volume = clamped;
         self.music_sink.set_volume(clamped);
     }
-    //pub fn set_sfx_volume(&mut self, v: f32) { self.sfx_volume = v; }
-
-    /// Temporarily mute/unmute music sink (keeps configured music_volume).
-    pub fn set_music_muted(&mut self, muted: bool) {
-        if muted {
-            self.music_sink.set_volume(0.0);
-        } else {
-            self.music_sink.set_volume(self.music_volume);
-        }
+    pub fn set_sfx_volume(&mut self, v: f32) {
+        let clamped = v.clamp(0.0, 100.0) / 100.0;
+        self.sfx_volume = clamped;
     }
 }

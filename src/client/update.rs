@@ -4,6 +4,7 @@ use std::sync::Arc;
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, ServerMessage, Value, B, C, S};
 use crate::ui_element_traits::{Animated, Message, Resizable};
+use crate::client::audio::Sfx;
 
 /// Helper function to get player name from ID using lobby data
 fn get_player_name(state: &App, player_id: u64) -> String {
@@ -36,17 +37,6 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
     match msg {
         AppMessage::Navigate(menu) => {
             state.set_menu(menu);
-            Task::none()
-        }
-        AppMessage::ToggleMusic => {
-            state.toggle_music();
-            Task::none()
-        }
-        AppMessage::MusicVolumeChanged(volume) => {
-            state.music_volume = volume as i32;
-            if let Some(a) = &mut state.audio {
-                a.set_music_volume(volume);
-            }
             Task::none()
         }
         AppMessage::Host => {
@@ -276,6 +266,10 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
                     let log = format!("[YOU] Playing card: {:?} of {:?}", card.value, card.suit);
                     println!("{}", log);
                     state.game_log.push(log);
+                    //sound effect, testing needed!!
+                    if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 }
             }
             Task::none()
@@ -338,47 +332,85 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             let mut pending_msgs: Vec<AppMessage> = Vec::new();
 
             state.btn_host.check_click_end(|&_id| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 pending_msgs.push(AppMessage::Host);
             });
 
             state.btn_join.check_click_end(|_| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 pending_msgs.push(AppMessage::Navigate(MenuState::Join));
             });
 
             state.btn_rules.check_click_end(|_| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 pending_msgs.push(AppMessage::GameRules);
             });
 
             state.btn_exit.check_click_end(|_| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 pending_msgs.push(AppMessage::CloseGame);
             });
 
             state.btn_options.check_click_end(|_| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 pending_msgs.push(AppMessage::Navigate(MenuState::Options));
             });
             state.btn_create_lobby.check_click_end(|&_id| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 pending_msgs.push(AppMessage::CreateLobby);
             });
 
             state.btn_ready_owned.check_click_end(|&_id| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 if let Some(my_id) = state.my_id {
                     pending_msgs.push(AppMessage::ToggleReady(my_id));
                 }
             });
 
             state.btn_back.check_click_end(|_| {
-                pending_msgs.push(AppMessage::Navigate(MenuState::Main));
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
+                let prev_menu = match state.menu {
+                    MenuState::Rules => MenuState::Options,
+                    MenuState::Options => MenuState::Main,
+                    _ => MenuState::Main,
+                };
+                pending_msgs.push(AppMessage::Navigate(prev_menu));
             });
 
             state.btn_connect.check_click_end(|_| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 pending_msgs.push(AppMessage::Connect);
             });
 
             state.btn_send_chat.check_click_end(|_| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 pending_msgs.push(AppMessage::SendChat);
             });
 
             state.btn_start_game.check_click_end(|_| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 let can_start = if cfg!(feature = "wiz_debug") {
                     true
                 } else {
@@ -400,6 +432,9 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
             });
 
             state.btn_back_to_menu.check_click_end(|_| {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::Click);
+                }
                 pending_msgs.push(AppMessage::BackToMenu);
             });
 
@@ -412,6 +447,21 @@ pub fn update(state: &mut App, msg: AppMessage) -> Task<AppMessage> {
         AppMessage::WindowResized(size) => {
             state.window_size = size;
             state.viewable_hand.update_size(size);
+            Task::none()
+        }
+
+        AppMessage::MusicVolumeChanged(volume) => {
+            state.music_volume = volume as i32;
+            if let Some(a) = &mut state.audio {
+                a.set_music_volume(volume);
+            }
+            Task::none()
+        }
+        AppMessage::SfxVolumeChanged(volume) => {
+            state.sfx_volume = volume as i32;
+            if let Some(a) = &mut state.audio {
+                a.set_sfx_volume(volume);
+            }
             Task::none()
         }
     }
@@ -771,6 +821,9 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 final_scores,
                 winner,
             } => {
+                if let Some(audio) = &state.audio {
+                    audio.play_sfx_enum(Sfx::GameOver);
+                }
                 let is_me = state.my_id == Some(winner);
                 let winner_name = get_player_name(state, winner);
                 let scores_with_names: Vec<String> = final_scores

@@ -132,12 +132,16 @@ pub fn view_join_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
 
 pub fn view_options_menu<'a>(state: &'a App) -> Element<'a, AppMessage> {
     let content = column![
-        text("Optionen").size(30),
-        text("Musik Lautstärke:"),
+        text("Musiklautstärke:"),
         slider(0.0..=100.0, state.music_volume as f32, AppMessage::MusicVolumeChanged)
             .step(1.0)
             .width(iced::Length::Fill),
         text(format!("{}%", state.music_volume)),
+        text("SFX Lautstärke:"),
+        slider(0.0..=100.0, state.sfx_volume as f32, AppMessage::SfxVolumeChanged)
+            .step(1.0)
+            .width(iced::Length::Fill),
+        text(format!("{}%", state.sfx_volume)),
         state.btn_rules.view().padding(0),
 
     ]

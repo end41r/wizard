@@ -120,11 +120,10 @@ pub struct App {
 
     pub btn_ready_owned: crate::client::views::Button,
 
-    // Audio subsystem (may be None if audio initialization fails)
+    // Audio
     pub audio: Option<crate::client::audio::Audio>,
     pub music_volume: i32,
-    // prepared flag for a future mute button
-    pub music_muted: bool,
+    pub sfx_volume: i32,
 }
 
 
@@ -132,7 +131,6 @@ impl Default for App {
     fn default() -> Self {
         // Keep this value ins sync with the window size of the main function.
         let window_size: Size = Size::new(640.0, 480.0);
-        // build the base struct first so we can run fallible audio init
         let mut app = Self {
             window_size,
 
@@ -264,21 +262,21 @@ impl Default for App {
 
             audio: None,
             music_volume: 100,
-            music_muted: false,
+            sfx_volume: 100,
         };
 
         if let Ok(mut a) = crate::client::audio::Audio::new() {
             let _ = a.load_clip("menu", "assets/audio/wizard_black_shores.mp3");
             let _ = a.load_clip("lobby", "assets/audio/wizard_clash_of_mages.mp3");
-            let _ = a.load_clip("ingame", "assets/audio/wizard_clash_of_mages.mp3");
+            let _ = a.load_clip("ingame", "assets/audio/wizard_peaceful.mp3");
 
-            let _ = a.load_clip("click", "assets/audio/click.mp3");
-            let _ = a.load_clip("card_place", "assets/audio/card_place.mp3");
-            let _ = a.load_clip("win", "assets/audio/win.mp3");
-            let _ = a.load_clip("lose", "assets/audio/lose.mp3");
+            let _ = a.load_clip("click", "assets/audio/sfx_click.mp3");
+            let _ = a.load_clip("card_place", "assets/audio/sfx_place_cards.mp3");
+            let _ = a.load_clip("game_over", "assets/audio/sfx_game_over.mp3");
+  
 
             a.play_music(crate::client::audio::Music::Menu);
-            app.audio = Some(a);
+            app.audio = Some(a); 
         }
 
         app
@@ -301,19 +299,8 @@ impl App {
                     a.play_music(crate::client::audio::Music::InGame);
                 }
             }
-            if self.music_muted {
-                a.set_music_muted(true);
-            }
         }
         self.menu = menu;
-    }
-
-    /// not implemented
-    pub fn toggle_music(&mut self) {
-        self.music_muted = !self.music_muted;
-        if let Some(a) = &mut self.audio {
-            a.set_music_muted(self.music_muted);
-        }
     }
 }
 
@@ -322,8 +309,6 @@ pub enum AppMessage {
     WindowResized(Size),
 
     Navigate(MenuState),
-    /// not yet implemented!!!
-    ToggleMusic,
 
     Host,
     HostNameChanged(String),
@@ -360,6 +345,7 @@ pub enum AppMessage {
 
     // Audio messages
     MusicVolumeChanged(f32),
+    SfxVolumeChanged(f32),
 }
 
 fn subscription(state: &App) -> Subscription<AppMessage> {
