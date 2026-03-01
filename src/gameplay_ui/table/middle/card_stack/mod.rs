@@ -3,7 +3,7 @@ pub mod stack_card;
 use std::ops::Not;
 
 use crate::{
-    animation::{Easing, ReversableBasicAnimation},
+    animation::{BasicAnimation, Easing, ReversableBasicAnimation},
     api::Card,
     client::{audio::Sfx, AppMessage, TaskBatcher},
     gameplay_ui::{
@@ -54,11 +54,25 @@ impl ViewPlayedCardsAnimation {
     }
 }
 
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct NewCardPlayedAniamtion(BasicAnimation);
+
+impl NewCardPlayedAniamtion {
+    pub fn new(duration: usize) -> Self {
+        Self(BasicAnimation::new(duration))
+    }
+    pub fn get_opacity(&self) -> f32 {
+        self.progress(Easing::Linear)
+    }
+}
+
 pub struct ViewableCardStack {
     window_size: Size,
     cards: Vec<ViewableStackCard>,
     always_show_played_cards: bool,
+    remove_ready: bool,
     view_played_cards_animation: ViewPlayedCardsAnimation,
+    new_card_played_animation: NewCardPlayedAniamtion,
 }
 
 impl ViewableCardStack {
@@ -67,7 +81,9 @@ impl ViewableCardStack {
             window_size,
             cards: Vec::new(),
             always_show_played_cards: false,
+            remove_ready: false,
             view_played_cards_animation: ViewPlayedCardsAnimation::new(40),
+            new_card_played_animation: NewCardPlayedAniamtion::new(20),
         }
     }
 }
@@ -84,10 +100,15 @@ impl Notifiable for ViewableCardStack {
                 self.cards.push(stack_card);
                 tb.push_msg(GlowMessage::TryChangeGlow(card));
                 tb.push_msg(AppMessage::PlaySfx(Sfx::CardPlay));
+                self.new_card_played_animation.start_force();
+                if self.cards.len() == 1 && self.always_show_played_cards {
+                    self.view_played_cards_animation.start();
+                }
                 return tb.batch();
             }
             CardStackMessage::HideAllCards => {
                 if self.cards.len() > 0 {
+                    self.view_played_cards_animation.reverse();
                     for card in self.cards.iter_mut() {
                         card.remove_animation.start();
                     }
@@ -95,7 +116,7 @@ impl Notifiable for ViewableCardStack {
                 }
             }
             CardStackMessage::RemoveAllCards => {
-                self.cards.clear();
+                self.remove_ready = true;
             }
             CardStackMessage::ShowPlayedCards => {
                 self.view_played_cards_animation.start();
@@ -122,8 +143,13 @@ impl Animated for ViewableCardStack {
     fn update_animations(&mut self) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
         tb.push(self.view_played_cards_animation.next_frame());
+        tb.push(self.new_card_played_animation.next_frame());
         for card in self.cards.iter_mut() {
             tb.push(card.update_animations());
+        }
+        if self.remove_ready && self.view_played_cards_animation.current_frame_number() == 0 {
+            self.cards.clear();
+            self.remove_ready = false;
         }
         tb.batch()
     }
@@ -175,6 +201,7 @@ impl Viewable for ViewableCardStack {
         }
         content = content.push(pin(card_stack).position(Point::new(0.0, 0.0)));
 
+        // played cards history
         if !self.cards.is_empty() {
             let mut cards = Stack::new();
             let card_width: f32 = self.width() / 6.0; // There can be 6 cards played at max.
@@ -192,9 +219,14 @@ impl Viewable for ViewableCardStack {
                         + (end_point.y - start_point.y)
                             * self.view_played_cards_animation.get_progress(),
                 );
+                let mut opacity = self.view_played_cards_animation.get_opacity();
+                if card_number == self.cards.len() - 1 {
+                    // last card
+                    opacity = opacity.min(self.new_card_played_animation.get_opacity());
+                };
                 cards = cards.push(
                     pin(image(self.cards[card_number].card().img_path())
-                        .opacity(self.view_played_cards_animation.get_opacity())
+                        .opacity(opacity)
                         .width(card_width)
                         .height(card_height))
                     .position(spawn_point),
