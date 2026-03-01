@@ -1,6 +1,6 @@
 use crate::{
-    animation::{AutoReversingAnimation, Easing},
-    api::{get_card_path, CARD_BACK_PATH},
+    animation::{Easing, ReversableBasicAnimation},
+    api::CARD_BACK_PATH,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_height_middle, card_img_middle_base_scale, card_width_middle,
@@ -10,8 +10,8 @@ use crate::{
 };
 use derive_more::{Deref, DerefMut};
 use iced::{
-    widget::{image, Container},
     Size, Task,
+    widget::{Container, image},
 };
 
 #[derive(Debug, Clone)]
@@ -29,11 +29,11 @@ impl Message for TrumpCardMessage {
 }
 
 #[derive(Debug, Clone, Deref, DerefMut)]
-pub struct TurnAnimation(AutoReversingAnimation);
+pub struct TurnAnimation(ReversableBasicAnimation);
 
 impl TurnAnimation {
     fn new(duration: usize) -> Self {
-        Self(AutoReversingAnimation::new(duration))
+        Self(ReversableBasicAnimation::new(duration))
     }
     fn get_contraction(&self) -> f32 {
         1.0 - self.progress(Easing::InSine)
@@ -60,13 +60,13 @@ impl ViewableTrumpCard {
         };
         viewable_trump_card
             .reveal_animation
-            .on_end(TrumpCardMessage::TurnPart2.convert_msg());
+            .on_end_reached(TrumpCardMessage::TurnPart2.convert_msg());
         viewable_trump_card
             .remove_animation
-            .on_end(TrumpCardMessage::RemovePart2.convert_msg());
+            .on_end_reached(TrumpCardMessage::RemovePart2.convert_msg());
         viewable_trump_card
             .remove_animation
-            .on_start(CardDeckMessage::ClearTrumpCard.convert_msg());
+            .on_start_reached(CardDeckMessage::ClearTrumpCard.convert_msg());
         viewable_trump_card
     }
 }
@@ -75,17 +75,15 @@ impl Notifiable for ViewableTrumpCard {
     type OwnMessage = TrumpCardMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
-            TrumpCardMessage::TurnPart1 => {
-                self.reveal_animation.start();
-            }
+            TrumpCardMessage::TurnPart1 => self.reveal_animation.start(),
             TrumpCardMessage::TurnPart2 => {
                 self.show_back = false;
+                self.reveal_animation.reverse();
             }
-            TrumpCardMessage::RemovePart1 => {
-                self.remove_animation.start();
-            }
+            TrumpCardMessage::RemovePart1 => self.remove_animation.start(),
             TrumpCardMessage::RemovePart2 => {
                 self.show_back = true;
+                self.remove_animation.reverse();
             }
         }
         Task::none()
@@ -118,7 +116,7 @@ impl Resizable for ViewableTrumpCard {
 impl Viewable for ViewableTrumpCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
         let img_path = if !self.show_back {
-            get_card_path(self.trump_card)
+            self.trump_card.img_path()
         } else {
             CARD_BACK_PATH.to_string()
         };

@@ -1,6 +1,6 @@
 // use iced::window::UserAttention;
-use rand::rng;
 use rand::Rng;
+use rand::rng;
 use std::collections::HashMap;
 
 use strum::IntoEnumIterator;
@@ -68,11 +68,9 @@ impl Round {
         let mut dealer_needs_to_set_trump = false;
         if !deck.is_empty() {
             let trump_card = draw_random_card(&mut deck);
-            if trump_card.value != Value::Wizard {
-                // since out jester doesnt have a suit, we can show it to players
-                // to indicate that there is no trump suit this round
-                trump = Some(trump_card);
-            }
+
+            trump = Some(trump_card);
+
             dealer_needs_to_set_trump = trump_card.value == Value::Wizard;
         }
 

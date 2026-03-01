@@ -1,10 +1,12 @@
 use derive_more::{Deref, DerefMut};
-use iced::widget::{container, stack, text, Image, MouseArea};
 use iced::Task;
+use iced::widget::{Image, MouseArea, container, stack, text};
 
 use crate::animation::{BasicAnimation, Easing, ReversableBasicAnimation};
-use crate::api::{PlayerId, BUTTON1_PATH};
+use crate::api::{BUTTON1_PATH, PlayerId, TextColor};
+use crate::client::audio::Sfx;
 use crate::client::{AppMessage, MenuState, TaskBatcher};
+use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable};
 
 #[derive(Debug, Clone)]
@@ -52,7 +54,7 @@ impl ClickAnim {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Button {
     pub id: usize,
     pub text: &'static str,
@@ -85,7 +87,7 @@ impl Button {
         };
         button
             .click_animation
-            .on_end(ButtonMessage::ClickEnded(id).convert_msg());
+            .on_end_reached(ButtonMessage::ClickEnded(id).convert_msg());
         button
     }
 
@@ -102,6 +104,17 @@ impl Button {
             AppMessage::Navigate(MenuState::Join),
         )
     }
+    pub fn new_options_button(id: usize, width: u16, height: u16) -> Self {
+        Self::new(
+            id,
+            "Optionen",
+            BUTTON1_PATH,
+            width,
+            height,
+            AppMessage::Navigate(MenuState::Options),
+        )
+    }
+
     pub fn new_rules_button(id: usize, width: u16, height: u16) -> Self {
         Self::new(
             id,
@@ -200,7 +213,7 @@ impl Button {
             BUTTON1_PATH,
             width,
             height,
-            AppMessage::SubmitBid,
+            GameViewMessage::TryBid.convert_msg(),
         )
     }
 
@@ -208,7 +221,7 @@ impl Button {
         self.on_click = on_click;
     }
 
-    pub fn view(&self) -> container::Container<'_, AppMessage> {
+    pub fn view<'a>(&self) -> container::Container<'a, AppMessage> {
         self.view_internal(self.text)
     }
 
@@ -218,18 +231,18 @@ impl Button {
 
     fn view_internal<'a>(&self, label: &'a str) -> container::Container<'a, AppMessage> {
         let scale = self.hover_animation.get_expansion() * self.click_animation.get_contraction();
-        let width_scaled = (self.width as f32 * scale).max(1.0).round() as u16;
-        let height_scaled = (self.height as f32 * scale).max(1.0).round() as u16;
+        let width_scaled = (self.width as f32 * scale).max(1.0).round() as u32;
+        let height_scaled = (self.height as f32 * scale).max(1.0).round() as u32;
         let txt_size = ((height_scaled as f32) * 0.4) as u32;
 
         let img = Image::new(self.img_path)
-            .width(width_scaled as u32)
-            .height(height_scaled as u32)
+            .width(width_scaled)
+            .height(height_scaled)
             .opacity(self.click_animation.get_opacity());
 
         let content = stack![
             img,
-            container(text(label).size(txt_size))
+            container(text(label).size(txt_size).white())
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
                 .center_x(iced::Fill)
@@ -296,17 +309,18 @@ impl Notifiable for Button {
         match msg {
             ButtonMessage::Hovered(id) => {
                 if id == self.id {
-                    self.hover_animation.start()
+                    self.hover_animation.start();
                 }
             }
             ButtonMessage::NotHovered(id) => {
                 if id == self.id {
-                    self.hover_animation.reverse()
+                    self.hover_animation.reverse();
                 }
             }
             ButtonMessage::Clicked(id) => {
                 if id == self.id {
                     self.click_animation.start();
+                    return Task::done(AppMessage::PlaySfx(Sfx::Click));
                 }
             }
             ButtonMessage::ClickEnded(id) => {

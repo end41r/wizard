@@ -1,19 +1,19 @@
 use crate::{
     animation::{BasicAnimation, Easing},
-    api::{get_card_path, Card},
+    api::Card,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_height_middle, card_img_middle_base_scale, card_width_middle,
-        CARD_AREA_MIDDLE_RELATION,
+        CARD_AREA_MIDDLE_RELATION, card_height_middle, card_img_middle_base_scale,
+        card_width_middle, table::middle::card_stack::CardStackMessage,
     },
     ui_element_traits::*,
 };
 
 use derive_more::{Deref, DerefMut};
 use iced::{
-    widget::{image, Container},
     ContentFit::Fill,
     Size, Task,
+    widget::{Container, image},
 };
 use rand::Rng;
 
@@ -51,22 +51,26 @@ impl RemoveAnimation {
 pub struct ViewableStackCard {
     window_size: Size,
     card: Card,
-    reveal_animation: RevealAnimation,
+    pub reveal_animation: RevealAnimation,
     pub remove_animation: RemoveAnimation,
     rotation: f32,
 }
 
 impl ViewableStackCard {
     pub fn new(window_size: Size, card: Card) -> Self {
-        let mut viewable_stack_card = Self {
+        let mut vsc = Self {
             window_size,
             card,
             reveal_animation: RevealAnimation::new(50),
             remove_animation: RemoveAnimation::new(10),
             rotation: rand::rng().random_range(-0.15..0.15),
         };
-        viewable_stack_card.reveal_animation.start();
-        viewable_stack_card
+        vsc.remove_animation
+            .on_end_reached(CardStackMessage::RemoveAllCards.convert_msg());
+        vsc
+    }
+    pub fn card(&self) -> Card {
+        self.card
     }
 }
 
@@ -104,7 +108,7 @@ impl SizeFromOutside for ViewableStackCard {
 
 impl Viewable for ViewableStackCard {
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        let img = image(get_card_path(self.card))
+        let img = image(self.card.img_path())
             .width(self.width())
             .height(self.height())
             .scale(card_img_middle_base_scale())

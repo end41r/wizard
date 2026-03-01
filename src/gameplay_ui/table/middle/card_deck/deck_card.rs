@@ -3,15 +3,15 @@ use crate::{
     api::CARD_BACK_PATH,
     client::AppMessage,
     gameplay_ui::{
-        card_height_middle, card_img_middle_base_scale, card_width_middle,
-        CARD_AREA_MIDDLE_RELATION,
+        CARD_AREA_MIDDLE_RELATION, card_height_middle, card_img_middle_base_scale,
+        card_width_middle,
     },
     ui_element_traits::*,
 };
 use derive_more::{Deref, DerefMut};
 use iced::{
-    widget::{image, Container},
     Point, Size, Task,
+    widget::{Container, image},
 };
 
 #[derive(Debug, Clone)]
@@ -42,19 +42,17 @@ pub struct ViewableDeckCard {
     window_size: Size,
     add: bool,
     direction: Direction,
-    deal_animation: DealAnimation,
+    pub deal_animation: DealAnimation,
 }
 
 impl ViewableDeckCard {
     pub fn new(window_size: Size, cycle: usize, add: bool) -> Self {
-        let mut viewable_deck_card = Self {
+        Self {
             window_size,
             add,
             direction: Self::choose_direction(cycle),
             deal_animation: DealAnimation::new(10),
-        };
-        viewable_deck_card.deal_animation.start();
-        viewable_deck_card
+        }
     }
     pub fn offset(&self) -> Point {
         let mut linear_progress: f32 = self.deal_animation.get_offset();

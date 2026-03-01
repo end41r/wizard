@@ -1,12 +1,14 @@
 # Rust SEP Winter Term 25/26 – Final Project
 
 ## Requirements
+
 **Requirements written in bold are mandatory but not sufficient to pass.**  
 Other requirements should be fulfilled for a 1.0, but are also not sufficient.
 
 ---
 
 ## Git
+
 - [ ] **(G1) The submitted project is a Git repository.**
 - [ ] **(G2) The main branch contains the final project.**
 - [ ] **(G3) Collaborative development was continuously done via Git (commit history from December to February).**
@@ -21,7 +23,8 @@ Other requirements should be fulfilled for a 1.0, but are also not sufficient.
 ---
 
 ## Code
-- [ ] **(C1) The project must be compilable with rustc stable 1.85.0 (edition=2024).** 
+
+- [ ] **(C1) The project must be compilable with rustc stable 1.85.0 (edition=2024).**
 - [ ] **(C2) The project is executable.**
 - If the project is runnable via `cargo run`, it’s fine.  
 - If depending on non–crates.io dependencies, a devcontainer must include all required components.  
@@ -40,6 +43,7 @@ Other requirements should be fulfilled for a 1.0, but are also not sufficient.
 ---
 
 ## Functional
+
 - [ ] **(F1) The project was outlined in the pitch presentation.**
 - [ ] **(F2) The final submission resembles the pitched project.**
 - [ ] **(F3) The project must allow user interaction (usable without writing code).**
@@ -48,6 +52,7 @@ Other requirements should be fulfilled for a 1.0, but are also not sufficient.
 ---
 
 ## Documentation
+
 - [ ] **(D1) The documentation contains all steps needed to run the project.**
 - [ ] **(D2) The documentation lists all implemented features and how to discover them.**
 - [ ] **(D3) The logbook is submitted as a separate PDF on Moodle.**

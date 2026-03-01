@@ -12,10 +12,21 @@ pub static FALSE_PLAYED_PATH: &str = "assets/cards/false_played.png";
 pub type PlayerId = u64;
 pub type SessionId = u64;
 
+pub trait TextColor {
+    fn white(self) -> Self;
+}
+
+impl<'a> TextColor for iced::widget::Text<'a> {
+    fn white(self) -> Self {
+        self.color(iced::Color::WHITE)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ServerMessage {
     Server(S),
     Broadcast(B),
+    ConnectionClosed,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -130,6 +141,175 @@ pub enum B {
     ServerShutdown,
 }
 
+#[derive(Clone, Debug)]
+pub struct Avatar {
+    kind: AvatarKind,
+    pose: AvatarPose,
+    casting_finished: bool,
+    continue_casting: bool,
+}
+
+impl Avatar {
+    pub fn new(kind: AvatarKind) -> Self {
+        Self {
+            kind,
+            pose: AvatarPose::Standing1,
+            casting_finished: false,
+            continue_casting: false,
+        }
+    }
+    pub fn kind(&self) -> AvatarKind {
+        self.kind
+    }
+    pub fn pose(&self) -> AvatarPose {
+        self.pose
+    }
+    pub fn next_pose(&mut self) {
+        match self.pose {
+            AvatarPose::Standing1 => {
+                if self.continue_casting {
+                    self.pose = AvatarPose::Casting1
+                } else {
+                    self.pose = AvatarPose::Standing2
+                }
+            }
+            AvatarPose::Standing2 => {
+                if self.continue_casting {
+                    self.pose = AvatarPose::Casting1
+                } else {
+                    self.pose = AvatarPose::Standing1
+                }
+            }
+            AvatarPose::Casting1 => {
+                if self.continue_casting && !self.casting_finished {
+                    self.pose = AvatarPose::Casting2
+                } else {
+                    self.pose = AvatarPose::Standing1;
+                    self.casting_finished = false;
+                    self.continue_casting = false;
+                }
+            }
+            AvatarPose::Casting2 => {
+                self.pose = AvatarPose::Casting1;
+                self.casting_finished = true;
+            }
+        }
+    }
+    pub fn start_casting(&mut self) {
+        self.continue_casting = true;
+    }
+    pub fn is_casting(&self) -> bool {
+        self.continue_casting
+    }
+    pub fn img_path(&self) -> String {
+        let mut path: String = "assets/avatars/".to_owned();
+        match &self.kind {
+            AvatarKind::Elf => {
+                path.push_str("elf/elf_");
+            }
+            AvatarKind::Knight => {
+                path.push_str("knight/knight_");
+            }
+            AvatarKind::Mage => {
+                path.push_str("mage/mage_");
+            }
+            AvatarKind::Witch => {
+                path.push_str("witch/witch_");
+            }
+        }
+        match &self.pose {
+            AvatarPose::Standing1 => {
+                path.push_str("standing1");
+            }
+            AvatarPose::Standing2 => {
+                path.push_str("standing2");
+            }
+            AvatarPose::Casting1 => {
+                path.push_str("casting1");
+            }
+            AvatarPose::Casting2 => {
+                path.push_str("casting2");
+            }
+        }
+        path.push_str(".png");
+        path
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum AvatarKind {
+    Elf,
+    Knight,
+    Mage,
+    Witch,
+}
+
+impl AvatarKind {
+    pub fn as_avatar(&self) -> Avatar {
+        Avatar::new(*self)
+    }
+    pub fn img_path(&self, pose: AvatarPose) -> String {
+        let mut path: String = "assets/avatars/".to_owned();
+        match &self {
+            AvatarKind::Elf => {
+                path.push_str("elf/elf_");
+            }
+            AvatarKind::Knight => {
+                path.push_str("knight/knight_");
+            }
+            AvatarKind::Mage => {
+                path.push_str("mage/mage_");
+            }
+            AvatarKind::Witch => {
+                path.push_str("witch/witch_");
+            }
+        }
+        match pose {
+            AvatarPose::Standing1 => {
+                path.push_str("standing1");
+            }
+            AvatarPose::Standing2 => {
+                path.push_str("standing2");
+            }
+            AvatarPose::Casting1 => {
+                path.push_str("casting1");
+            }
+            AvatarPose::Casting2 => {
+                path.push_str("casting2");
+            }
+        }
+        path.push_str(".png");
+        path
+    }
+    pub fn shard_path(&self) -> String {
+        let mut path: String = "assets/avatars/".to_owned();
+        match &self {
+            AvatarKind::Elf => {
+                path.push_str("elf/");
+            }
+            AvatarKind::Knight => {
+                path.push_str("knight/");
+            }
+            AvatarKind::Mage => {
+                path.push_str("mage/");
+            }
+            AvatarKind::Witch => {
+                path.push_str("witch/");
+            }
+        }
+        path.push_str("shard.png");
+        path
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AvatarPose {
+    Standing1,
+    Standing2,
+    Casting1,
+    Casting2,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct Card {
     pub value: Value,
@@ -139,6 +319,64 @@ pub struct Card {
 impl Card {
     pub fn new(suit: Suit, value: Value) -> Self {
         Self { suit, value }
+    }
+
+    pub fn img_path(&self) -> String {
+        let mut path: String = "assets/cards/variations/".to_owned();
+        if self.value == Value::Jester {
+            path.push_str("jester");
+        } else if self.value == Value::Wizard {
+            path.push_str("wizard");
+        } else {
+            match self.suit {
+                Suit::Blue => {
+                    path.push_str("blue_");
+                }
+                Suit::Green => {
+                    path.push_str("green_");
+                }
+                Suit::Red => {
+                    path.push_str("red_");
+                }
+                Suit::Yellow => {
+                    path.push_str("yellow_");
+                }
+            }
+            if let Value::Number(number) = self.value {
+                path.push_str(number.to_string().as_str());
+            }
+        }
+        path.push_str(".png");
+        path
+    }
+
+    pub fn glow_path(&self) -> String {
+        if self.value == Value::Jester {
+            // glow card will treat this as no existant glow yet
+            "".to_string()
+        } else if self.value == Value::Wizard {
+            // glow card will treat this as a existant glow bu won't find the image,
+            // so glow is invisible
+            "NOT VALID".to_string()
+        } else {
+            let mut path: String = "assets/cards/".to_owned();
+            match self.suit {
+                Suit::Blue => {
+                    path.push_str("glow_blue");
+                }
+                Suit::Green => {
+                    path.push_str("glow_green");
+                }
+                Suit::Red => {
+                    path.push_str("glow_red");
+                }
+                Suit::Yellow => {
+                    path.push_str("glow_yellow");
+                }
+            }
+            path.push_str(".png");
+            path
+        }
     }
 }
 
@@ -162,6 +400,7 @@ pub enum Value {
 pub struct Player {
     pub id: PlayerId,
     pub name: String,
+    pub avatar: AvatarKind,
     pub ready: bool,
     pub is_host: bool,
 }
@@ -170,57 +409,4 @@ pub struct Lobby {
     pub players: Vec<Player>,
     /// Contains tuples of (sender, message).
     pub chat: Vec<(String, String)>,
-}
-
-pub fn get_card_path(card: Card) -> String {
-    let mut path: String = "assets/cards/variations/".to_owned();
-    if card.value == Value::Jester {
-        path.push_str("jester");
-    } else if card.value == Value::Wizard {
-        path.push_str("wizard");
-    } else {
-        match card.suit {
-            Suit::Blue => {
-                path.push_str("blue_");
-            }
-            Suit::Green => {
-                path.push_str("green_");
-            }
-            Suit::Red => {
-                path.push_str("red_");
-            }
-            Suit::Yellow => {
-                path.push_str("yellow_");
-            }
-        }
-        if let Value::Number(number) = card.value {
-            path.push_str(number.to_string().as_str());
-        }
-    }
-    path.push_str(".png");
-    path
-}
-
-pub fn get_glow_path(card: Card) -> String {
-    let mut path: String = "assets/cards/".to_owned();
-    if card.value == Value::Jester || card.value == Value::Wizard {
-        path.push_str("");
-    } else {
-        match card.suit {
-            Suit::Blue => {
-                path.push_str("glow_blue");
-            }
-            Suit::Green => {
-                path.push_str("glow_green");
-            }
-            Suit::Red => {
-                path.push_str("glow_red");
-            }
-            Suit::Yellow => {
-                path.push_str("glow_yellow");
-            }
-        }
-    }
-    path.push_str(".png");
-    path
 }

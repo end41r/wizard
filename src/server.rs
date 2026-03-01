@@ -1,20 +1,21 @@
-use crate::api::{Lobby, Player, PlayerId, ServerMessage, B, C, S};
-use crate::gamelogic::game::Game;
+use crate::api::{AvatarKind, B, C, Lobby, Player, PlayerId, S, ServerMessage};
 use crate::gamelogic::GameEvent;
+use crate::gamelogic::game::Game;
 
 use axum::{
+    Router,
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
     routing::get,
-    Router,
 };
 use futures::{SinkExt, StreamExt};
+use rand::seq::IndexedRandom;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
 
 type Clients = Arc<RwLock<HashMap<PlayerId, mpsc::UnboundedSender<ServerMessage>>>>;
@@ -216,10 +217,10 @@ async fn ws_handler(
 /// Stops the server by sending a shutdown signal.
 /// Was made using Claude Opuss' help.
 pub fn stop_server() {
-    if let Ok(mut guard) = SHUTDOWN_SENDER.lock() {
-        if let Some(tx) = guard.take() {
-            let _ = tx.send(());
-        }
+    if let Ok(mut guard) = SHUTDOWN_SENDER.lock()
+        && let Some(tx) = guard.take()
+    {
+        let _ = tx.send(());
     }
 }
 
@@ -311,9 +312,16 @@ async fn handle_socket(socket: WebSocket, clients: Clients, players: PlayerList,
                         }
                         drop(players_map);
                         let is_host = players_clone.read().await.is_empty(); // thats really unsafe
+                        let avatar_kinds: [AvatarKind; 4] = [
+                            AvatarKind::Elf,
+                            AvatarKind::Knight,
+                            AvatarKind::Mage,
+                            AvatarKind::Witch,
+                        ];
                         let player = Player {
                             id,
                             name: name.clone(),
+                            avatar: *avatar_kinds.choose(&mut rand::rng()).unwrap(),
                             ready: false,
                             is_host,
                         };

@@ -6,48 +6,37 @@ mod animation_hover;
 mod animation_play;
 mod animation_playable;
 
-use crate::api::{
-    get_card_path, Card, FALSE_PLAYED_PATH, FRAME_PLAYABLE_FOCUSED_PATH, FRAME_PLAYABLE_PATH,
-};
+use crate::api::{Card, FALSE_PLAYED_PATH, FRAME_PLAYABLE_FOCUSED_PATH, FRAME_PLAYABLE_PATH};
+use crate::client::audio::Sfx;
 use crate::client::{AppMessage, TaskBatcher};
+use crate::gameplay_ui::hand::HandMessage;
 use crate::gameplay_ui::hand::hand_card::{
     animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
     animation_focus::FocusAnimation, animation_hide::HideAnimation,
     animation_hover::HoverAnimation, animation_play::PlayAnimation,
     animation_playable::PlayableAnimation,
 };
-use crate::gameplay_ui::hand::HandMessage;
-use crate::gameplay_ui::table::middle::card_stack::CardStackMessage;
-use crate::gameplay_ui::{card_height_hand, card_img_base_scale, card_width_hand};
+use crate::gameplay_ui::{GameViewMessage, card_height_hand, card_img_base_scale, card_width_hand};
 use crate::ui_element_traits::*;
 use iced::Task;
 use iced::{
-    mouse::Interaction,
-    widget::{container, image, pin, stack, Container, MouseArea},
     ContentFit::Fill,
     Point, Size,
+    mouse::Interaction,
+    widget::{Container, MouseArea, container, image, pin, stack},
 };
 use std::ops::Not;
 
-pub fn f32_min_2(v1: f32, v2: f32) -> f32 {
-    if v1 < v2 {
-        return v1;
-    }
-    v2
-}
-
 #[derive(Debug, Clone)]
 pub enum CardMessage {
-    Played(usize),
-    FalsePlayed(usize),
-    Hovered(usize),
-    NotHovered(usize),
-    Hide(usize),
-    Show(usize),
-    Draw(usize),
-    CursorMoved(usize, Point),
-    ShowPlayableStatus(usize, bool),
-    MakeClickable(usize),
+    Played(Card),
+    Clicked(Card),
+    Hovered(Card),
+    NotHovered(Card),
+    Hide(Card),
+    Show(Card),
+    CursorMoved(Card, Point),
+    ShowPlayableStatus(Card, bool),
 }
 
 impl Message for CardMessage {
@@ -56,36 +45,16 @@ impl Message for CardMessage {
     }
 }
 
-impl ReplaceUsize for CardMessage {
-    fn replace_usize(&self, value: usize) -> Self {
-        match self {
-            CardMessage::Played(_) => CardMessage::Played(value),
-            CardMessage::FalsePlayed(_) => CardMessage::FalsePlayed(value),
-            CardMessage::Hovered(_) => CardMessage::Hovered(value),
-            CardMessage::NotHovered(_) => CardMessage::NotHovered(value),
-            CardMessage::Hide(_) => CardMessage::Hide(value),
-            CardMessage::Show(_) => CardMessage::Show(value),
-            CardMessage::Draw(_) => CardMessage::Draw(value),
-            CardMessage::CursorMoved(_, point) => CardMessage::CursorMoved(value, *point),
-            CardMessage::ShowPlayableStatus(_, bool) => {
-                CardMessage::ShowPlayableStatus(value, *bool)
-            }
-            CardMessage::MakeClickable(_) => CardMessage::MakeClickable(value),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ViewableHandCard {
-    id: usize,
-    card: Card,
+    pub my_turn: bool,
+    pub card: Card,
     window_size: Size,
-    clickable: bool,
     playable: bool,
     show_playable_status: bool,
     rotation: f32,
 
-    draw_animation: DrawAnimation,
+    pub draw_animation: DrawAnimation,
     hover_animation: HoverAnimation,
     play_animation: PlayAnimation,
     playable_animation: PlayableAnimation,
@@ -100,13 +69,12 @@ pub struct ViewableHandCard {
 }
 
 impl ViewableHandCard {
-    pub fn new(id: usize, card: Card, window_size: Size, playable: bool) -> Self {
+    pub fn new(card: Card, window_size: Size, playable: bool) -> Self {
         let play_duration: usize = 12;
         let mut viewable_card: ViewableHandCard = Self {
-            id,
+            my_turn: false,
             card,
             window_size,
-            clickable: true,
             playable,
             show_playable_status: false,
             rotation: 0.0,
@@ -119,7 +87,7 @@ impl ViewableHandCard {
             focus_animation: FocusAnimation::new(70),
             hide_animation: HideAnimation::new(play_duration),
 
-            img_handle: iced::widget::image::Handle::from_path(get_card_path(card)),
+            img_handle: iced::widget::image::Handle::from_path(card.img_path()),
             img_frame_playable: iced::widget::image::Handle::from_path(FRAME_PLAYABLE_PATH),
             img_frame_playable_focused: iced::widget::image::Handle::from_path(
                 FRAME_PLAYABLE_FOCUSED_PATH,
@@ -128,16 +96,12 @@ impl ViewableHandCard {
         };
         viewable_card
             .play_animation
-            .on_end(HandMessage::DeleteCard(id).convert_msg());
-        viewable_card
-            .hide_animation
-            .on_end(CardMessage::MakeClickable(id).convert_msg());
-        viewable_card.playable_animation.start();
+            .on_end_reached(HandMessage::DeleteCard(card).convert_msg());
+        viewable_card.playable_animation.start_infinite();
         viewable_card
     }
-
-    pub fn id(&self) -> usize {
-        self.id
+    pub fn validate(&mut self, valid_cards: Vec<Card>) {
+        self.playable = valid_cards.contains(&self.card);
     }
 }
 
@@ -147,70 +111,65 @@ impl Notifiable for ViewableHandCard {
     fn update_with_msg(&mut self, msg: CardMessage) -> Task<AppMessage> {
         let mut tb = TaskBatcher::new();
         match msg {
-            CardMessage::Hovered(id) => {
-                if id == self.id {
+            CardMessage::Hovered(card) => {
+                if card == self.card {
                     self.hover_animation.start();
                     self.focus_animation.start();
+                    tb.push_msg(AppMessage::PlaySfx(Sfx::CardHover))
                 } else {
                     // Sometimes on_exit for a viewed card won't register
                     // and won't send the CardNotHovered msg.
                     // To ensure that an unhovered card is not sticking up all the time
                     // send NotHovered to all cards except the hovered one.
-                    tb.push(CardMessage::NotHovered(self.id).convert_msg_to_task())
+                    tb.push(CardMessage::NotHovered(self.card).convert_msg_to_task())
                 };
             }
-            CardMessage::Played(id) => {
-                if id == self.id {
-                    self.clickable = false;
+            // Comes from Server, so this needs no checks.
+            CardMessage::Played(card) => {
+                if card == self.card {
                     self.play_animation.start();
-                    tb.push(CardStackMessage::CardPlayed(self.card).convert_msg_to_task());
                 };
             }
-            CardMessage::NotHovered(id) => {
-                if id == self.id {
+            CardMessage::Clicked(card) => {
+                if card == self.card {
+                    if self.playable {
+                        tb.push_msg(HandMessage::NotMyTurn);
+                        tb.push_msg(GameViewMessage::TryPlayCard(self.card));
+                    } else {
+                        self.false_played_animation.start();
+                        tb.push_msg(AppMessage::PlaySfx(Sfx::CardError))
+                    }
+                }
+            }
+            CardMessage::NotHovered(card) => {
+                if card == self.card {
                     self.hover_animation.reverse();
                     self.focus_animation.reset();
                     self.rotation = 0.0;
                 };
             }
-            CardMessage::Hide(id) => {
-                if id == self.id {
-                    self.clickable = false;
+            CardMessage::Hide(card) => {
+                if card == self.card {
                     self.hide_animation.start();
                 };
             }
-            CardMessage::Show(id) => {
-                if id == self.id {
+            CardMessage::Show(card) => {
+                if card == self.card {
                     self.hide_animation.reverse();
                 };
             }
-            CardMessage::Draw(id) => {
-                if id == self.id {
-                    self.draw_animation.start();
-                };
-            }
-            CardMessage::CursorMoved(id, point) => {
-                if id == self.id {
+            CardMessage::CursorMoved(card, point) => {
+                if card == self.card {
                     let halve_card_width: f32 = self.width() / 2.0;
                     let factor_width: f32 = (point.x - halve_card_width) / halve_card_width;
                     // The factor 0.05 is representing a 5% rotation offset on maximum.
                     self.rotation = 0.05 * factor_width;
                 };
             }
-            CardMessage::FalsePlayed(id) => {
-                if id == self.id {
-                    self.false_played_animation.start();
-                };
-            }
-            CardMessage::ShowPlayableStatus(id, do_show) => {
-                if id == self.id {
+            CardMessage::ShowPlayableStatus(card, do_show) => {
+                if card == self.card {
                     self.show_playable_status = do_show;
                 };
-            }
-            CardMessage::MakeClickable(id) => {
-                if id == self.id {
-                    self.clickable = true;
-                }
             }
         }
         tb.batch()
@@ -260,17 +219,10 @@ impl Viewable for ViewableHandCard {
     /// This calculation is moved to view_and_move, because otherwise
     /// some effects of the card won't render for an unknown reason.
     fn view<'a>(&self) -> Container<'a, AppMessage> {
-        let img_opacity: f32 = f32_min_2(
-            self.play_animation.get_opacity(),
-            self.hide_animation.get_opacity(),
-        );
-
-        let hover_effect_opacity: f32 = f32_min_2(img_opacity, self.focus_animation.get_opacity());
-
-        let playable_opacity: f32 = f32_min_2(img_opacity, self.playable_animation.get_opacity());
-
-        let false_played_opacity: f32 =
-            f32_min_2(img_opacity, self.false_played_animation.get_opacity());
+        let img_opacity: f32 = self
+            .play_animation
+            .get_opacity()
+            .min(self.hide_animation.get_opacity());
 
         let width: f32 = self.width()
             * self.hover_animation.get_expansion()
@@ -296,56 +248,66 @@ impl Viewable for ViewableHandCard {
             .opacity(img_opacity);
         card = card.push(img);
 
-        if self.playable {
-            if self.show_playable_status {
-                let playable_effect = image(self.img_frame_playable.clone())
+        if self.my_turn {
+            let hover_effect_opacity: f32 = self.focus_animation.get_opacity().min(img_opacity);
+            let playable_opacity: f32 = self.playable_animation.get_opacity().min(img_opacity);
+            let false_played_opacity: f32 =
+                self.false_played_animation.get_opacity().min(img_opacity);
+            if self.playable {
+                if self.show_playable_status {
+                    let playable_effect = image(self.img_frame_playable.clone())
+                        .content_fit(Fill)
+                        .width(width)
+                        .height(height)
+                        .rotation(rotation)
+                        .scale(scale)
+                        .opacity(playable_opacity);
+                    card = card.push(playable_effect);
+                }
+                let hover_effect = image(self.img_frame_playable_focused.clone())
                     .content_fit(Fill)
                     .width(width)
                     .height(height)
                     .rotation(rotation)
                     .scale(scale)
-                    .opacity(playable_opacity);
-                card = card.push(playable_effect);
+                    .opacity(hover_effect_opacity);
+                card = card.push(hover_effect);
+            } else {
+                let false_played_effect = image(self.img_false_played.clone())
+                    .content_fit(Fill)
+                    .width(width)
+                    .height(height)
+                    .rotation(rotation)
+                    .scale(scale)
+                    .opacity(false_played_opacity);
+                card = card.push(false_played_effect)
             }
-            let hover_effect = image(self.img_frame_playable_focused.clone())
-                .content_fit(Fill)
-                .width(width)
-                .height(height)
-                .rotation(rotation)
-                .scale(scale)
-                .opacity(hover_effect_opacity);
-            card = card.push(hover_effect);
-        } else {
-            let false_played_effect = image(self.img_false_played.clone())
-                .content_fit(Fill)
-                .width(width)
-                .height(height)
-                .rotation(rotation)
-                .scale(scale)
-                .opacity(false_played_opacity);
-            card = card.push(false_played_effect)
-        }
+        };
 
-        let msg_hovered: AppMessage = CardMessage::Hovered(self.id).convert_msg();
-        let msg_not_hoverd: AppMessage = CardMessage::NotHovered(self.id).convert_msg();
-        let msg_show_playable_status =
-            HandMessage::ShowPlayableStatus(self.show_playable_status.not()).convert_msg();
-        let card_id: usize = self.id;
+        let msg_hovered: AppMessage = CardMessage::Hovered(self.card).convert_msg();
+        let msg_not_hoverd: AppMessage = CardMessage::NotHovered(self.card).convert_msg();
+        let card_data = self.card;
         let msg_cursor_moved =
-            move |position: Point| CardMessage::CursorMoved(card_id, position).convert_msg();
-        let msg_played = CardMessage::Played(self.id).convert_msg();
-        let msg_false_played = CardMessage::FalsePlayed(self.id).convert_msg();
+            move |position: Point| CardMessage::CursorMoved(card_data, position).convert_msg();
 
         let mut mouse_area = MouseArea::new(card)
             .on_enter(msg_hovered)
             .on_exit(msg_not_hoverd)
-            .on_right_press(msg_show_playable_status)
-            .on_move(msg_cursor_moved)
-            .interaction(Interaction::Pointer);
-        if self.playable {
-            mouse_area = mouse_area.on_double_click(msg_played)
-        } else {
-            mouse_area = mouse_area.on_double_click(msg_false_played)
+            .on_move(msg_cursor_moved);
+
+        if self.my_turn {
+            let msg_show_playable_status =
+                HandMessage::ShowPlayableStatus(self.show_playable_status.not()).convert_msg();
+            let msg_double_clicked = CardMessage::Clicked(self.card).convert_msg();
+            let interaction: Interaction = if self.playable {
+                Interaction::Pointer
+            } else {
+                Interaction::NotAllowed
+            };
+            mouse_area = mouse_area
+                .on_right_press(msg_show_playable_status)
+                .on_press(msg_double_clicked)
+                .interaction(interaction);
         }
 
         container(mouse_area)

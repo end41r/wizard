@@ -138,7 +138,7 @@ pub fn ease_out_bounce(v: f32) -> f32 {
 
 #[derive(Clone, Debug)]
 pub struct AnimationCore {
-    max_frame_number: usize,
+    after_max_frame_number: usize,
     current_frame_number: usize,
     animation_state: AnimationState,
     on_start: Option<AppMessage>,
@@ -148,7 +148,7 @@ pub struct AnimationCore {
 impl AnimationCore {
     fn new(duration: usize) -> Self {
         Self {
-            max_frame_number: duration,
+            after_max_frame_number: duration,
             current_frame_number: 0,
             animation_state: AnimationState::NotMoving,
             on_start: None,
@@ -173,10 +173,10 @@ impl AnimationCore {
     /// This function represents the progress of the animation ranging from 0.0 to 1.0.
     /// Choose an easing type to manipulate the look of the animation to your liking.
     pub fn progress(&self, curve: Easing) -> f32 {
-        let progress: f32 = if self.max_frame_number == 0 {
+        let progress: f32 = if self.after_max_frame_number == 0 {
             1.0
         } else {
-            self.current_frame_number as f32 / self.max_frame_number as f32
+            self.current_frame_number as f32 / self.after_max_frame_number as f32
         };
         match curve {
             Easing::Linear => progress,
@@ -190,15 +190,21 @@ impl AnimationCore {
             Easing::OutBounce => ease_out_bounce(progress),
         }
     }
-    #[allow(dead_code)]
     pub fn current_frame_number(&self) -> usize {
         self.current_frame_number
     }
+    pub fn max_frame_number(&self) -> usize {
+        if self.after_max_frame_number == 0 {
+            0
+        } else {
+            self.after_max_frame_number - 1
+        }
+    }
     /// Message sent when an animation reaches an end point
-    pub fn on_end(&mut self, msg: AppMessage) {
+    pub fn on_end_reached(&mut self, msg: AppMessage) {
         self.on_end = Some(msg)
     }
-    pub fn on_start(&mut self, msg: AppMessage) {
+    pub fn on_start_reached(&mut self, msg: AppMessage) {
         self.on_start = Some(msg)
     }
     /// Send a message when an animation reaches a reverse point or end if not reversing.
@@ -210,7 +216,7 @@ impl AnimationCore {
     }
     /// Send a message everytime when an animation returns to start.
     /// This won't trigger when the animation is started.
-    fn start_task(&self) -> Task<AppMessage> {
+    fn start_reached_task(&self) -> Task<AppMessage> {
         match &self.on_start {
             Some(msg) => Task::done(msg.clone()),
             None => Task::none(),
@@ -224,7 +230,6 @@ macro_rules! new_core {
     ($name:ident) => {
         impl $name {
             // This is marked as not used because CircularAnimation is as of now not used.
-            #[allow(dead_code)]
             pub fn new(duration: usize) -> Self {
                 Self(AnimationCore::new(duration))
             }
@@ -243,7 +248,7 @@ pub struct BasicAnimation(AnimationCore);
 impl BasicAnimation {
     pub fn next_frame(&mut self) -> Task<AppMessage> {
         if self.animation_state == AnimationState::MovingForward {
-            if self.current_frame_number < self.max_frame_number {
+            if self.current_frame_number < self.after_max_frame_number {
                 self.current_frame_number += 1;
             } else {
                 self.animation_state = AnimationState::Ended;
@@ -254,15 +259,18 @@ impl BasicAnimation {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Deref, DerefMut)]
 pub struct CircularAnimation(AnimationCore);
 impl CircularAnimation {
-    #[allow(dead_code)]
+    pub fn start_infinite(&mut self) {
+        self.animation_state = AnimationState::MovingForward;
+    }
     pub fn next_frame(&mut self) -> Task<AppMessage> {
-        if self.animation_state == AnimationState::MovingForward && self.max_frame_number != 0 {
+        if self.animation_state == AnimationState::MovingForward && self.after_max_frame_number != 0
+        {
             let frame_number_before = self.current_frame_number;
-            self.current_frame_number = (self.current_frame_number + 1) % self.max_frame_number;
+            self.current_frame_number =
+                (self.current_frame_number + 1) % self.after_max_frame_number;
             let frame_number_after = self.current_frame_number;
             if frame_number_before >= frame_number_after {
                 return self.end_task();
@@ -280,13 +288,13 @@ impl ReversableBasicAnimation {
     }
     #[allow(dead_code)]
     pub fn reverse_force(&mut self) {
-        self.current_frame_number = self.max_frame_number;
+        self.current_frame_number = self.after_max_frame_number;
         self.animation_state = AnimationState::Reversing;
     }
     pub fn next_frame(&mut self) -> Task<AppMessage> {
         match self.animation_state {
             AnimationState::MovingForward => {
-                if self.current_frame_number < self.max_frame_number {
+                if self.current_frame_number < self.after_max_frame_number {
                     self.current_frame_number += 1;
                 } else {
                     self.animation_state = AnimationState::NotMoving;
@@ -298,7 +306,7 @@ impl ReversableBasicAnimation {
                     self.current_frame_number -= 1;
                 } else {
                     self.animation_state = AnimationState::Ended;
-                    return self.start_task();
+                    return self.start_reached_task();
                 }
             }
             _ => {}
@@ -313,7 +321,7 @@ impl AutoReversingAnimation {
     pub fn next_frame(&mut self) -> Task<AppMessage> {
         match self.animation_state {
             AnimationState::MovingForward => {
-                if self.current_frame_number < self.max_frame_number {
+                if self.current_frame_number < self.after_max_frame_number {
                     self.current_frame_number += 1;
                 } else {
                     self.animation_state = AnimationState::Reversing;
@@ -324,8 +332,9 @@ impl AutoReversingAnimation {
                 if self.current_frame_number > 0 {
                     self.current_frame_number -= 1;
                 } else {
-                    self.reset();
-                    return self.start_task();
+                    self.current_frame_number = 0;
+                    self.animation_state = AnimationState::NotMoving;
+                    return self.start_reached_task();
                 }
             }
             _ => {}
@@ -337,10 +346,13 @@ impl AutoReversingAnimation {
 #[derive(Clone, Debug, Deref, DerefMut)]
 pub struct CircularAutoReversingAnimation(AnimationCore);
 impl CircularAutoReversingAnimation {
+    pub fn start_infinite(&mut self) {
+        self.animation_state = AnimationState::MovingForward;
+    }
     pub fn next_frame(&mut self) -> Task<AppMessage> {
         match self.animation_state {
             AnimationState::MovingForward => {
-                if self.current_frame_number < self.max_frame_number {
+                if self.current_frame_number < self.after_max_frame_number {
                     self.current_frame_number += 1;
                 } else {
                     self.animation_state = AnimationState::Reversing;
@@ -352,7 +364,7 @@ impl CircularAutoReversingAnimation {
                     self.current_frame_number -= 1;
                 } else {
                     self.animation_state = AnimationState::MovingForward;
-                    return self.start_task();
+                    return self.start_reached_task();
                 }
             }
             _ => {}
@@ -387,9 +399,10 @@ impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEn
             on_all_ended: None,
         }
     }
-    pub fn start(&mut self, times: usize) {
+    pub fn start(&mut self, times: usize) -> Task<AppMessage> {
         self.times = times;
         self.state = AnimationState::MovingForward;
+        Task::none()
     }
     pub fn next_frame(&mut self) -> Task<AppMessage> {
         if self.state == AnimationState::MovingForward {
@@ -410,27 +423,26 @@ impl<MStart: Message + ReplaceUsize, MEnd: Message> AnimationStarter<MStart, MEn
     }
     fn check_tick(&self) -> bool {
         self.tick.is_multiple_of(self.animation_delay)
+            && self.tick <= self.animation_delay * self.times
     }
     fn check_all_ended(&self) -> bool {
         (self.tick == self.animation_delay * self.times + self.animation_length)
             || (self.times == 0)
     }
     fn all_ended(&mut self) -> Task<AppMessage> {
-        let task: Task<AppMessage> = match &self.on_all_ended {
+        let end_task: Task<AppMessage> = match &self.on_all_ended {
             Some(msg) => Task::done(msg.convert_msg()),
             None => Task::none(),
         };
         self.state = AnimationState::NotMoving;
         self.tick = 0;
         self.started = 0;
-        task
+        end_task
     }
     fn start_single(&mut self) -> Task<AppMessage> {
         self.started += 1;
-        Task::done(
-            self.on_start_single
-                .replace_usize(self.started - 1)
-                .convert_msg(),
-        )
+        self.on_start_single
+            .replace_usize(self.started - 1)
+            .convert_msg_to_task()
     }
 }

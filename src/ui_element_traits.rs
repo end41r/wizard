@@ -1,7 +1,7 @@
 use crate::client::AppMessage;
 use iced::{
-    widget::{pin, Container},
     Point, Size, Task,
+    widget::{Container, pin},
 };
 
 pub trait Notifiable {
@@ -42,6 +42,17 @@ pub trait SizeFromOutside: Resizable {
     fn width_for(window_size: Size) -> f32;
     /// Uses a given window size to calculate the height of the total ui element.
     fn height_for(window_size: Size) -> f32;
+}
+
+/// Like Resizable, but without the height.
+/// Implmenet this instead if the item can dynamically interference its height.
+pub trait ResizableDynHeight {
+    /// Every time an resize event occures call this function.
+    /// Use it to set self.window_size and to call other update_size functions of ui elements of
+    /// lesser hierarchy
+    fn update_size(&mut self, window_size: Size);
+    /// Uses the window size from self to calculate the total width of the ui element.
+    fn width(&self) -> f32;
 }
 
 pub trait Viewable {

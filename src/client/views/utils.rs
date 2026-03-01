@@ -2,15 +2,15 @@ use std::fs::File;
 use std::io::Read;
 
 use iced::{
-    widget::{column, container, row, stack, text, Column, Image},
     ContentFit, Element, Font,
+    widget::{Column, Image, column, container, row, stack, text},
 };
 
 use crate::client::{App, AppMessage};
 
 pub const TITLE_FONT: Font = Font::with_name("Magic School One");
 
-use crate::api::{Card, PlayerId, Value};
+use crate::api::{Card, PlayerId, TextColor, Value};
 
 /// Format a card for display (e.g., "5 Red", "Wizard", "Jester").
 pub fn format_card(card: &Card) -> String {
@@ -98,14 +98,9 @@ pub fn menu_panel<'a>(
                 .height(menu_h)
                 .push(container(Column::new()).height(title_top_offset))
                 .push(
-                    container(
-                        text(title)
-                            .size(38)
-                            .font(TITLE_FONT)
-                            .color(iced::Color::from_rgb(0.0, 0.0, 0.0)),
-                    )
-                    .height(48u32)
-                    .center_x(iced::Fill),
+                    container(text(title).size(38).font(TITLE_FONT).white(),)
+                        .height(48u32)
+                        .center_x(iced::Fill),
                 ),
         )
         .center_x(iced::Fill),

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::api::{Card, PlayerId, Suit, Value};
-use crate::gamelogic::{round::Round, GameEvent};
+use crate::gamelogic::{GameEvent, round::Round};
 use rand::seq::SliceRandom;
 
 #[derive(Clone, PartialEq, Eq, Debug)]

@@ -1,6 +1,6 @@
 use crate::{
     animation::{CircularAutoReversingAnimation, Easing, ReversableBasicAnimation},
-    api::{get_glow_path, Card},
+    api::Card,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
         card_height_middle, card_width_middle, table::middle::card_deck::CardDeckMessage,
@@ -9,8 +9,8 @@ use crate::{
 };
 use derive_more::{Deref, DerefMut};
 use iced::{
-    widget::{image, Container},
     Size, Task,
+    widget::{Container, image},
 };
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -39,7 +39,9 @@ impl GlowAnimation {
 
 #[derive(Debug, Clone)]
 pub enum GlowMessage {
+    RemoveColor,
     ResetColor,
+    TryChangeGlow(Card),
 }
 
 impl Message for GlowMessage {
@@ -51,26 +53,28 @@ impl Message for GlowMessage {
 pub struct CardStackGlow {
     window_size: Size,
     img_path: String,
-    pub reveal_animation: RevealAnimation,
-    pub glow_animation: GlowAnimation,
+    reveal_animation: RevealAnimation,
+    glow_animation: GlowAnimation,
 }
 
 impl CardStackGlow {
     pub fn new(window_size: Size) -> Self {
-        let mut card_stack_glow = Self {
+        let mut csg = Self {
             window_size,
             img_path: "".to_string(),
             reveal_animation: RevealAnimation::new(30),
             glow_animation: GlowAnimation::new(60),
         };
-        card_stack_glow
-            .reveal_animation
-            .on_start(GlowMessage::ResetColor.convert_msg());
-        card_stack_glow.glow_animation.start();
-        card_stack_glow
+        csg.reveal_animation
+            .on_start_reached(GlowMessage::ResetColor.convert_msg());
+        csg
     }
-    pub fn change_color(&mut self, card: Card) {
-        self.img_path = get_glow_path(card);
+    /// Only change the color when there is currently no color.
+    pub fn try_change_color(&mut self, card: Card) {
+        if self.img_path.is_empty() {
+            self.img_path = card.glow_path();
+            self.reveal_animation.start();
+        }
     }
 }
 
@@ -78,8 +82,14 @@ impl Notifiable for CardStackGlow {
     type OwnMessage = GlowMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
+            GlowMessage::RemoveColor => {
+                self.reveal_animation.reverse();
+            }
             GlowMessage::ResetColor => {
                 self.img_path = "".to_string();
+            }
+            GlowMessage::TryChangeGlow(card) => {
+                self.try_change_color(card);
             }
         }
         Task::none()
