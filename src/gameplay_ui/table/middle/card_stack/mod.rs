@@ -159,18 +159,20 @@ impl Viewable for ViewableCardStack {
         for card in self.cards.iter() {
             card_stack = card_stack.push(card.view_and_move(spawn_point.x, spawn_point.y))
         }
-        card_stack = card_stack.push(
-            pin(MouseArea::new(
-                container(None::<&str>)
-                    .width(stack_card_width)
-                    .height(stack_card_height),
-            )
-            .interaction(Interaction::Pointer)
-            .on_enter(CardStackMessage::ShowPlayedCards.convert_msg())
-            .on_exit(CardStackMessage::HidePlayedCards.convert_msg())
-            .on_press(CardStackMessage::SwitchAlwaysShowPlayedCards.convert_msg()))
-            .position(spawn_point),
-        );
+        if self.cards.len() > 0 {
+            card_stack = card_stack.push(
+                pin(MouseArea::new(
+                    container(None::<&str>)
+                        .width(stack_card_width)
+                        .height(stack_card_height),
+                )
+                .interaction(Interaction::Pointer)
+                .on_enter(CardStackMessage::ShowPlayedCards.convert_msg())
+                .on_exit(CardStackMessage::HidePlayedCards.convert_msg())
+                .on_press(CardStackMessage::SwitchAlwaysShowPlayedCards.convert_msg()))
+                .position(spawn_point),
+            );
+        }
         content = content.push(pin(card_stack).position(Point::new(0.0, 0.0)));
 
         if !self.cards.is_empty() {
