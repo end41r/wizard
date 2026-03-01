@@ -5,7 +5,7 @@ pub mod trump_card;
 use crate::{
     animation::AnimationStarter,
     api::{Card, CARD_BACK_PATH},
-    client::{AppMessage, TaskBatcher},
+    client::{audio::Sfx, AppMessage, TaskBatcher},
     gameplay_ui::{
         card_area_middle_space_height, card_area_middle_space_width, card_area_middle_spawn_point,
         card_img_middle_base_scale,
@@ -124,9 +124,11 @@ impl Notifiable for ViewableCardDeck {
             CardDeckMessage::ClearTrumpCard => {
                 self.trump_card = None;
 
-                return self
-                    .clear_card_animation_starter
-                    .start(self.deal_card_animation_starter.times());
+                return TaskBatcher::instant_batch([
+                    self.clear_card_animation_starter
+                        .start(self.deal_card_animation_starter.times()),
+                    AppMessage::PlaySfx(Sfx::CardShuffle).convert_msg_to_task(),
+                ]);
             }
             CardDeckMessage::Deal(cards, trump_card) => {
                 let mut tb = TaskBatcher::new();
@@ -137,7 +139,10 @@ impl Notifiable for ViewableCardDeck {
                     } else {
                         self.trump_card = None;
                     }
-                    return self.deal_card_animation_starter.start(cards);
+                    return TaskBatcher::instant_batch([
+                        self.deal_card_animation_starter.start(cards),
+                        AppMessage::PlaySfx(Sfx::CardDeal).convert_msg_to_task(),
+                    ]);
                 } else {
                     self.deal_msg = Some(CardDeckMessage::Deal(cards, trump_card));
                     tb.push(CardDeckMessage::Shuffle.convert_msg_to_task());

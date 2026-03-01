@@ -133,7 +133,7 @@ pub struct ViewableAvatar {
     id: PlayerId,
     pub name: String,
     my_turn: bool,
-    avatar: Avatar,
+    pub avatar: Avatar,
     pub shards: usize,
     interpolation: bool,
     sprite_animation: SpriteAnimation,

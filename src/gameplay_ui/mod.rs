@@ -14,7 +14,7 @@ use iced::{
 use crate::{
     animation::{BasicAnimation, Easing},
     api::{Card, Player, PlayerId, Suit},
-    client::{views::ButtonMessage, App, AppMessage, TaskBatcher},
+    client::{audio::Sfx, views::ButtonMessage, App, AppMessage, TaskBatcher},
     gameplay_ui::{
         hand::{HandMessage, ViewableHand},
         scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage},
@@ -236,7 +236,7 @@ impl Notifiable for GameView {
             GameViewMessage::EndGame(_) => {
                 self.game_ended = true;
                 self.game_ended_animation.start();
-                Task::none()
+                Task::done(AppMessage::PlaySfx(Sfx::GameOver))
             }
         }
     }
@@ -290,7 +290,10 @@ impl Viewable for GameView {
             self.height() - self.viewable_hand.height(),
         ));
         if self.game_ended {
-            let mut winner_avatar = self.viewable_table.my_avatar(self.my_id.unwrap()).unwrap();
+            let mut winner_avatar = self
+                .viewable_table
+                .find_avatar(self.my_id.unwrap())
+                .unwrap();
             winner_avatar.turn_frame_animation.reset();
             winner_avatar.turn_frame_glow_animation.reset();
             winner_avatar.shards = 0;

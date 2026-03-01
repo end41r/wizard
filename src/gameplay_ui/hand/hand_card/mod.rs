@@ -7,6 +7,7 @@ mod animation_play;
 mod animation_playable;
 
 use crate::api::{Card, FALSE_PLAYED_PATH, FRAME_PLAYABLE_FOCUSED_PATH, FRAME_PLAYABLE_PATH};
+use crate::client::audio::Sfx;
 use crate::client::{AppMessage, TaskBatcher};
 use crate::gameplay_ui::hand::hand_card::{
     animation_draw::DrawAnimation, animation_false_played::FalsePlayedAnimation,
@@ -114,6 +115,7 @@ impl Notifiable for ViewableHandCard {
                 if card == self.card {
                     self.hover_animation.start();
                     self.focus_animation.start();
+                    tb.push_msg(AppMessage::PlaySfx(Sfx::CardHover))
                 } else {
                     // Sometimes on_exit for a viewed card won't register
                     // and won't send the CardNotHovered msg.
@@ -132,9 +134,11 @@ impl Notifiable for ViewableHandCard {
                 if card == self.card {
                     if self.playable {
                         tb.push_msg(HandMessage::NotMyTurn);
-                        tb.push_msg(GameViewMessage::TryPlayCard(self.card))
+                        tb.push_msg(GameViewMessage::TryPlayCard(self.card));
+                        tb.push_msg(AppMessage::PlaySfx(Sfx::CardPlay))
                     } else {
                         self.false_played_animation.start();
+                        tb.push_msg(AppMessage::PlaySfx(Sfx::CardError))
                     }
                 }
             }

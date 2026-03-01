@@ -4,6 +4,7 @@ use iced::Task;
 
 use crate::animation::{BasicAnimation, Easing, ReversableBasicAnimation};
 use crate::api::{PlayerId, TextColor, BUTTON1_PATH};
+use crate::client::audio::Sfx;
 use crate::client::{AppMessage, MenuState, TaskBatcher};
 use crate::gameplay_ui::GameViewMessage;
 use crate::ui_element_traits::{Animated, Message, Notifiable};
@@ -319,6 +320,7 @@ impl Notifiable for Button {
             ButtonMessage::Clicked(id) => {
                 if id == self.id {
                     self.click_animation.start();
+                    return Task::done(AppMessage::PlaySfx(Sfx::Click));
                 }
             }
             ButtonMessage::ClickEnded(id) => {

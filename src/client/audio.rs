@@ -10,9 +10,20 @@ pub enum Music {
     InGame,
 }
 
+#[derive(Clone, Debug)]
 pub enum Sfx {
     Click,
     GameOver,
+    CardHover,
+    CardShuffle,
+    CardDeal,
+    CardPlay,
+    CardError,
+    ShardPlay,
+    CastMage,
+    CastWitch,
+    CastElf,
+    CastKnight,
 }
 
 impl Sfx {
@@ -20,6 +31,16 @@ impl Sfx {
         match self {
             Sfx::Click => "click",
             Sfx::GameOver => "game_over",
+            Sfx::CardHover => "card_hovered",
+            Sfx::CardShuffle => "card_shuffle",
+            Sfx::CardDeal => "card_dealed",
+            Sfx::CardPlay => "card_played",
+            Sfx::CardError => "card_error",
+            Sfx::ShardPlay => "shard_played",
+            Sfx::CastMage => "mage_cast",
+            Sfx::CastWitch => "witch_cast",
+            Sfx::CastElf => "elf_cast",
+            Sfx::CastKnight => "knight_cast",
         }
     }
 }

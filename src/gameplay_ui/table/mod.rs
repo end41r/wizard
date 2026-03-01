@@ -2,8 +2,8 @@ pub mod avatar;
 pub mod middle;
 
 use crate::{
-    api::{Player, PlayerId},
-    client::{AppMessage, TaskBatcher},
+    api::{AvatarKind, Player, PlayerId},
+    client::{audio::Sfx, AppMessage, TaskBatcher},
     gameplay_ui::{
         table::{
             avatar::{AvatarMessage, ViewableAvatar},
@@ -59,9 +59,9 @@ impl ViewableTable {
         }
     }
 
-    pub fn my_avatar(&self, my_id: PlayerId) -> Option<ViewableAvatar> {
+    pub fn find_avatar(&self, id: PlayerId) -> Option<ViewableAvatar> {
         for avatar in self.avatars.iter() {
-            if avatar.id() == my_id {
+            if avatar.id() == id {
                 return Some(avatar.clone());
             }
         }
@@ -82,6 +82,27 @@ impl Notifiable for ViewableTable {
                 for avatar in self.avatars.iter_mut() {
                     tb.push(avatar.update_with_msg(avatar_msg.clone()));
                 }
+                match avatar_msg {
+                    AvatarMessage::PlayShard(player) => {
+                        let avatar = self.find_avatar(player).unwrap();
+                        match avatar.avatar.kind() {
+                            AvatarKind::Elf => {
+                                tb.push_msg(AppMessage::PlaySfx(Sfx::CastElf));
+                            }
+                            AvatarKind::Knight => {
+                                tb.push_msg(AppMessage::PlaySfx(Sfx::CastKnight));
+                            }
+                            AvatarKind::Mage => {
+                                tb.push_msg(AppMessage::PlaySfx(Sfx::CastMage));
+                            }
+                            AvatarKind::Witch => {
+                                tb.push_msg(AppMessage::PlaySfx(Sfx::CastWitch));
+                            }
+                        }
+                        tb.push_msg(AppMessage::PlaySfx(Sfx::ShardPlay));
+                    }
+                    _ => (),
+                };
                 tb.batch()
             }
             TableMessage::DrawShards(amount) => {

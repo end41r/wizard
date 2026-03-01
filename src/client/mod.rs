@@ -1,10 +1,10 @@
-mod audio;
+pub mod audio;
 mod update;
 pub mod views;
 mod ws;
 
 use crate::api::{Card, Lobby, PlayerId, Suit};
-use crate::client::audio::Music;
+use crate::client::audio::{Music, Sfx};
 use crate::client::views::Button;
 use crate::gameplay_ui::scoreboard::ScoreBoardInfo;
 use crate::gameplay_ui::{GameStartInfo, GameView, GameViewMessage};
@@ -292,8 +292,17 @@ impl Default for App {
             let _ = a.load_clip("ingame", "assets/audio/wizard_peaceful.mp3");
 
             let _ = a.load_clip("click", "assets/audio/sfx_click.mp3");
-            let _ = a.load_clip("card_place", "assets/audio/sfx_place_cards.mp3");
             let _ = a.load_clip("game_over", "assets/audio/sfx_game_over.mp3");
+            let _ = a.load_clip("card_hovered", "assets/audio/sfx_card_hovered.mp3");
+            let _ = a.load_clip("card_shuffle", "assets/audio/sfx_card_shuffle.mp3");
+            let _ = a.load_clip("card_dealed", "assets/audio/sfx_card_dealed.mp3");
+            let _ = a.load_clip("card_played", "assets/audio/sfx_card_played.mp3");
+            let _ = a.load_clip("card_error", "assets/audio/sfx_card_error.mp3");
+            let _ = a.load_clip("shard_played", "assets/audio/sfx_shard_played.mp3");
+            let _ = a.load_clip("mage_cast", "assets/audio/sfx_mage_cast.mp3");
+            let _ = a.load_clip("witch_cast", "assets/audio/sfx_witch_cast.mp3");
+            let _ = a.load_clip("elf_cast", "assets/audio/sfx_elf_cast.mp3");
+            let _ = a.load_clip("knight_cast", "assets/audio/sfx_knight_cast.mp3");
 
             a.play_music(crate::client::audio::Music::Menu);
             app.audio = Some(a);
@@ -374,6 +383,8 @@ pub enum AppMessage {
     // Animation Count Down Letch
     IncrementACDL(usize),
     DecrementACDL(usize),
+
+    PlaySfx(Sfx),
 }
 
 impl Message for AppMessage {

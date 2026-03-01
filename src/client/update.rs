@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use super::{connect_ws, App, AppMessage, MenuState, PlayerCount};
 use crate::api::{Card, Lobby, PlayerId, ServerMessage, Value, B, C, S};
-use crate::client::audio::Sfx;
 use crate::client::TaskBatcher;
 use crate::gameplay_ui::hand::hand_card::CardMessage;
 use crate::gameplay_ui::hand::HandMessage;
@@ -110,6 +109,11 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         AppMessage::IncrementACDL(amount) => state.animation_count_down_latch += amount,
         AppMessage::Navigate(menu) => {
             state.set_menu(menu);
+        }
+        AppMessage::PlaySfx(sfx) => {
+            if let Some(audio) = &state.audio {
+                audio.play_sfx_enum(sfx);
+            }
         }
         AppMessage::Host => {
             let local_ip = crate::server::local_ip();
@@ -340,10 +344,6 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
                     let log = format!("[YOU] Playing card: {:?} of {:?}", card.value, card.suit);
                     println!("{}", log);
                     state.game_log.push(log);
-                    //sound effect, testing needed!!
-                    if let Some(audio) = &state.audio {
-                        audio.play_sfx_enum(Sfx::Click);
-                    }
                 }
             }
         }
@@ -367,13 +367,6 @@ pub fn update(state: &mut App, msg_unaltered: AppMessage) -> Task<AppMessage> {
         }
         AppMessage::ButtonMessage(btn_msg) => {
             // Route to buttons (each button filters by id internally)
-            if let super::views::ButtonMessage::ClickEnded(_) = btn_msg {
-                //sound effect, testing needed!!
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::Click);
-                }
-            }
-
             tb.push_mult([
                 state.btn_host.update_with_msg(btn_msg.clone()),
                 state.btn_join.update_with_msg(btn_msg.clone()),
@@ -867,9 +860,6 @@ fn handle_server_message(state: &mut App, msg: ServerMessage) {
                 final_scores,
                 winner,
             } => {
-                if let Some(audio) = &state.audio {
-                    audio.play_sfx_enum(Sfx::GameOver);
-                }
                 let is_me = state.my_id == Some(winner);
                 let winner_name = get_player_name(state, winner);
                 let scores_with_names: Vec<String> = final_scores
