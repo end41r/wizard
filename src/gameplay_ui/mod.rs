@@ -230,9 +230,10 @@ impl Notifiable for GameView {
             ]),
             GameViewMessage::TryPlayCard(card) => AppMessage::PlayCard(card).convert_msg_to_task(),
             GameViewMessage::TryBid => AppMessage::SubmitBid.convert_msg_to_task(),
-            GameViewMessage::TryChooseSuit(suit) => {
-                AppMessage::SetTrump(suit).convert_msg_to_task()
-            }
+            GameViewMessage::TryChooseSuit(suit) => TaskBatcher::instant_batch([
+                AppMessage::SetTrump(suit).convert_msg_to_task(),
+                AppMessage::PlaySfx(Sfx::Click).convert_msg_to_task(),
+            ]),
             GameViewMessage::EndGame(_) => {
                 self.game_ended = true;
                 self.game_ended_animation.start();
