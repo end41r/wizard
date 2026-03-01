@@ -1,6 +1,6 @@
 // use iced::window::UserAttention;
-use rand::rng;
 use rand::Rng;
+use rand::rng;
 use std::collections::HashMap;
 
 use strum::IntoEnumIterator;

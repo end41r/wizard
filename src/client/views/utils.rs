@@ -2,8 +2,8 @@ use std::fs::File;
 use std::io::Read;
 
 use iced::{
-    widget::{column, container, row, stack, text, Column, Image},
     ContentFit, Element, Font,
+    widget::{Column, Image, column, container, row, stack, text},
 };
 
 use crate::client::{App, AppMessage};

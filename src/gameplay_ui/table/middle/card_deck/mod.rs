@@ -4,26 +4,26 @@ pub mod trump_card;
 
 use crate::{
     animation::AnimationStarter,
-    api::{Card, CARD_BACK_PATH},
-    client::{audio::Sfx, AppMessage, TaskBatcher},
+    api::{CARD_BACK_PATH, Card},
+    client::{AppMessage, TaskBatcher, audio::Sfx},
     gameplay_ui::{
         card_area_middle_space_height, card_area_middle_space_width, card_area_middle_spawn_point,
         card_img_middle_base_scale,
         table::middle::{
+            TableMiddleMessage,
             card_deck::{
                 deck_card::ViewableDeckCard,
                 glow_card::{CardStackGlow, GlowMessage},
                 trump_card::{TrumpCardMessage, ViewableTrumpCard},
             },
             card_stack::CardStackMessage,
-            TableMiddleMessage,
         },
     },
     ui_element_traits::*,
 };
 use iced::{
-    widget::{image, pin, stack, Container},
     Size, Task,
+    widget::{Container, image, pin, stack},
 };
 
 type TrumpCard = Card;

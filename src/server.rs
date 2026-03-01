@@ -1,12 +1,12 @@
-use crate::api::{AvatarKind, Lobby, Player, PlayerId, ServerMessage, B, C, S};
-use crate::gamelogic::game::Game;
+use crate::api::{AvatarKind, B, C, Lobby, Player, PlayerId, S, ServerMessage};
 use crate::gamelogic::GameEvent;
+use crate::gamelogic::game::Game;
 
 use axum::{
+    Router,
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
     routing::get,
-    Router,
 };
 use futures::{SinkExt, StreamExt};
 use rand::seq::IndexedRandom;
@@ -15,7 +15,7 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
 
 type Clients = Arc<RwLock<HashMap<PlayerId, mpsc::UnboundedSender<ServerMessage>>>>;
@@ -217,10 +217,10 @@ async fn ws_handler(
 /// Stops the server by sending a shutdown signal.
 /// Was made using Claude Opuss' help.
 pub fn stop_server() {
-    if let Ok(mut guard) = SHUTDOWN_SENDER.lock() {
-        if let Some(tx) = guard.take() {
-            let _ = tx.send(());
-        }
+    if let Ok(mut guard) = SHUTDOWN_SENDER.lock()
+        && let Some(tx) = guard.take()
+    {
+        let _ = tx.send(());
     }
 }
 

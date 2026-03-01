@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
 use iced::{
-    mouse::Interaction,
-    widget::{
-        column, container, image::FilterMethod, mouse_area, row, text, text_input, Column,
-        Container, Image,
-    },
     Alignment::Center,
     Border, Color,
     Length::Shrink,
     Size, Task,
+    mouse::Interaction,
+    widget::{
+        Column, Container, Image, column, container, image::FilterMethod, mouse_area, row, text,
+        text_input,
+    },
 };
 
 use crate::{
@@ -20,9 +20,9 @@ use derive_more::{Deref, DerefMut};
 
 use crate::{
     api::{Lobby, PlayerId, Suit},
-    client::{views::Button, AppMessage, TaskBatcher},
+    client::{AppMessage, TaskBatcher, views::Button},
     gameplay_ui::{
-        GameViewMessage, CARD_WIDTH_HEIGHT_RATIO, SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH,
+        CARD_WIDTH_HEIGHT_RATIO, GameViewMessage, SCOREBOARD_WIDTH_MUTL_WITH_WINDOW_WIDTH,
     },
     ui_element_traits::{Animated, Message, Notifiable, ResizableDynHeight, Viewable},
 };
@@ -349,10 +349,10 @@ impl ScoreBoard {
         if self.info.my_id == Some(player_id) {
             return "You".to_string();
         }
-        if let Some(ref lobby) = self.info.lobby {
-            if let Some(player) = lobby.players.iter().find(|p| p.id == player_id) {
-                return player.name.clone();
-            }
+        if let Some(ref lobby) = self.info.lobby
+            && let Some(player) = lobby.players.iter().find(|p| p.id == player_id)
+        {
+            return player.name.clone();
         }
         format!("Player {}", player_id)
     }

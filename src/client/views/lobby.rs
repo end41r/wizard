@@ -1,8 +1,8 @@
 //! Lobby view for waiting players before game start.
 
 use iced::{
-    widget::{column, container, row, scrollable, stack, text, text_input, Column, Image},
     ContentFit, Element,
+    widget::{Column, Image, column, container, row, scrollable, stack, text, text_input},
 };
 
 use super::utils::menu_panel;

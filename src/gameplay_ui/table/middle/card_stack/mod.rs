@@ -5,22 +5,22 @@ use std::ops::Not;
 use crate::{
     animation::{BasicAnimation, Easing, ReversableBasicAnimation},
     api::Card,
-    client::{audio::Sfx, AppMessage, TaskBatcher},
+    client::{AppMessage, TaskBatcher, audio::Sfx},
     gameplay_ui::{
-        card_area_middle_space_height, card_area_middle_space_width, card_area_middle_spawn_point,
+        CARD_WIDTH_HEIGHT_RATIO, card_area_middle_space_height, card_area_middle_space_width,
+        card_area_middle_spawn_point,
         table::middle::{
-            card_deck::glow_card::GlowMessage, card_stack::stack_card::ViewableStackCard,
-            TableMiddleMessage,
+            TableMiddleMessage, card_deck::glow_card::GlowMessage,
+            card_stack::stack_card::ViewableStackCard,
         },
-        CARD_WIDTH_HEIGHT_RATIO,
     },
     ui_element_traits::*,
 };
 use derive_more::{Deref, DerefMut};
 use iced::{
-    mouse::Interaction,
-    widget::{container, image, pin, Container, MouseArea, Stack},
     Point, Size, Task,
+    mouse::Interaction,
+    widget::{Container, MouseArea, Stack, container, image, pin},
 };
 
 #[derive(Debug, Clone)]

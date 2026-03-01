@@ -10,8 +10,8 @@ use crate::{
 };
 use derive_more::{Deref, DerefMut};
 use iced::{
-    widget::{image, Container},
     Size, Task,
+    widget::{Container, image},
 };
 
 #[derive(Debug, Clone)]

@@ -1,7 +1,7 @@
 use crate::client::AppMessage;
 use iced::{
-    widget::{pin, Container},
     Point, Size, Task,
+    widget::{Container, pin},
 };
 
 pub trait Notifiable {

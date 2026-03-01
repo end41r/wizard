@@ -9,7 +9,7 @@ use crate::client::views::Button;
 use crate::gameplay_ui::scoreboard::ScoreBoardInfo;
 use crate::gameplay_ui::{GameStartInfo, GameView, GameViewMessage};
 use crate::ui_element_traits::Message;
-use iced::{time, widget::image, window, Size, Subscription, Task};
+use iced::{Size, Subscription, Task, time, widget::image, window};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -17,7 +17,7 @@ use strum::IntoEnumIterator;
 
 pub use update::update;
 pub use views::view;
-pub use ws::{connect_ws, ServerMsgReceiver, WsConnection};
+pub use ws::{ServerMsgReceiver, WsConnection, connect_ws};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerCount {
@@ -326,10 +326,10 @@ impl App {
 
         // Only restart music if it's different from what's currently playing
         if target_music != self.current_music {
-            if let Some(a) = &mut self.audio {
-                if let Some(music) = target_music {
-                    a.play_music(music);
-                }
+            if let Some(a) = &mut self.audio
+                && let Some(music) = target_music
+            {
+                a.play_music(music);
             }
             self.current_music = target_music;
         }

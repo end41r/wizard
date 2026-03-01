@@ -4,17 +4,17 @@ pub mod card_stack;
 use crate::{
     client::{AppMessage, TaskBatcher},
     gameplay_ui::table::{
+        TableMessage,
         middle::{
             card_deck::{CardDeckMessage, ViewableCardDeck},
             card_stack::{CardStackMessage, ViewableCardStack},
         },
-        TableMessage,
     },
     ui_element_traits::*,
 };
 use iced::{
-    widget::{row, Container},
     Size, Task,
+    widget::{Container, row},
 };
 
 #[derive(Debug, Clone)]

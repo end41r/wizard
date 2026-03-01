@@ -1,7 +1,7 @@
 [package]
 name = "wizard"
 version = "0.9.9"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 iced = { version = "0.14", features = ["image", "tokio"] }

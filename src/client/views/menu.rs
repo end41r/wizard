@@ -1,12 +1,12 @@
 use iced::{
-    widget::{
-        column, container, pick_list, row, scrollable, slider, stack, text, text_input, Column,
-        Image, Row,
-    },
     ContentFit, Element,
+    widget::{
+        Column, Image, Row, column, container, pick_list, row, scrollable, slider, stack, text,
+        text_input,
+    },
 };
 
-use super::utils::{back_button_footer, background_image, menu_panel, TITLE_FONT};
+use super::utils::{TITLE_FONT, back_button_footer, background_image, menu_panel};
 use crate::api::TextColor;
 use crate::client::{App, AppMessage, PlayerCount};
 

@@ -1,8 +1,8 @@
 use std::f32::consts::PI;
 
 use iced::{
-    widget::{container, image, image::FilterMethod, pin, stack, text, Container, Pin},
     Alignment, Color, Point, Size, Task,
+    widget::{Container, Pin, container, image, image::FilterMethod, pin, stack, text},
 };
 
 use derive_more::{Deref, DerefMut};
@@ -15,9 +15,9 @@ use crate::{
     api::{Avatar, AvatarKind, AvatarPose, PlayerId},
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        table::TableMessage, AVATAR_FRAME_WIDTH_HEIGHT_RATIO,
-        AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH, AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH,
-        AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH,
+        AVATAR_FRAME_WIDTH_HEIGHT_RATIO, AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH,
+        AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH, AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH,
+        table::TableMessage,
     },
     ui_element_traits::{Animated, Message, Notifiable, Resizable, SizeFromOutside, Viewable},
 };

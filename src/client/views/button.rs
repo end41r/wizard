@@ -1,9 +1,9 @@
 use derive_more::{Deref, DerefMut};
-use iced::widget::{container, stack, text, Image, MouseArea};
 use iced::Task;
+use iced::widget::{Image, MouseArea, container, stack, text};
 
 use crate::animation::{BasicAnimation, Easing, ReversableBasicAnimation};
-use crate::api::{PlayerId, TextColor, BUTTON1_PATH};
+use crate::api::{BUTTON1_PATH, PlayerId, TextColor};
 use crate::client::audio::Sfx;
 use crate::client::{AppMessage, MenuState, TaskBatcher};
 use crate::gameplay_ui::GameViewMessage;

@@ -2,10 +2,10 @@ use super::utils::{format_card, get_player_name};
 use crate::api::Suit;
 use crate::client::{App, AppMessage};
 use iced::{
-    widget::{
-        button, column, container, row, scrollable, stack, text, text_input, Column, Image, Row,
-    },
     Element,
+    widget::{
+        Column, Image, Row, button, column, container, row, scrollable, stack, text, text_input,
+    },
 };
 
 /// This view of the gameplay is an easter egg.

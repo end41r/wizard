@@ -3,17 +3,17 @@ use crate::{
     api::Card,
     client::{AppMessage, TaskBatcher},
     gameplay_ui::{
-        card_height_middle, card_img_middle_base_scale, card_width_middle,
-        table::middle::card_stack::CardStackMessage, CARD_AREA_MIDDLE_RELATION,
+        CARD_AREA_MIDDLE_RELATION, card_height_middle, card_img_middle_base_scale,
+        card_width_middle, table::middle::card_stack::CardStackMessage,
     },
     ui_element_traits::*,
 };
 
 use derive_more::{Deref, DerefMut};
 use iced::{
-    widget::{image, Container},
     ContentFit::Fill,
     Size, Task,
+    widget::{Container, image},
 };
 use rand::Rng;
 

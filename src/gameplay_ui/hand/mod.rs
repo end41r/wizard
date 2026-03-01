@@ -4,12 +4,12 @@ use crate::animation::AnimationStarter;
 use crate::api::{Card, PlayerId};
 use crate::client::{AppMessage, TaskBatcher};
 use crate::gameplay_ui::hand::hand_card::{CardMessage, ViewableHandCard};
-use crate::gameplay_ui::{card_column_step_hand, card_row_step_hand, GameViewMessage};
+use crate::gameplay_ui::{GameViewMessage, card_column_step_hand, card_row_step_hand};
 use crate::ui_element_traits::*;
 
 use iced::{
-    widget::{container, pin, stack, Container, Pin, Stack},
     Point, Size, Task,
+    widget::{Container, Pin, Stack, container, pin, stack},
 };
 
 #[derive(Debug, Clone)]

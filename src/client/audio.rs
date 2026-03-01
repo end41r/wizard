@@ -88,14 +88,14 @@ impl Audio {
     }
 
     pub fn play_sfx(&self, name: &str) {
-        if let Some(bytes) = self.clips.get(name) {
-            if let Ok(decoder) = Self::make_decoder_from_arc(bytes.clone()) {
-                let source = decoder.buffered();
-                let sink = Sink::connect_new(self.stream_handle.mixer());
-                sink.set_volume(self.sfx_volume);
-                sink.append(source);
-                sink.detach();
-            }
+        if let Some(bytes) = self.clips.get(name)
+            && let Ok(decoder) = Self::make_decoder_from_arc(bytes.clone())
+        {
+            let source = decoder.buffered();
+            let sink = Sink::connect_new(self.stream_handle.mixer());
+            sink.set_volume(self.sfx_volume);
+            sink.append(source);
+            sink.detach();
         }
     }
     //for type safety and convenience
@@ -111,12 +111,12 @@ impl Audio {
             Music::Lobby => "lobby",
             Music::InGame => "ingame",
         };
-        if let Some(bytes) = self.clips.get(key) {
-            if let Ok(decoder) = Self::make_decoder_from_arc(bytes.clone()) {
-                let src = decoder.repeat_infinite();
-                self.music_sink.append(src);
-                self.music_sink.set_volume(self.music_volume);
-            }
+        if let Some(bytes) = self.clips.get(key)
+            && let Ok(decoder) = Self::make_decoder_from_arc(bytes.clone())
+        {
+            let src = decoder.repeat_infinite();
+            self.music_sink.append(src);
+            self.music_sink.set_volume(self.music_volume);
         }
     }
 

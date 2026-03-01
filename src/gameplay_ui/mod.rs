@@ -5,23 +5,23 @@ pub mod table;
 
 use derive_more::{Deref, DerefMut};
 use iced::{
-    widget::{container, image, mouse_area, pin, stack, Container},
     ContentFit,
     Length::Fill,
     Point, Size, Task,
+    widget::{Container, container, image, mouse_area, pin, stack},
 };
 
 use crate::{
     animation::{BasicAnimation, Easing},
     api::{Card, Player, PlayerId, Suit},
-    client::{audio::Sfx, views::ButtonMessage, App, AppMessage, TaskBatcher},
+    client::{App, AppMessage, TaskBatcher, audio::Sfx, views::ButtonMessage},
     gameplay_ui::{
         hand::{HandMessage, ViewableHand},
         scoreboard::{ScoreBoard, ScoreBoardInfo, ScoreBoardMessage},
         table::{
+            TableMessage, ViewableTable,
             avatar::AvatarMessage,
             middle::{card_deck::CardDeckMessage, card_stack::CardStackMessage},
-            TableMessage, ViewableTable,
         },
     },
     ui_element_traits::{Animated, Message, Notifiable, Resizable, ResizableDynHeight, Viewable},

@@ -3,19 +3,19 @@ pub mod middle;
 
 use crate::{
     api::{AvatarKind, Player, PlayerId},
-    client::{audio::Sfx, AppMessage, TaskBatcher},
+    client::{AppMessage, TaskBatcher, audio::Sfx},
     gameplay_ui::{
+        GameViewMessage,
         table::{
             avatar::{AvatarMessage, ViewableAvatar},
             middle::{TableMiddleMessage, ViewableTableMiddle},
         },
-        GameViewMessage,
     },
     ui_element_traits::*,
 };
 use iced::{
-    widget::{container, stack, Container},
     Size, Task,
+    widget::{Container, container, stack},
 };
 
 #[derive(Debug, Clone)]
