@@ -39,7 +39,9 @@ impl GlowAnimation {
 
 #[derive(Debug, Clone)]
 pub enum GlowMessage {
+    RemoveColor,
     ResetColor,
+    TryChangeGlow(Card),
 }
 
 impl Message for GlowMessage {
@@ -57,14 +59,18 @@ pub struct CardStackGlow {
 
 impl CardStackGlow {
     pub fn new(window_size: Size) -> Self {
-        Self {
+        let mut csg = Self {
             window_size,
             img_path: "".to_string(),
             reveal_animation: RevealAnimation::new(30),
             glow_animation: GlowAnimation::new(60),
-        }
+        };
+        csg.reveal_animation
+            .on_start_reached(GlowMessage::ResetColor.convert_msg());
+        csg
     }
-    pub fn change_color(&mut self, card: Card) {
+    /// Only change the color when there is currently no color.
+    pub fn try_change_color(&mut self, card: Card) {
         if self.img_path.is_empty() {
             self.img_path = card.glow_path();
             self.reveal_animation.start();
@@ -76,9 +82,14 @@ impl Notifiable for CardStackGlow {
     type OwnMessage = GlowMessage;
     fn update_with_msg(&mut self, msg: Self::OwnMessage) -> Task<AppMessage> {
         match msg {
+            GlowMessage::RemoveColor => {
+                self.reveal_animation.reverse();
+            }
             GlowMessage::ResetColor => {
                 self.img_path = "".to_string();
-                self.reveal_animation.reverse();
+            }
+            GlowMessage::TryChangeGlow(card) => {
+                self.try_change_color(card);
             }
         }
         Task::none()

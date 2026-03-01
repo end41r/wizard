@@ -9,8 +9,7 @@ use crate::{
     gameplay_ui::{
         card_area_middle_space_height, card_area_middle_space_width, card_area_middle_spawn_point,
         table::middle::{
-            card_deck::{glow_card::GlowMessage, CardDeckMessage},
-            card_stack::stack_card::ViewableStackCard,
+            card_deck::glow_card::GlowMessage, card_stack::stack_card::ViewableStackCard,
             TableMiddleMessage,
         },
         CARD_WIDTH_HEIGHT_RATIO,
@@ -83,15 +82,17 @@ impl Notifiable for ViewableCardStack {
                 let mut stack_card = ViewableStackCard::new(self.window_size, card);
                 stack_card.reveal_animation.start();
                 self.cards.push(stack_card);
-                tb.push_msg(CardDeckMessage::ChangeGlow(card));
+                tb.push_msg(GlowMessage::TryChangeGlow(card));
                 tb.push_msg(AppMessage::PlaySfx(Sfx::CardPlay));
                 return tb.batch();
             }
             CardStackMessage::HideAllCards => {
-                for card in self.cards.iter_mut() {
-                    card.remove_animation.start();
+                if self.cards.len() > 0 {
+                    for card in self.cards.iter_mut() {
+                        card.remove_animation.start();
+                    }
+                    return GlowMessage::RemoveColor.convert_msg_to_task();
                 }
-                return GlowMessage::ResetColor.convert_msg_to_task();
             }
             CardStackMessage::RemoveAllCards => {
                 self.cards.clear();
