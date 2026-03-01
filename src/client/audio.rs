@@ -24,6 +24,10 @@ pub enum Sfx {
     CastWitch,
     CastElf,
     CastKnight,
+    ClickedMage,
+    ClickedWitch,
+    ClickedElf,
+    ClickedKnight,
 }
 
 impl Sfx {
@@ -41,6 +45,10 @@ impl Sfx {
             Sfx::CastWitch => "witch_cast",
             Sfx::CastElf => "elf_cast",
             Sfx::CastKnight => "knight_cast",
+            Sfx::ClickedMage => "mage_clicked",
+            Sfx::ClickedWitch => "witch_clicked",
+            Sfx::ClickedElf => "elf_clicked",
+            Sfx::ClickedKnight => "knight_clicked",
         }
     }
 }

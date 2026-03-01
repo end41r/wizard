@@ -303,6 +303,10 @@ impl Default for App {
             let _ = a.load_clip("witch_cast", "assets/audio/sfx_witch_cast.mp3");
             let _ = a.load_clip("elf_cast", "assets/audio/sfx_elf_cast.mp3");
             let _ = a.load_clip("knight_cast", "assets/audio/sfx_knight_cast.mp3");
+            let _ = a.load_clip("mage_clicked", "assets/audio/sfx_mage_clicked.mp3");
+            let _ = a.load_clip("witch_clicked", "assets/audio/sfx_witch_clicked.mp3");
+            let _ = a.load_clip("elf_clicked", "assets/audio/sfx_elf_clicked.mp3");
+            let _ = a.load_clip("knight_clicked", "assets/audio/sfx_knight_clicked.mp3");
 
             a.play_music(crate::client::audio::Music::Menu);
             app.audio = Some(a);

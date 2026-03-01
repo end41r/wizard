@@ -1,19 +1,20 @@
 use std::f32::consts::PI;
 
 use iced::{
-    widget::{container, image, image::FilterMethod, pin, stack, text, Container, Pin},
-    Alignment, Color, Point, Size, Task,
+    mouse::Interaction,
+    widget::{container, image, image::FilterMethod, mouse_area, pin, stack, text, Container, Pin},
+    Alignment, Color, ContentFit, Point, Size, Task,
 };
 
 use derive_more::{Deref, DerefMut};
 
 use crate::{
     animation::{
-        BasicAnimation, CircularAnimation, CircularAutoReversingAnimation, Easing,
-        ReversableBasicAnimation,
+        AutoReversingAnimation, BasicAnimation, CircularAnimation, CircularAutoReversingAnimation,
+        Easing, ReversableBasicAnimation,
     },
     api::{Avatar, AvatarKind, AvatarPose, PlayerId},
-    client::{AppMessage, TaskBatcher},
+    client::{audio::Sfx, AppMessage, TaskBatcher},
     gameplay_ui::{
         table::TableMessage, AVATAR_FRAME_WIDTH_HEIGHT_RATIO,
         AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH, AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH,
@@ -28,6 +29,7 @@ pub enum AvatarMessage {
     PlayShard(PlayerId),
     InterpolationEnded(PlayerId),
     ChangeTurn(PlayerId),
+    Clicked(PlayerId),
 }
 
 impl Message for AvatarMessage {
@@ -127,6 +129,18 @@ impl TurnFrameGlowAnimation {
     }
 }
 
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct ClickedAnimation(AutoReversingAnimation);
+
+impl ClickedAnimation {
+    pub fn new() -> Self {
+        Self(AutoReversingAnimation::new(20))
+    }
+    pub fn get_contraction(&self) -> f32 {
+        1.0 - 0.3 * self.progress(Easing::OutCubic)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ViewableAvatar {
     window_size: Size,
@@ -141,6 +155,7 @@ pub struct ViewableAvatar {
     play_shard_animation: PlayShardAnimation,
     shard_rotation_animation: ShardRotationAnimation,
     interpolation_animation: InterpolationAnimation,
+    clicked_animation: ClickedAnimation,
     pub turn_frame_animation: TurnFrameAnimation,
     pub turn_frame_glow_animation: TurnFrameGlowAnimation,
 }
@@ -160,6 +175,7 @@ impl ViewableAvatar {
             play_shard_animation: PlayShardAnimation::new(),
             shard_rotation_animation: ShardRotationAnimation::new(),
             interpolation_animation: InterpolationAnimation::new(),
+            clicked_animation: ClickedAnimation::new(),
             turn_frame_animation: TurnFrameAnimation::new(),
             turn_frame_glow_animation: TurnFrameGlowAnimation::new(),
         };
@@ -174,7 +190,7 @@ impl ViewableAvatar {
     pub fn id(&self) -> PlayerId {
         self.id
     }
-    fn avatar_img_position(&self) -> Point {
+    fn sprite_position(&self) -> Point {
         let size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
         Point::new(size, size)
     }
@@ -231,15 +247,19 @@ impl ViewableAvatar {
     fn sprite<'a>(&self, pose: AvatarPose, compare_pose: AvatarPose) -> Pin<'a, AppMessage> {
         let sprite_size: f32 = self.sprite_size();
         let opacity: f32 = if pose == compare_pose { 1.0 } else { 0.0 };
-        pin(
-            iced::widget::image(self.avatar.kind().img_path(compare_pose))
+        let contracted_size: f32 = self.sprite_size() * self.clicked_animation.get_contraction();
+        pin(container(
+            pin(image(self.avatar.kind().img_path(compare_pose))
                 // AI-Usage: Claude for learning filter_method to achieve non blurred pixel art.
                 .filter_method(FilterMethod::Nearest)
                 .opacity(opacity)
                 .width(sprite_size)
-                .height(sprite_size),
+                .height(contracted_size)
+                .content_fit(ContentFit::Fill))
+            .position(Point::new(0.0, sprite_size - contracted_size)),
         )
-        .position(self.avatar_img_position())
+        .height(sprite_size))
+        .position(self.sprite_position())
     }
     fn text_size(&self) -> f32 {
         self.width() / 8.0
@@ -282,6 +302,18 @@ impl Notifiable for ViewableAvatar {
                     self.turn_frame_animation.reverse();
                 }
             }
+            AvatarMessage::Clicked(id) => {
+                if id == self.id {
+                    self.clicked_animation.start();
+                    let sfx: Sfx = match self.avatar.kind() {
+                        AvatarKind::Elf => Sfx::ClickedElf,
+                        AvatarKind::Knight => Sfx::ClickedKnight,
+                        AvatarKind::Mage => Sfx::ClickedMage,
+                        AvatarKind::Witch => Sfx::ClickedWitch,
+                    };
+                    return AppMessage::PlaySfx(sfx).convert_msg_to_task();
+                }
+            }
         }
         Task::none()
     }
@@ -302,6 +334,7 @@ impl Animated for ViewableAvatar {
         tb.push(self.play_shard_animation.next_frame());
         tb.push(self.shard_rotation_animation.next_frame());
         tb.push(self.interpolation_animation.next_frame());
+        tb.push(self.clicked_animation.next_frame());
         tb.push(self.turn_frame_animation.next_frame());
         tb.push(self.turn_frame_glow_animation.next_frame());
         tb.batch()
@@ -349,10 +382,23 @@ impl Viewable for ViewableAvatar {
                         .min(self.turn_frame_glow_animation.get_opacity()),
                 ),
         );
+
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting1));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Casting2));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Standing1));
         avatar = avatar.push(self.sprite(self.avatar.pose(), AvatarPose::Standing2));
+
+        avatar = avatar.push(
+            pin(mouse_area(
+                container(None::<&str>)
+                    .width(self.sprite_size())
+                    .height(self.sprite_size()),
+            )
+            .on_press(AvatarMessage::Clicked(self.id).convert_msg())
+            .interaction(Interaction::Pointer))
+            .position(self.sprite_position()),
+        );
+
         if self.shards > 0 {
             let play_opacity: f32 = self.play_shard_animation.get_opacity();
             let shard_size: f32 = self.window_size.width * AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH;
@@ -373,6 +419,7 @@ impl Viewable for ViewableAvatar {
                 );
             }
         }
+
         avatar = avatar.push(
             pin(container(
                 text(self.name.clone())
@@ -380,15 +427,16 @@ impl Viewable for ViewableAvatar {
                     .color(Color::from_rgb(1.0, 0.85, 0.4)),
             )
             .width(self.width())
-            .height(self.height() - self.sprite_size() - self.avatar_img_position().y)
+            .height(self.height() - self.sprite_size() - self.sprite_position().y)
             .align_x(Alignment::Center)
             .align_y(Alignment::Center))
             .position(Point::new(
                 0.0,
                 // 1.7 is an arbitrary number that results into a good text position.
-                self.sprite_size() + self.avatar_img_position().y * 1.7,
+                self.sprite_size() + self.sprite_position().y * 1.7,
             )),
         );
+
         Container::new(avatar)
             .width(self.width())
             .height(self.height())
