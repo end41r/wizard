@@ -140,7 +140,7 @@ impl BlackScreenFadeInAnimation {
         Self(BasicAnimation::new(duration))
     }
     pub fn get_opacity(&self) -> f32 {
-        self.progress(Easing::InSine)
+        self.progress(Easing::InSine) * 0.8
     }
 }
 
@@ -172,14 +172,19 @@ impl GameView {
             img_ingame_background: image::Handle::from_path("assets/ingame_background.png"),
             my_id: None,
             game_ended: false,
-            game_ended_animation: BlackScreenFadeInAnimation::new(400),
+            game_ended_animation: BlackScreenFadeInAnimation::new(150),
             viewable_hand: ViewableHand::new(window_size),
             viewable_table: ViewableTable::new(window_size),
             scoreboard: ScoreBoard::new(window_size, ScoreBoardInfo::default()),
         }
     }
     pub fn update_buttons_with_msg(&mut self, btn_msg: ButtonMessage) -> Task<AppMessage> {
-        self.scoreboard.btn_submit_bid.update_with_msg(btn_msg)
+        TaskBatcher::instant_batch([
+            self.scoreboard
+                .btn_submit_bid
+                .update_with_msg(btn_msg.clone()),
+            self.scoreboard.btn_submit_bid.update_with_msg(btn_msg),
+        ])
     }
 }
 
@@ -193,7 +198,6 @@ impl Notifiable for GameView {
             }
             GameViewMessage::ScoreBoardMessage(sb_msg) => self.scoreboard.update_with_msg(sb_msg),
             GameViewMessage::StartGame(info) => {
-                // ONLY FOR TESTING
                 let mut tb = TaskBatcher::new();
                 self.my_id = Some(info.my_id);
                 self.viewable_hand.my_id = Some(info.my_id);
@@ -237,6 +241,7 @@ impl Notifiable for GameView {
             GameViewMessage::EndGame(_) => {
                 self.game_ended = true;
                 self.game_ended_animation.start();
+                self.scoreboard.move_end_board_animation.start();
                 Task::done(AppMessage::PlaySfx(Sfx::GameOver))
             }
         }
@@ -308,7 +313,8 @@ impl Viewable for GameView {
             content = content.push(
                 pin(self.scoreboard.view_as_game_end_board(winner_avatar)).position(Point::new(
                     (self.width() - self.scoreboard.width()) * 0.5,
-                    self.height() * 0.2,
+                    self.height() * 0.2
+                        - self.scoreboard.move_end_board_animation.get_offset() * self.height(),
                 )),
             );
         }

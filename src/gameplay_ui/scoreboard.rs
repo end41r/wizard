@@ -13,7 +13,7 @@ use iced::{
 };
 
 use crate::{
-    animation::{Easing, ReversableBasicAnimation},
+    animation::{BasicAnimation, Easing, ReversableBasicAnimation},
     gameplay_ui::table::avatar::ViewableAvatar,
 };
 use derive_more::{Deref, DerefMut};
@@ -69,15 +69,29 @@ impl HoverAnimation {
     }
 }
 
+#[derive(Clone, Debug, Deref, DerefMut)]
+pub struct MoveEndBoardAnimation(BasicAnimation);
+
+impl MoveEndBoardAnimation {
+    pub fn new(duration: usize) -> Self {
+        Self(BasicAnimation::new(duration))
+    }
+    pub fn get_offset(&self) -> f32 {
+        1.0 - self.progress(Easing::OutBounce)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ScoreBoard {
     window_size: Size,
     pub btn_submit_bid: Button,
+    pub btn_back_to_menu: Button,
     info: ScoreBoardInfo,
     hover_animation_red: HoverAnimation,
     hover_animation_green: HoverAnimation,
     hover_animation_blue: HoverAnimation,
     hover_animation_yellow: HoverAnimation,
+    pub move_end_board_animation: MoveEndBoardAnimation,
 }
 
 impl ScoreBoard {
@@ -92,11 +106,13 @@ impl ScoreBoard {
         Self {
             window_size,
             btn_submit_bid: Button::new_submit_bid_button(21, 110, 36),
+            btn_back_to_menu: Button::new_back_to_menu_button(22, 250, 54),
             info,
             hover_animation_red: HoverAnimation::new(hover_animation_duration),
             hover_animation_green: HoverAnimation::new(hover_animation_duration),
             hover_animation_blue: HoverAnimation::new(hover_animation_duration),
             hover_animation_yellow: HoverAnimation::new(hover_animation_duration),
+            move_end_board_animation: MoveEndBoardAnimation::new(100),
         }
     }
 
@@ -135,6 +151,10 @@ impl ScoreBoard {
                 is_current_turn,
             ));
         }
+
+        scores_col = scores_col
+            .push(self.btn_back_to_menu.view())
+            .align_x(Center);
 
         // Wrap in a styled container
         container(scores_col)
@@ -413,10 +433,12 @@ impl Animated for ScoreBoard {
     fn update_animations(&mut self) -> Task<AppMessage> {
         TaskBatcher::instant_batch([
             self.btn_submit_bid.update_animations(),
+            self.btn_back_to_menu.update_animations(),
             self.hover_animation_blue.next_frame(),
             self.hover_animation_green.next_frame(),
             self.hover_animation_red.next_frame(),
             self.hover_animation_yellow.next_frame(),
+            self.move_end_board_animation.next_frame(),
         ])
     }
 }
