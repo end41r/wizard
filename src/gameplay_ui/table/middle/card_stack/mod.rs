@@ -5,7 +5,7 @@ use std::ops::Not;
 use crate::{
     animation::{Easing, ReversableBasicAnimation},
     api::Card,
-    client::{AppMessage, TaskBatcher},
+    client::{audio::Sfx, AppMessage, TaskBatcher},
     gameplay_ui::{
         card_area_middle_space_height, card_area_middle_space_width, card_area_middle_spawn_point,
         table::middle::{
@@ -84,6 +84,7 @@ impl Notifiable for ViewableCardStack {
                 stack_card.reveal_animation.start();
                 self.cards.push(stack_card);
                 tb.push_msg(CardDeckMessage::ChangeGlow(card));
+                tb.push_msg(AppMessage::PlaySfx(Sfx::CardPlay));
                 return tb.batch();
             }
             CardStackMessage::HideAllCards => {

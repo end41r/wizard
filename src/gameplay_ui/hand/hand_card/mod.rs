@@ -135,7 +135,6 @@ impl Notifiable for ViewableHandCard {
                     if self.playable {
                         tb.push_msg(HandMessage::NotMyTurn);
                         tb.push_msg(GameViewMessage::TryPlayCard(self.card));
-                        tb.push_msg(AppMessage::PlaySfx(Sfx::CardPlay))
                     } else {
                         self.false_played_animation.start();
                         tb.push_msg(AppMessage::PlaySfx(Sfx::CardError))
