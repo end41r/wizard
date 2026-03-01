@@ -107,7 +107,7 @@ impl Notifiable for ViewableCardStack {
                 return tb.batch();
             }
             CardStackMessage::HideAllCards => {
-                if self.cards.len() > 0 {
+                if !self.cards.is_empty() {
                     self.view_played_cards_animation.reverse();
                     for card in self.cards.iter_mut() {
                         card.remove_animation.start();
@@ -185,7 +185,7 @@ impl Viewable for ViewableCardStack {
         for card in self.cards.iter() {
             card_stack = card_stack.push(card.view_and_move(spawn_point.x, spawn_point.y))
         }
-        if self.cards.len() > 0 {
+        if !self.cards.is_empty() {
             card_stack = card_stack.push(
                 pin(MouseArea::new(
                     container(None::<&str>)

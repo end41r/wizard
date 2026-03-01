@@ -82,26 +82,23 @@ impl Notifiable for ViewableTable {
                 for avatar in self.avatars.iter_mut() {
                     tb.push(avatar.update_with_msg(avatar_msg.clone()));
                 }
-                match avatar_msg {
-                    AvatarMessage::PlayShard(player) => {
-                        let avatar = self.find_avatar(player).unwrap();
-                        match avatar.avatar.kind() {
-                            AvatarKind::Elf => {
-                                tb.push_msg(AppMessage::PlaySfx(Sfx::CastElf));
-                            }
-                            AvatarKind::Knight => {
-                                tb.push_msg(AppMessage::PlaySfx(Sfx::CastKnight));
-                            }
-                            AvatarKind::Mage => {
-                                tb.push_msg(AppMessage::PlaySfx(Sfx::CastMage));
-                            }
-                            AvatarKind::Witch => {
-                                tb.push_msg(AppMessage::PlaySfx(Sfx::CastWitch));
-                            }
+                if let AvatarMessage::PlayShard(player) = avatar_msg {
+                    let avatar = self.find_avatar(player).unwrap();
+                    match avatar.avatar.kind() {
+                        AvatarKind::Elf => {
+                            tb.push_msg(AppMessage::PlaySfx(Sfx::CastElf));
                         }
-                        tb.push_msg(AppMessage::PlaySfx(Sfx::ShardPlay));
+                        AvatarKind::Knight => {
+                            tb.push_msg(AppMessage::PlaySfx(Sfx::CastKnight));
+                        }
+                        AvatarKind::Mage => {
+                            tb.push_msg(AppMessage::PlaySfx(Sfx::CastMage));
+                        }
+                        AvatarKind::Witch => {
+                            tb.push_msg(AppMessage::PlaySfx(Sfx::CastWitch));
+                        }
                     }
-                    _ => (),
+                    tb.push_msg(AppMessage::PlaySfx(Sfx::ShardPlay));
                 };
                 tb.batch()
             }
