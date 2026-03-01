@@ -74,7 +74,6 @@ pub struct ScoreBoard {
     window_size: Size,
     pub btn_submit_bid: Button,
     info: ScoreBoardInfo,
-    showing_trump_select: bool,
     hover_animation_red: HoverAnimation,
     hover_animation_green: HoverAnimation,
     hover_animation_blue: HoverAnimation,
@@ -89,15 +88,15 @@ impl ScoreBoard {
         players
     }
     pub fn new(window_size: Size, info: ScoreBoardInfo) -> Self {
+        let hover_animation_duration: usize = 10;
         Self {
             window_size,
             btn_submit_bid: Button::new_submit_bid_button(21, 110, 36),
             info,
-            showing_trump_select: false,
-            hover_animation_red: HoverAnimation::new(20),
-            hover_animation_green: HoverAnimation::new(20),
-            hover_animation_blue: HoverAnimation::new(20),
-            hover_animation_yellow: HoverAnimation::new(20),
+            hover_animation_red: HoverAnimation::new(hover_animation_duration),
+            hover_animation_green: HoverAnimation::new(hover_animation_duration),
+            hover_animation_blue: HoverAnimation::new(hover_animation_duration),
+            hover_animation_yellow: HoverAnimation::new(hover_animation_duration),
         }
     }
 
@@ -364,11 +363,8 @@ impl Notifiable for ScoreBoard {
         match msg {
             ScoreBoardMessage::Update(info) => {
                 self.info = *info;
-                if !self.not_show_trump_pannel() && !self.showing_trump_select {
-                    self.showing_trump_select = true;
-                } else {
-                    self.showing_trump_select = false;
-                    self.reset_animations();
+                if !self.not_show_bidding_pannel() {
+                    self.reset_animations()
                 }
             }
             ScoreBoardMessage::SuitHovered(suit) => match suit {
