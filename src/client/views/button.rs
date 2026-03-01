@@ -231,13 +231,13 @@ impl Button {
 
     fn view_internal<'a>(&self, label: &'a str) -> container::Container<'a, AppMessage> {
         let scale = self.hover_animation.get_expansion() * self.click_animation.get_contraction();
-        let width_scaled = (self.width as f32 * scale).max(1.0).round() as u16;
-        let height_scaled = (self.height as f32 * scale).max(1.0).round() as u16;
+        let width_scaled = (self.width as f32 * scale).max(1.0).round() as u32;
+        let height_scaled = (self.height as f32 * scale).max(1.0).round() as u32;
         let txt_size = ((height_scaled as f32) * 0.4) as u32;
 
         let img = Image::new(self.img_path)
-            .width(width_scaled as u32)
-            .height(height_scaled as u32)
+            .width(width_scaled)
+            .height(height_scaled)
             .opacity(self.click_animation.get_opacity());
 
         let content = stack![
