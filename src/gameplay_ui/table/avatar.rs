@@ -1,9 +1,9 @@
 use std::f32::consts::PI;
 
 use iced::{
-    mouse::Interaction,
-    widget::{container, image, image::FilterMethod, mouse_area, pin, stack, text, Container, Pin},
     Alignment, Color, ContentFit, Point, Size, Task,
+    mouse::Interaction,
+    widget::{Container, Pin, container, image, image::FilterMethod, mouse_area, pin, stack, text},
 };
 
 use derive_more::{Deref, DerefMut};
@@ -14,7 +14,7 @@ use crate::{
         Easing, ReversableBasicAnimation,
     },
     api::{Avatar, AvatarKind, AvatarPose, PlayerId},
-    client::{audio::Sfx, AppMessage, TaskBatcher},
+    client::{AppMessage, TaskBatcher, audio::Sfx},
     gameplay_ui::{
         AVATAR_FRAME_WIDTH_HEIGHT_RATIO, AVATAR_IMG_SIZE_MULT_WITH_WINDOW_WIDTH,
         AVATAR_SHARD_SIZE_MULT_WITH_WINDOW_WIDTH, AVATAR_SIZE_MULT_WITH_WINDOW_WIDTH,
