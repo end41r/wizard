@@ -79,14 +79,14 @@ When the application starts, the main menu is displayed with four buttons:
 
 ### Rules
 
-The game follows the official Wizard card game rules. A full in-game rules screen is accessible via the **Spielregeln** button in **Optionen**. In brief:
+The game follows the official Wizard card game rules. A full in-game rules screen is accessible via the **Spielregeln** button in **Optionen**.
 
-#### Gameplay UI
+### Gameplay UI
 
 - **Card hand:** Cards that are displayed at the bottom, with a right click you can also see which are playable.
 - **Game table:** Shows other players' avatars, the current trick's cards in the middle, if you click the trick's cards you can toggle the view of all played cards in the trick, by just hovering you can temporarily see the played cards in the trick.
 - **Scoreboard:** Displayed on the side, shows each player's current score, bid, and tricks won. The scoreboard also provides trump-suit selection buttons when the dealer must set trump.
-- **Avatars:** Each player has an animated avatar (Elf, Knight, Mage, or Witch) with idle and casting animations. Casting is triggered when a player plays acard. Each avatar type has unique sound effects upon clicking the avatar.
+- **Avatars:** Each player has an animated avatar (Elf, Knight, Mage, or Witch) with idle and casting animations. Casting is triggered when a player plays a card. Each avatar type has unique sound effects upon clicking the avatar.
 - **Shards:** Float around the avatar of each player, indicating the amount of cards left in their hand.
 
 ### Audio
